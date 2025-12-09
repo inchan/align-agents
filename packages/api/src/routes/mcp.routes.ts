@@ -15,12 +15,8 @@ import {
 const router = Router();
 const controller = new McpController();
 
-// Master MCP
-router.get('/master', controller.getMasterMcp.bind(controller));
-router.post('/master',
-    validateRequest(SaveMasterMcpBodySchema),
-    controller.saveMasterMcp.bind(controller)
-);
+// Master MCP routes removed
+
 
 // Sync
 router.post('/sync',

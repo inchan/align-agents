@@ -42,8 +42,7 @@ export interface ISyncService {
     saveGlobalConfig(config: GlobalConfig): void;
     getMasterDir(): string;
     setMasterDir(dir: string): void;
-    loadMasterMcp(): MasterMcpConfig;
-    saveMasterMcp(config: MasterMcpConfig): Promise<void>;
+    // Master MCP methods removed
     loadSyncConfig(): SyncConfig;
     saveSyncConfig(config: SyncConfig): void;
     syncToolMcp(toolId: string, toolConfigPath: string, serverNames: string[] | null, strategy?: SyncStrategy, backupOptions?: { maxBackups?: number; skipBackup?: boolean }, sourceId?: string): Promise<string[]>;

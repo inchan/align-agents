@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { getConfigDir } from '../constants/paths.js';
 import path from 'path';
 import os from 'os';
 
@@ -25,7 +26,7 @@ export class StatsService {
     private activityFile: string;
 
     private constructor() {
-        this.configDir = path.join(os.homedir(), '.config', 'ai-cli-syncer');
+        this.configDir = getConfigDir();
         this.statsFile = path.join(this.configDir, 'stats.json');
         this.activityFile = path.join(this.configDir, 'activity.json');
         this.ensureConfigDir();

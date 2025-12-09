@@ -1,63 +1,37 @@
 import { Request, Response } from 'express';
 import { syncService, mcpService } from '../container.js';
 import {
-    LoadMasterMcpUseCase,
     SyncMcpToToolUseCase,
     SyncMcpToAllToolsUseCase,
     scanForTools
 } from '@ai-cli-syncer/cli';
 
 export class McpController {
-    async getMasterMcp(req: Request, res: Response) {
-        try {
-            const useCase = new LoadMasterMcpUseCase(syncService);
-            const result = useCase.execute({});
-            res.json(result);
-        } catch (error) {
-            console.error('Error loading master MCP:', error);
-            res.status(500).json({ error: 'Failed to load master MCP' });
-        }
-    }
-
-    async saveMasterMcp(req: Request, res: Response) {
-        try {
-            const config = req.body;
-            if (!config || !config.mcpServers) {
-                return res.status(400).json({ error: 'Invalid MCP config' });
-            }
-            await syncService.saveMasterMcp(config);
-            res.json({ success: true });
-        } catch (error) {
-            console.error('Error saving master MCP:', error);
-            res.status(500).json({ error: 'Failed to save master MCP' });
-        }
-    }
+    // Master MCP methods removed
 
     async sync(req: Request, res: Response) {
         try {
-            const { toolId, strategy, sourceId } = req.body;
+            const { toolId, strategy, sourceId, global, targetPath } = req.body;
+
+            if (!sourceId) {
+                return res.status(400).json({ error: 'Source ID(MCP Set ID) is required for sync.' });
+            }
 
             if (toolId) {
-                const resolvedConfigPath = await this.resolveConfigPath(toolId, req.body.configPath);
+                const resolvedConfigPath = await this.resolveConfigPath(toolId, global, targetPath, req.body.configPath);
                 if (!resolvedConfigPath) {
-                    return res.status(400).json({ error: 'configPath가 필요합니다.' });
+                    return res.status(400).json({ error: '유효한 설정 경로를 찾을 수 없습니다. (프로젝트 모드인 경우 targetPath 필수)' });
                 }
 
-                const masterServers = Object.keys(syncService.loadMasterMcp().mcpServers);
-                const requestedServers = Array.isArray(req.body.serverIds)
+                const serverIds = Array.isArray(req.body.serverIds)
                     ? req.body.serverIds.filter((id: unknown) => typeof id === 'string')
                     : undefined;
-                const serverIds = requestedServers && requestedServers.length > 0 ? requestedServers : masterServers;
-
-                if (!serverIds.length) {
-                    return res.status(400).json({ error: '동기화할 MCP 서버가 없습니다. master-mcp 설정을 먼저 추가하세요.' });
-                }
 
                 const useCase = new SyncMcpToToolUseCase(syncService);
                 const result = await useCase.execute({
                     toolId,
                     configPath: resolvedConfigPath,
-                    serverIds,
+                    serverIds: serverIds ?? null,
                     strategy,
                     sourceId
                 });
@@ -79,14 +53,14 @@ export class McpController {
     private async syncMcpToTool(req: Request, res: Response): Promise<void> {
         try {
             console.log(`[API] MCP sync requested:`, req.body);
-            const { toolId, strategy, serverNames, sourceId } = req.body;
+            const { toolId, strategy, serverNames, sourceId, global, targetPath } = req.body;
 
             if (!toolId) {
                 res.status(400).json({ success: false, message: 'Tool ID is required' });
                 return;
             }
 
-            const configPath = await this.resolveConfigPath(toolId);
+            const configPath = await this.resolveConfigPath(toolId, global, targetPath);
             if (!configPath) {
                 res.status(400).json({ success: false, message: `Could not resolve config path for tool: ${toolId}` });
                 return;
@@ -111,12 +85,29 @@ export class McpController {
         }
     }
 
-    private async resolveConfigPath(toolId: string, providedPath?: string): Promise<string | null> {
+    private async resolveConfigPath(toolId: string, global?: boolean, targetPath?: string, providedPath?: string): Promise<string | null> {
         if (providedPath) return providedPath;
 
         const { getToolMetadata } = await import('@ai-cli-syncer/cli');
         const meta = getToolMetadata(toolId);
-        return meta?.configPaths?.[0] || null;
+        if (!meta) return null;
+
+        // Default to global if undefined
+        const isGlobal = global !== false;
+
+        if (isGlobal) {
+            return meta.mcpConfigPath || meta.configPaths?.[0] || null;
+        } else {
+            // Project mode
+            if (!targetPath) return null;
+            if (!meta.projectMcpConfigFilename) {
+                console.warn(`[API] Tool ${toolId} does not support project-level MCP config.`);
+                return null;
+            }
+
+            const path = await import('path');
+            return path.join(targetPath, meta.projectMcpConfigFilename);
+        }
     }
 
     // MCP Definitions Management

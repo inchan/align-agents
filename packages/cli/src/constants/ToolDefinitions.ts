@@ -13,6 +13,7 @@ export interface ToolMetadata {
     appPath?: string;
     cliCommand?: string;
     mcpConfigPath?: string;
+    projectMcpConfigFilename?: string; // Relative path for project-level MCP config
 }
 
 export const TOOL_METADATA: ToolMetadata[] = [
@@ -32,6 +33,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
         format: 'json',
         supportsMcp: true,
         appPath: '/Applications/Claude.app',
+        // No project level config for Claude Desktop
     },
 
     // CLI Tools
@@ -56,6 +58,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
             path.join(os.homedir(), '.codex/config.json'),
         ],
         mcpConfigPath: path.join(os.homedir(), '.codex/config.toml'),
+        projectMcpConfigFilename: '.codex/config.toml',
         format: 'toml',
         supportsMcp: true,
         rulesFilename: 'AGENTS.md',
@@ -71,6 +74,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
             path.join(os.homedir(), 'AppData/Roaming/gemini-cli/settings.json'),
         ],
         mcpConfigPath: path.join(os.homedir(), '.gemini/settings.json'),
+        projectMcpConfigFilename: '.gemini/settings.json',
         format: 'json',
         supportsMcp: true,
         rulesFilename: 'GEMINI.md',
@@ -86,6 +90,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
             path.join(os.homedir(), '.claude/settings.json'),
         ],
         mcpConfigPath: path.join(os.homedir(), '.claude.json'),
+        projectMcpConfigFilename: '.claude.json',
         format: 'json',
         supportsMcp: true,
         rulesFilename: 'CLAUDE.md',
@@ -101,9 +106,12 @@ export const TOOL_METADATA: ToolMetadata[] = [
             path.join(os.homedir(), '.qwen/oauth_creds.json'),
         ],
         mcpConfigPath: path.join(os.homedir(), '.qwen/settings.json'),
+        projectMcpConfigFilename: '.qwen/settings.json',
         format: 'json',
         supportsMcp: true,
         cliCommand: 'qwen',
+        rulesFilename: 'QWEN.md',
+        globalRulesDir: path.join(os.homedir(), '.qwen'),
     },
 
     // IDE Tools
@@ -116,6 +124,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
             path.join(os.homedir(), 'Library/Application Support/Cursor/User/globalStorage/storage.json'),
         ],
         mcpConfigPath: path.join(os.homedir(), '.cursor/mcp.json'),
+        projectMcpConfigFilename: '.cursor/mcp.json',
         format: 'json',
         supportsMcp: true,
         rulesFilename: '.cursorrules',
@@ -131,6 +140,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
             path.join(os.homedir(), '.codeium/windsurf/settings.json'),
         ],
         mcpConfigPath: path.join(os.homedir(), '.codeium/windsurf/mcp_config.json'),
+        projectMcpConfigFilename: '.codeium/windsurf/mcp_config.json',
         format: 'json',
         supportsMcp: true,
         appPath: '/Applications/Windsurf.app',

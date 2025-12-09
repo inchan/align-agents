@@ -1,13 +1,13 @@
 import { IHistoryService, HistoryEntry, HistoryType } from '../../interfaces/IHistoryService.js';
 import { IFileSystem } from '../../interfaces/IFileSystem.js';
-import os from 'os';
+import path from 'path';
+import { getConfigDir } from '../../constants/paths.js';
 
 export class HistoryService implements IHistoryService {
     constructor(private fs: IFileSystem) { }
 
     private getHistoryDir(): string {
-        const homedir = os.homedir();
-        return this.fs.join(homedir, '.config', 'ai-cli-syncer', 'history');
+        return this.fs.join(getConfigDir(), 'history');
     }
 
     private getHistoryIndexFile(): string {

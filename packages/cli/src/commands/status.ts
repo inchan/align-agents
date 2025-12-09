@@ -1,10 +1,11 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import fs from 'fs';
+import { getRegistryPath } from '../constants/paths.js';
 import path from 'path';
 import os from 'os';
-import { loadMasterMcp, loadSyncConfig } from '../services/sync.js';
-import { loadMasterRules, loadRulesConfig } from '../services/rules.js';
+import { loadSyncConfig } from '../services/sync.js';
+import { loadRulesConfig } from '../services/rules.js';
 
 export const statusCommand = new Command('status')
     .description('동기화 상태 확인')
@@ -27,7 +28,7 @@ export const statusCommand = new Command('status')
     });
 
 function showToolsStatus() {
-    const registryPath = path.join(os.homedir(), '.ai-cli-syncer', 'registry.json');
+    const registryPath = getRegistryPath();
 
     if (!fs.existsSync(registryPath)) {
         console.log(chalk.yellow('⚠  도구 스캔 필요: acs scan 명령어를 실행하세요.\n'));
@@ -51,18 +52,12 @@ function showToolsStatus() {
 
 function showMcpStatus() {
     try {
-        const masterMcp = loadMasterMcp();
         const syncConfig = loadSyncConfig();
-        const serverCount = Object.keys(masterMcp.mcpServers).length;
         const enabledTools = Object.entries(syncConfig).filter(([_, config]) => config.enabled).length;
 
         console.log(chalk.bold('🔌 MCP 동기화 상태'));
-        console.log(`  마스터 MCP 서버: ${chalk.green(serverCount)}개`);
+        console.log(chalk.yellow('  Master MCP 개념 제거됨 - MCP Sets 사용 권장'));
         console.log(`  동기화 활성화: ${chalk.green(enabledTools)}개 도구`);
-
-        if (serverCount > 0) {
-            console.log(`  서버 목록: ${Object.keys(masterMcp.mcpServers).join(', ')}`);
-        }
 
         if (enabledTools > 0) {
             const enabledToolNames = Object.entries(syncConfig)
@@ -71,20 +66,18 @@ function showMcpStatus() {
             console.log(`  활성화된 도구: ${enabledToolNames.join(', ')}`);
         }
     } catch (error) {
-        console.log(chalk.yellow('  마스터 MCP 설정 없음'));
+        console.log(chalk.yellow('  MCP 설정 없음'));
     }
     console.log('');
 }
 
 function showRulesStatus() {
     try {
-        const masterRules = loadMasterRules();
         const rulesConfig = loadRulesConfig();
-        const hasRules = masterRules.length > 100; // 기본 템플릿보다 긴지 확인
         const enabledTools = Object.entries(rulesConfig).filter(([_, config]) => config.enabled).length;
 
         console.log(chalk.bold('📝 Rules 동기화 상태'));
-        console.log(`  마스터 Rules: ${hasRules ? chalk.green('작성됨') : chalk.yellow('기본 템플릿')}`);
+        console.log(chalk.yellow('  Master Rules 개념 제거됨 - Rules 관리 사용 권장'));
         console.log(`  동기화 활성화: ${chalk.green(enabledTools)}개 도구`);
 
         if (enabledTools > 0) {
@@ -94,13 +87,13 @@ function showRulesStatus() {
             console.log(`  활성화된 도구: ${enabledToolNames.join(', ')}`);
         }
     } catch (error) {
-        console.log(chalk.yellow('  마스터 Rules 설정 없음'));
+        console.log(chalk.yellow('  Rules 설정 없음'));
     }
     console.log('');
 }
 
 function showBackupStatus() {
-    const registryPath = path.join(os.homedir(), '.ai-cli-syncer', 'registry.json');
+    const registryPath = getRegistryPath();
 
     if (!fs.existsSync(registryPath)) {
         return;

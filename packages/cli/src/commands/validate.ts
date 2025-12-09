@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { loadMasterMcp, loadSyncConfig, getGlobalConfig } from '../services/sync.js';
+import { loadSyncConfig, getGlobalConfig } from '../services/sync.js';
 import { loadRulesConfig } from '../services/rules.js';
 import { validateDataSafe } from '../utils/validation.js';
 import { MasterMcpConfigSchema, SyncConfigSchema } from '../schemas/mcp.schema.js';
@@ -50,17 +50,7 @@ function validateMcp(): boolean {
     let hasErrors = false;
 
     try {
-        // 마스터 MCP 검증
-        const masterMcp = loadMasterMcp();
-        const mcpResult = validateDataSafe(MasterMcpConfigSchema, masterMcp);
-
-        if (!mcpResult.success) {
-            console.log(chalk.red('  ✖ master-mcp.json:'));
-            mcpResult.errors.forEach(err => console.log(chalk.red(`    - ${err}`)));
-            hasErrors = true;
-        } else {
-            console.log(chalk.green('  ✓ master-mcp.json'));
-        }
+        // Master MCP validation removed
 
         // 동기화 설정 검증
         const syncConfig = loadSyncConfig();

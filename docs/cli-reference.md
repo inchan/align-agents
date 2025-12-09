@@ -21,7 +21,7 @@ acs init
 
 **동작:**
 
-- `~/.config/ai-cli-syncer` 디렉토리 생성
+- `~/.ai-cli-syncer` 디렉토리 생성
 - 기본 설정 파일 생성 (`master-mcp.json`, `master-rules.md`, `config.json`)
 - Git 저장소 초기화 (백업용)
 
@@ -402,7 +402,7 @@ acs config edit
 ## 환경 변수
 
 - `EDITOR`: 기본 텍스트 에디터 (기본값: `vi`)
-- `AI_CLI_SYNCER_CONFIG_DIR`: 설정 디렉토리 경로 (기본값: `~/.config/ai-cli-syncer`)
+- `AI_CLI_SYNCER_CONFIG_DIR`: 설정 디렉토리 경로 (기본값: `~/.ai-cli-syncer`)
 
 ---
 

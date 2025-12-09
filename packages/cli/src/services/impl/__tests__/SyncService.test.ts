@@ -185,60 +185,7 @@ describe('SyncService', () => {
         });
     });
 
-    describe('loadMasterMcp', () => {
-        it('should load existing master MCP config', () => {
-            const mockConfig = { mcpServers: { server1: { command: 'cmd', args: [] } } };
-            mockFs.exists = vi.fn().mockReturnValue(true);
-            mockFs.readFile = vi.fn().mockReturnValue(JSON.stringify(mockConfig));
-
-            const result = service.loadMasterMcp();
-
-            expect(result.mcpServers).toHaveProperty('server1');
-        });
-
-        it('should create default config if not exists', () => {
-            mockFs.exists = vi.fn()
-                .mockReturnValueOnce(true)   // masterDir
-                .mockReturnValueOnce(false); // mcpPath
-
-            const result = service.loadMasterMcp();
-
-            expect(result.mcpServers).toEqual({});
-            expect(mockFs.writeFile).toHaveBeenCalled();
-        });
-
-        it('should handle parse errors', () => {
-            mockFs.exists = vi.fn().mockReturnValue(true);
-            mockFs.readFile = vi.fn()
-                .mockReturnValueOnce(JSON.stringify({ masterDir: '/path', autoBackup: true }))  // global config
-                .mockReturnValueOnce('invalid json');  // mcp config
-
-            const result = service.loadMasterMcp();
-
-            expect(result.mcpServers).toEqual({});
-        });
-    });
-
-    describe('saveMasterMcp', () => {
-        it('should save valid MCP config', async () => {
-            const config = { mcpServers: { server1: { command: 'cmd', args: [] } } };
-
-            await service.saveMasterMcp(config);
-
-            expect(mockFs.writeFile).toHaveBeenCalledWith(
-                expect.stringContaining('master-mcp.json'),
-                expect.stringContaining('server1')
-            );
-        });
-
-        it('should create directory if not exists', async () => {
-            mockFs.exists = vi.fn().mockReturnValue(false);
-
-            await service.saveMasterMcp({ mcpServers: {} });
-
-            expect(mockFs.mkdir).toHaveBeenCalled();
-        });
-    });
+    // Master MCP tests removed - methods no longer exist
 
     describe('loadSyncConfig', () => {
         it('should load existing sync config', () => {
@@ -403,7 +350,7 @@ describe('SyncService', () => {
             ).rejects.toThrow('MCP Set not found');
         });
 
-        it('should apply append strategy', async () => {
+        it('should apply smart-update strategy', async () => {
             mockFs.readFile = vi.fn()
                 .mockReturnValueOnce(JSON.stringify({ masterDir: '/master', autoBackup: true }))
                 .mockReturnValueOnce(JSON.stringify({
@@ -417,7 +364,7 @@ describe('SyncService', () => {
                 'claude',
                 '/path/to/config.json',
                 null,
-                'append'
+                'smart-update'
             );
 
             const writeCall = mockFs.writeFile.mock.calls.find(

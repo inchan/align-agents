@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { TOOL_METADATA } from '../constants/ToolDefinitions.js';
+import { getRegistryPath } from '../constants/paths.js';
 
 export interface ToolConfig {
     id: string;
@@ -26,7 +27,7 @@ export class ToolRepository {
     private static instance: ToolRepository;
 
     private constructor() {
-        this.registryPath = path.join(os.homedir(), '.ai-cli-syncer', 'registry.json');
+        this.registryPath = getRegistryPath();
     }
 
     public static getInstance(): ToolRepository {

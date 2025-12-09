@@ -100,6 +100,32 @@ export async function saveConfig(path: string, content: string): Promise<{ succe
     return response.json();
 }
 
+// Scan Tools API
+export async function scanTools(): Promise<ToolConfig[]> {
+    const response = await fetch(`${API_BASE}/tools/scan`, {
+        method: 'POST',
+    });
+    if (!response.ok) {
+        throw new Error('Failed to scan tools');
+    }
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.tools || []);
+}
+
+// Sync Status API
+export interface SyncStatus {
+    rules: RulesConfig;
+    mcp: SyncConfig;
+}
+
+export async function fetchSyncStatus(): Promise<SyncStatus> {
+    const response = await fetch(`${API_BASE}/sync/status`, { cache: 'no-store' });
+    if (!response.ok) {
+        throw new Error('Failed to fetch sync status');
+    }
+    return response.json();
+}
+
 // Master MCP API
 export async function fetchMasterMcp(): Promise<MasterMcpConfig> {
     const response = await fetch(`${API_BASE}/mcp/master`, { cache: 'no-store' });
@@ -149,13 +175,13 @@ export interface SyncResult {
 
 // Sync Execution API (MCP)
 // Sync Execution API (MCP)
-export async function executeMcpSync(toolId?: string, sourceId?: string, strategy?: string): Promise<SyncResult> {
+export async function executeMcpSync(toolId?: string, sourceId?: string, strategy?: string, global: boolean = true, targetPath?: string): Promise<SyncResult> {
     const response = await fetch(`${API_BASE}/mcp/sync`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ toolId, sourceId, strategy }),
+        body: JSON.stringify({ toolId, sourceId, strategy, global, targetPath }),
     });
     if (!response.ok) {
         throw new Error('Failed to execute MCP sync');

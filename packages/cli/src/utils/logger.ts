@@ -28,22 +28,28 @@ export class SyncLogger {
     // 개별 결과 로그
     static logResult(entry: SyncLogEntry) {
         const icon = this.getStatusIcon(entry.status);
-        const statusText = this.getStatusText(entry.status);
         const typeText = entry.type === 'rules' ? 'Rules' : 'MCP';
+        const toolNameFormatted = chalk.bold(entry.toolName);
 
         // 경로를 절대 경로로 변환하여 클릭 가능하게
         const displayPath = entry.targetPath
-            ? chalk.cyan(`file://${path.resolve(entry.targetPath)}`)
+            ? chalk.cyan(path.resolve(entry.targetPath))
             : '';
 
-        let message = `${icon} ${statusText} ${chalk.bold(entry.toolName)} (${entry.toolId}) - ${typeText}`;
+        let message = `  ${icon} ${toolNameFormatted} ${chalk.gray(`(${entry.toolId})`)}`;
 
-        if (entry.targetPath) {
-            message += `\n  경로: ${displayPath}`;
+        if (entry.status === 'error') {
+            message += chalk.red(` - Failed`);
+        } else if (entry.status === 'skipped') {
+            message += chalk.yellow(` - Skipped`);
         }
 
-        if (entry.message) {
-            message += `\n  ${chalk.gray(entry.message)}`;
+        if (entry.targetPath) {
+            message += `\n    ${chalk.gray('Path:')} ${displayPath}`;
+        }
+
+        if (entry.message && entry.status !== 'success') {
+            message += `\n    ${chalk.red('Error:')} ${entry.message}`;
         }
 
         console.log(message);
@@ -55,24 +61,20 @@ export class SyncLogger {
         const failed = entries.filter(e => e.status === 'error').length;
         const skipped = entries.filter(e => e.status === 'skipped' || e.status === 'not-supported').length;
 
-        console.log(chalk.bold('\n📊 동기화 요약:'));
-        console.log(chalk.green(`  ✅ 성공: ${success}개`));
-        if (failed > 0) {
-            console.log(chalk.red(`  ❌ 실패: ${failed}개`));
-        }
-        if (skipped > 0) {
-            console.log(chalk.yellow(`  ⚠️  스킵: ${skipped}개`));
-        }
+        console.log('');
+        if (success > 0) console.log(chalk.green(`  ✔ ${success} synced successfully`));
+        if (failed > 0) console.log(chalk.red(`  ✖ ${failed} failed`));
+        if (skipped > 0) console.log(chalk.yellow(`  ! ${skipped} skipped`));
         console.log('');
     }
 
     private static getStatusIcon(status: string): string {
         switch (status) {
-            case 'success': return '✅';
-            case 'error': return '❌';
-            case 'skipped': return '⚠️';
-            case 'not-supported': return '🚫';
-            default: return '❓';
+            case 'success': return chalk.green('✔');
+            case 'error': return chalk.red('✖');
+            case 'skipped': return chalk.yellow('!');
+            case 'not-supported': return chalk.gray('🚫');
+            default: return chalk.blue('?');
         }
     }
 

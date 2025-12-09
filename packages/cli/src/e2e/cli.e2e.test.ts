@@ -83,10 +83,22 @@ describe('acs CLI E2E', () => {
         const projectDir = path.join(tempHome, 'project');
 
         fs.mkdirSync(masterDir, { recursive: true });
+        fs.mkdirSync(path.join(masterDir, 'rules'), { recursive: true });
         fs.mkdirSync(projectDir, { recursive: true });
 
-        const masterRules = '# E2E Rules\n- keep me';
-        fs.writeFileSync(path.join(masterDir, 'master-rules.md'), masterRules);
+        // Create a rule using the repository format
+        const ruleContent = '# E2E Rules\n- keep me';
+        const ruleId = 'test-rule-id';
+        writeJson(path.join(masterDir, 'rules', 'index.json'), {
+            rules: [{
+                id: ruleId,
+                name: 'E2E Test Rule',
+                content: ruleContent,
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }]
+        });
         writeJson(globalConfigPath, { masterDir, autoBackup: false });
         writeJson(path.join(masterDir, 'rules-config.json'), {});
         writeJson(path.join(masterDir, 'sync-config.json'), {});
@@ -107,7 +119,7 @@ describe('acs CLI E2E', () => {
         );
 
         await program.parseAsync(
-            ['rules', 'sync', '--all', '--project', projectDir, '--strategy', 'overwrite'],
+            ['rules', 'sync', '--all', '--project', projectDir, '--strategy', 'overwrite', '--source', ruleId],
             { from: 'user' }
         );
 
@@ -127,18 +139,38 @@ describe('acs CLI E2E', () => {
         const claudeConfigPath = path.join(tempHome, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
 
         fs.mkdirSync(masterDir, { recursive: true });
+        fs.mkdirSync(path.join(masterDir, 'mcp'), { recursive: true });
         fs.mkdirSync(path.dirname(claudeConfigPath), { recursive: true });
 
         writeJson(globalConfigPath, { masterDir, autoBackup: false });
-        writeJson(path.join(masterDir, 'master-mcp.json'), {
-            mcpServers: {
-                server1: { command: 'node', args: ['server.js'] },
-            },
+
+        // Create MCP Set using repository format
+        const mcpSetId = 'test-mcp-set-id';
+        const defId = 'def-1';
+        writeJson(path.join(masterDir, 'mcp', 'definitions.json'), {
+            definitions: [{
+                id: defId,
+                name: 'server1',
+                command: 'node',
+                args: ['server.js'],
+                env: {}
+            }]
         });
+        writeJson(path.join(masterDir, 'mcp', 'index.json'), {
+            sets: [{
+                id: mcpSetId,
+                name: 'E2E Test Set',
+                items: [{ serverId: defId, disabled: false }],
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }]
+        });
+
         writeJson(path.join(masterDir, 'sync-config.json'), {
             'claude-desktop': { enabled: true, servers: null },
         });
-        writeJson(claudeConfigPath, { mcpServers: {} }); // Restored!
+        writeJson(claudeConfigPath, { mcpServers: {} });
 
         const { syncCommand } = await import('../commands/sync.js');
 
@@ -154,7 +186,7 @@ describe('acs CLI E2E', () => {
             claudeTool,
         ]);
 
-        await program.parseAsync(['sync', '--all', '--strategy', 'overwrite'], { from: 'user' });
+        await program.parseAsync(['sync', '--all', '--strategy', 'overwrite', '--source', mcpSetId], { from: 'user' });
 
         const content = fs.readFileSync(claudeConfigPath, 'utf-8');
         console.log('[DEBUG] Synced Config Content:', content);
@@ -173,8 +205,9 @@ describe('acs CLI E2E', () => {
 
         await program.parseAsync(['init'], { from: 'user' });
 
-        expect(fs.existsSync(path.join(masterDir, 'master-mcp.json'))).toBe(true);
-        expect(fs.existsSync(path.join(masterDir, 'master-rules.md'))).toBe(true);
+        // Master files should NOT be created anymore
+        expect(fs.existsSync(path.join(masterDir, 'master-mcp.json'))).toBe(false);
+        expect(fs.existsSync(path.join(masterDir, 'master-rules.md'))).toBe(false);
         expect(fs.existsSync(path.join(masterDir, 'sync-config.json'))).toBe(true);
 
         const globalConfig = JSON.parse(fs.readFileSync(globalConfigPath, 'utf-8'));

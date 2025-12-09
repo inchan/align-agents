@@ -12,12 +12,7 @@ import {
 const router = Router();
 const controller = new RulesController();
 
-// Master rules
-router.get('/master', controller.getMasterRules.bind(controller));
-router.post('/master',
-    validateRequest(SaveMasterRulesBodySchema),
-    controller.saveMasterRules.bind(controller)
-);
+// Master rules routes removed
 
 
 

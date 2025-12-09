@@ -26,7 +26,35 @@ export const uiCommand = new Command('ui')
     .option('--no-open', 'Do not open browser on start')
     .action(async (options) => {
         const port = parseInt(options.port, 10);
-        const server = Fastify({ logger: true });
+        const server = Fastify({ logger: false });
+
+        // Custom Logger Hook
+        server.addHook('onResponse', (request, reply, done) => {
+            // Skip health check success logs entirely
+            if (request.url === '/api/health' && reply.statusCode === 200) {
+                done();
+                return;
+            }
+
+            const method = request.method;
+            const url = request.url;
+            const statusCode = reply.statusCode;
+            const duration = reply.getResponseTime();
+
+            let statusColor = chalk.green;
+            if (statusCode >= 500) statusColor = chalk.red;
+            else if (statusCode >= 400) statusColor = chalk.yellow;
+
+            const methodColor = method === 'GET' ? chalk.blue :
+                method === 'POST' ? chalk.green :
+                    method === 'PUT' ? chalk.yellow :
+                        method === 'DELETE' ? chalk.red : chalk.white;
+
+            console.log(
+                `${chalk.gray('[API]')} ${methodColor(method)} ${url} ${statusColor(statusCode)} ${chalk.gray(duration.toFixed(1) + 'ms')}`
+            );
+            done();
+        });
 
         await server.register(fastifyCors, {
             origin: true,
@@ -62,7 +90,6 @@ export const uiCommand = new Command('ui')
                 return reply.code(404).send({ error: error.message });
             }
         });
-
         server.delete<{ Params: { id: string } }>('/api/tools/:id', async (request, reply) => {
             const { id } = request.params;
             const success = await ToolRepository.getInstance().removeTool(id);
@@ -217,21 +244,7 @@ export const uiCommand = new Command('ui')
             return { success: true };
         });
 
-        // Master MCP API
-        server.get('/api/mcp/master', async (request, reply) => {
-            const { loadMasterMcp } = await import('../services/sync.js');
-            return loadMasterMcp();
-        });
-
-        server.post<{ Body: { mcpServers: Record<string, any> } }>('/api/mcp/master', async (request, reply) => {
-            const { saveMasterMcp } = await import('../services/sync.js');
-            try {
-                await saveMasterMcp(request.body as any);
-                return { success: true };
-            } catch (error: any) {
-                return reply.code(400).send({ error: error.message });
-            }
-        });
+        // Master MCP API removed
 
         // Sync Config API
         server.get('/api/sync-config', async (request, reply) => {
@@ -299,10 +312,14 @@ export const uiCommand = new Command('ui')
                     return reply.code(400).send({ error: 'Either toolId or all must be specified' });
                 }
             } catch (error: any) {
+                console.error('[API] MCP Sync Error:', error);
                 const { StatsService } = await import('../services/StatsService.js');
                 await StatsService.getInstance().recordSync(false, `Sync failed: ${error.message}`, { error: error.message });
 
-                const status = error?.message?.includes('Unknown tool') ? 400 : 500;
+                let status = 500;
+                if (error?.message?.includes('Unknown tool')) status = 400;
+                if (error?.message?.includes('MCP Set not found')) status = 404;
+
                 return reply.code(status).send({ error: error.message });
             }
         });
@@ -323,22 +340,7 @@ export const uiCommand = new Command('ui')
             }
         });
 
-        // Master Rules API
-        server.get('/api/rules/master', async (request, reply) => {
-            const { loadMasterRules } = await import('../services/rules.js');
-            const content = loadMasterRules();
-            return { content };
-        });
-
-        server.post<{ Body: { content: string } }>('/api/rules/master', async (request, reply) => {
-            const { saveMasterRules } = await import('../services/rules.js');
-            try {
-                await saveMasterRules(request.body.content);
-                return { success: true };
-            } catch (error: any) {
-                return reply.code(400).send({ error: error.message });
-            }
-        });
+        // Master Rules API removed
 
         // Rules Config API
         server.get('/api/rules-config', async (request, reply) => {
@@ -357,9 +359,11 @@ export const uiCommand = new Command('ui')
         });
 
         // Rules Sync API
-        server.post<{ Body: { toolId?: string; projectPath?: string; all?: boolean; global?: boolean; sourceId?: string } }>('/api/rules/sync', async (request, reply) => {
+        server.post<{ Body: { toolId?: string; projectPath?: string; all?: boolean; global?: boolean; sourceId?: string; strategy?: string } }>('/api/rules/sync', async (request, reply) => {
             const { syncToolRules, syncAllToolsRules } = await import('../services/rules.js');
-            const { toolId, projectPath, all, global, sourceId } = request.body;
+            const { toolId, projectPath, all, global, sourceId, strategy } = request.body;
+            // Default to 'smart-update' if not provided
+            const syncStrategy = (strategy as any) || 'smart-update';
 
             try {
                 const { StatsService } = await import('../services/StatsService.js');
@@ -370,7 +374,7 @@ export const uiCommand = new Command('ui')
                     if (!sourceId) {
                         return reply.code(400).send({ error: 'Source ID is required for sync' });
                     }
-                    const results = await syncAllToolsRules(projectPath, 'overwrite', sourceId);
+                    const results = await syncAllToolsRules(projectPath, syncStrategy, sourceId);
                     const success = results.every(r => r.status === 'success' || r.status === 'skipped');
                     await StatsService.getInstance().recordSync(success, success ? 'All rules synced successfully' : 'Some rules failed to sync', { results, type: 'rules' });
                     return { success: true, message: 'All tools synced', results };
@@ -378,7 +382,7 @@ export const uiCommand = new Command('ui')
                     if (!sourceId) {
                         return reply.code(400).send({ error: 'Source ID is required for sync' });
                     }
-                    await syncToolRules(toolId, projectPath || '', global !== undefined ? global : true, 'smart-update', undefined, sourceId);
+                    await syncToolRules(toolId, projectPath || '', global !== undefined ? global : true, syncStrategy, undefined, sourceId);
                     await StatsService.getInstance().recordSync(true, `Rules for ${toolId} synced successfully`, { toolId, type: 'rules' });
                     return { success: true, message: `Tool ${toolId} synced` };
                 } else {
@@ -466,6 +470,15 @@ export const uiCommand = new Command('ui')
             const { createMcpDef } = await import('../services/mcp-multi.js');
             return createMcpDef(request.body as any);
         });
+        // Tools Enhancement API
+        server.post('/api/tools/scan', async () => {
+            const { scanForTools, saveRegistry } = await import('../services/scanner.js');
+            const tools = await scanForTools();
+            saveRegistry(tools);
+            const repo = ToolRepository.getInstance();
+            await repo.load(); // Refresh repo
+            return { tools: repo.getTools() };
+        });
 
         server.put<{ Params: { id: string }; Body: any }>('/api/mcps/:id', async (request) => {
             const { updateMcpDef } = await import('../services/mcp-multi.js');
@@ -546,6 +559,57 @@ export const uiCommand = new Command('ui')
             } catch (error: any) {
                 return reply.code(404).send({ error: error.message });
             }
+        });
+
+        // Sync Status API
+        server.get('/api/sync/status', async (request, reply) => {
+            const fs = await import('fs');
+            // We need to instantiate services to access configs.
+            // Since we don't have dependency injection container for cli/ui, we instantiate them manually or use singletons if available.
+            // RulesService and SyncService are not singletons.
+            // But they take IFileSystem. We can create a simple wrapper.
+
+            const fsWrapper: any = {
+                readFile: (path: string) => fs.readFileSync(path, 'utf-8'),
+                writeFile: (path: string, content: string) => fs.writeFileSync(path, content, 'utf-8'),
+                exists: (path: string) => fs.existsSync(path),
+                join: (...paths: string[]) => path.join(...paths),
+                mkdir: (path: string) => fs.mkdirSync(path, { recursive: true }),
+                readdir: (path: string) => fs.readdirSync(path),
+                stat: (path: string) => fs.statSync(path),
+                getCurrentDirectory: () => process.cwd(),
+                // Add other missing methods if IFileSystem requires them
+            };
+
+            // Actually, we can just instantiate SyncService and RulesService with this fs wrapper.
+            // But verifying IFileSystem interface is tedious. 
+            // Better approach: Read the files directly here as we did in SyncService for getSyncConfig.
+
+            const configDir = path.join(os.homedir(), '.ai-cli-syncer');
+            const masterDir = configDir; // Assumed default
+
+            const rulesConfigPath = path.join(masterDir, 'rules-config.json');
+            const syncConfigPath = path.join(masterDir, 'sync-config.json');
+
+            let rulesConfig = {};
+            let syncConfig = {};
+
+            try {
+                if (fs.existsSync(rulesConfigPath)) {
+                    rulesConfig = JSON.parse(fs.readFileSync(rulesConfigPath, 'utf-8'));
+                }
+            } catch (e) { console.warn('Failed to read rules-config', e); }
+
+            try {
+                if (fs.existsSync(syncConfigPath)) {
+                    syncConfig = JSON.parse(fs.readFileSync(syncConfigPath, 'utf-8'));
+                }
+            } catch (e) { console.warn('Failed to read sync-config', e); }
+
+            return {
+                rules: rulesConfig,
+                mcp: syncConfig
+            };
         });
 
         server.post('/api/projects/scan', async () => {

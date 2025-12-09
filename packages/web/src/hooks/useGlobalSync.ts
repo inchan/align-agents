@@ -3,7 +3,9 @@ import {
     fetchTools,
     executeRulesSync,
     executeMcpSync,
-    type ToolConfig
+    fetchMcpSets,
+    type ToolConfig,
+    type McpSet
 } from '../lib/api'
 import { useTargetStore } from '../store/targetStore'
 import { toast } from 'sonner'
@@ -26,10 +28,29 @@ export function useGlobalSync() {
         staleTime: 5 * 60 * 1000, // cache for 5 minutes
     })
 
+    // Validate MCP sets to prevent syncing with stale IDs
+    // NOTE: queryKey must match other usages ('mcpSets') for proper cache invalidation
+    const { data: mcpSets = [], isLoading: isLoadingMcpSets } = useQuery<McpSet[]>({
+        queryKey: ['mcpSets'],
+        queryFn: fetchMcpSets,
+        staleTime: 5 * 60 * 1000,
+    })
+
     const syncMutation = useMutation<any[], Error, SyncOptions | undefined>({
         mutationFn: async (options?: SyncOptions) => {
             const scope = options?.scope || 'all'
             const forceAllTools = options?.forceAllTools || false
+
+            // DEBUG: Log mutation start state
+            console.log('[useGlobalSync] mutationFn called:', {
+                scope,
+                forceAllTools,
+                selectedRuleId: store.selectedRuleId,
+                selectedMcpSetId: store.selectedMcpSetId,
+                mcpSetsCount: mcpSets.length,
+                mcpSetIds: mcpSets.map(s => s.id),
+                isLoadingMcpSets
+            })
 
             const promises = []
 
@@ -61,12 +82,33 @@ export function useGlobalSync() {
             for (const toolId of toolsToSync) {
                 // Sync Rules
                 if ((scope === 'all' || scope === 'rules') && store.selectedRuleId) {
+                    console.log(`[Web] Syncing Rules for ${toolId}: strategy=${store.strategy}, global=${global}, target=${targetPath}`);
                     promises.push(executeRulesSync(toolId, store.selectedRuleId, store.strategy, global, targetPath || undefined))
                 }
 
                 // Sync MCP
                 if ((scope === 'all' || scope === 'mcp') && store.selectedMcpSetId) {
-                    promises.push(executeMcpSync(toolId, store.selectedMcpSetId, store.strategy))
+                    // DEBUG: Log MCP sync validation
+                    const mcpSetExists = mcpSets.find(s => s.id === store.selectedMcpSetId)
+                    console.log('[useGlobalSync] MCP sync check:', {
+                        toolId,
+                        selectedMcpSetId: store.selectedMcpSetId,
+                        mcpSetsLength: mcpSets.length,
+                        mcpSetExists: !!mcpSetExists,
+                        willValidate: mcpSets.length > 0
+                    })
+
+                    // Final validation before execution
+                    if (mcpSets.length > 0 && !mcpSetExists) {
+                        console.error('[useGlobalSync] MCP validation FAILED - throwing error')
+                        throw new Error(`Invalid MCP Set ID: ${store.selectedMcpSetId}`)
+                    }
+
+                    if (mcpSets.length === 0) {
+                        console.warn('[useGlobalSync] WARNING: mcpSets is empty, skipping validation!')
+                    }
+
+                    promises.push(executeMcpSync(toolId, store.selectedMcpSetId, store.strategy, global, targetPath || undefined))
                 }
             }
 
@@ -117,9 +159,37 @@ export function useGlobalSync() {
         syncMutation.mutate(options)
     }
 
+    // Validation logic
+    const isMcpSetValid = !store.selectedMcpSetId || mcpSets.some(set => set.id === store.selectedMcpSetId)
+    // If we have an MCP ID but no sets loaded yet, we can't be sure, so better to wait or assume invalid until loaded.
+    // However, if fetching fails, mcpSets might be empty.
+    // Ideally: if selectedMcpSetId is present, we need to check if it's in the list.
+    // If waiting for data, we can disable sync.
+
+    // canSync conditions:
+    // 1. Must have at least one of RuleID or McpID selected.
+    // 2. If McpID is selected, it must be valid (exist in mcpSets).
+    // 3. Not currently syncing.
+    // 4. Not currently loading MCP sets (to ensure validation is correct).
+    const canSync =
+        (!!store.selectedRuleId || (!!store.selectedMcpSetId && isMcpSetValid)) &&
+        !syncMutation.isPending &&
+        !isLoadingMcpSets
+
+    // DEBUG: Log canSync derivation
+    console.log('[useGlobalSync] canSync derivation:', {
+        selectedRuleId: store.selectedRuleId,
+        selectedMcpSetId: store.selectedMcpSetId,
+        isMcpSetValid,
+        mcpSetsCount: mcpSets.length,
+        isLoadingMcpSets,
+        isPending: syncMutation.isPending,
+        canSync
+    })
+
     return {
         sync: handleSync,
         isPending: syncMutation.isPending,
-        canSync: (!!store.selectedRuleId || !!store.selectedMcpSetId) && !syncMutation.isPending
+        canSync
     }
 }

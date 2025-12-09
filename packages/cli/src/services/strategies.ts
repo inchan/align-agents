@@ -1,6 +1,6 @@
 import { EOL } from 'os';
 
-export type SyncStrategy = 'overwrite' | 'append' | 'smart-update' | 'deep-merge';
+export type SyncStrategy = 'overwrite' | 'smart-update';
 
 /**
  * Deep merge utility for MCP server configurations.
@@ -51,14 +51,7 @@ export function applySyncStrategy(currentContent: string, newContent: string, st
             console.log(`[CLI] DEBUG: Using overwrite strategy - returning new content`);
             return newContent;
 
-        case 'append':
-            console.log(`[CLI] DEBUG: Using append strategy - appending new content`);
-            // Append new content to existing content with separator
-            if (!currentContent) {
-                return newContent;
-            }
-            const separator = currentContent.endsWith(EOL) ? '' : EOL + EOL;
-            return `${currentContent}${separator}${newContent}`;
+
 
         case 'smart-update':
             console.log(`[CLI] DEBUG: Using smart-update strategy`);

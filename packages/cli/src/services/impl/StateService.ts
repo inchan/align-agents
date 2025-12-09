@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { getConfigDir } from '../../constants/paths.js';
 
 interface ToolState {
     lastSyncHash: string;
@@ -18,8 +19,7 @@ export class StateService {
     private state: StateSchema;
 
     constructor() {
-        const homeDir = os.homedir();
-        const configDir = path.join(homeDir, '.ai-cli-syncer');
+        const configDir = getConfigDir();
         this.statePath = path.join(configDir, 'state.json');
 
         // Ensure config directory exists

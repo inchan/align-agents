@@ -17,7 +17,7 @@ export function ApiStatusBanner() {
     const { isError, isLoading, refetch } = useQuery({
         queryKey: ['health'],
         queryFn: checkHealth,
-        refetchInterval: 5000, // Check every 5 seconds
+        refetchInterval: 10000, // Check every 5 seconds
         retry: false, // Don't retry immediately, wait for next interval
         refetchOnWindowFocus: true,
     })

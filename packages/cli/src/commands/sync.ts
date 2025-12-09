@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import path from 'path';
 import os from 'os';
+import { getRegistryPath } from '../constants/paths.js';
 import { syncToolMcp, syncAllTools, loadSyncConfig, type SyncResultStatus } from '../services/sync.js';
 import { scanForTools } from '../services/scanner.js';
 import { getToolMetadata } from '../constants/tools.js';
@@ -21,7 +22,7 @@ export const syncCommand = new Command('sync')
         }
 
         // 레지스트리 및 MCP Set 목록 로드
-        const registryPath = path.join(os.homedir(), '.ai-cli-syncer', 'registry.json');
+        const registryPath = getRegistryPath();
         const tools = await scanForTools();
         const { fetchMcpSets } = await import('../services/mcp-multi.js');
         const mcpSets = fetchMcpSets();

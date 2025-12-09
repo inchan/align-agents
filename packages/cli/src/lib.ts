@@ -30,15 +30,14 @@ export * from './use-cases/IUseCase.js';
 export * from './use-cases/rules/RulesDTOs.js';
 export { SyncRulesToToolUseCase } from './use-cases/rules/SyncRulesToToolUseCase.js';
 export { SyncRulesToAllToolsUseCase } from './use-cases/rules/SyncRulesToAllToolsUseCase.js';
-export { LoadMasterRulesUseCase } from './use-cases/rules/LoadMasterRulesUseCase.js';
 
 // Logger exports
 export { LoggerService } from './services/LoggerService.js';
+// Master use case exports removed
 export { LogInterceptor } from './infrastructure/LogInterceptor.js';
 export * from './use-cases/mcp/McpDTOs.js';
 export * from './use-cases/mcp/SyncMcpToToolUseCase.js';
 export * from './use-cases/mcp/SyncMcpToAllToolsUseCase.js';
-export * from './use-cases/mcp/LoadMasterMcpUseCase.js';
 
 // Constants
 export * from './constants/tools.js';

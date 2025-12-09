@@ -1,4 +1,5 @@
 import os from 'os';
+import { getConfigDir } from '../../constants/paths.js';
 import { IMcpService, McpDef, McpSet, McpSetItem } from '../../interfaces/IMcpService.js';
 import { IFileSystem } from '../../interfaces/IFileSystem.js';
 import { McpRepository } from '../../infrastructure/repositories/McpRepository.js';
@@ -13,7 +14,7 @@ export class McpService implements IMcpService {
     }
 
     private getDefaultMasterDir(): string {
-        return this.fs.join(os.homedir(), '.config', 'ai-cli-syncer');
+        return getConfigDir();
     }
 
     public getMasterDir(): string {

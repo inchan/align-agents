@@ -74,6 +74,8 @@ export const SyncMcpBodySchema = z.object({
     toolId: z.string().optional(),
     serverIds: z.array(z.string()).optional(),
     strategy: z.enum(['overwrite', 'append', 'smart-update']).optional(),
+    global: z.boolean().optional(),
+    targetPath: z.string().optional(),
     sourceId: z.string().uuid().optional(),
 });
 

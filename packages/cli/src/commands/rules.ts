@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { execSync } from 'child_process';
-import { loadMasterRules, saveMasterRules, syncToolRules, syncAllToolsRules, getToolRulesFilename, listSupportedTools } from '../services/rules.js';
+import { syncToolRules, syncAllToolsRules, getToolRulesFilename, listSupportedTools } from '../services/rules.js';
 import { getMasterDir } from '../services/sync.js';
 
 
@@ -14,37 +14,8 @@ export const rulesCommand = new Command('rules')
 
 
 
-// acs rules show
-rulesCommand
-    .command('show')
-    .description('마스터 Rules 보기')
-    .action(() => {
-        const rules = loadMasterRules();
-        console.log(chalk.bold('\n📋 마스터 Rules:\n'));
-        console.log(rules);
-    });
+// Master rules 'show' and 'edit' commands removed
 
-// acs rules edit
-rulesCommand
-    .command('edit')
-    .description('마스터 Rules 편집 (기본 에디터 열기)')
-    .action(() => {
-        const masterDir = getMasterDir();
-        const rulesPath = `${masterDir}/master-rules.md`;
-
-        // 파일이 없으면 생성
-        const rules = loadMasterRules();
-        saveMasterRules(rules);
-
-        // 기본 에디터로 열기
-        const editor = process.env.EDITOR || 'nano';
-        try {
-            execSync(`${editor} "${rulesPath}"`, { stdio: 'inherit' });
-            console.log(chalk.green('\n✓ Rules 편집 완료'));
-        } catch (error) {
-            console.log(chalk.red('\n✖ 편집 중 오류 발생'));
-        }
-    });
 
 // acs rules sync
 rulesCommand

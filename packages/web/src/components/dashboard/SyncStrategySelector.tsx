@@ -1,4 +1,4 @@
-import { ArrowRight, GitMerge, Sparkles } from 'lucide-react'
+import { ArrowRight, Sparkles } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useTargetStore } from '@/store/targetStore'
 
@@ -6,7 +6,10 @@ export function SyncStrategySelector() {
     const { strategy, setStrategy } = useTargetStore()
 
     return (
-        <Select value={strategy} onValueChange={setStrategy}>
+        <Select value={strategy} onValueChange={(val) => {
+            console.log(`[Web] SyncStrategySelector: User selected ${val}`);
+            setStrategy(val);
+        }}>
             <SelectTrigger className="w-[180px] h-9">
                 <SelectValue placeholder="Select Strategy" />
             </SelectTrigger>
@@ -18,20 +21,7 @@ export function SyncStrategySelector() {
                         <span className="text-xs text-muted-foreground ml-auto pl-2">전체 교체</span>
                     </div>
                 </SelectItem>
-                <SelectItem value="append">
-                    <div className="flex items-center gap-2">
-                        <GitMerge className="w-4 h-4 text-muted-foreground" />
-                        <span>Append</span>
-                        <span className="text-xs text-muted-foreground ml-auto pl-2">뒤에 추가</span>
-                    </div>
-                </SelectItem>
-                <SelectItem value="merge">
-                    <div className="flex items-center gap-2">
-                        <GitMerge className="w-4 h-4 text-muted-foreground" />
-                        <span>Merge</span>
-                        <span className="text-xs text-muted-foreground ml-auto pl-2">병합</span>
-                    </div>
-                </SelectItem>
+
                 <SelectItem value="smart-update">
                     <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-muted-foreground" />

@@ -5,7 +5,7 @@ import { McpServer } from '../../interfaces/ISyncService.js';
 export interface SyncMcpToToolRequest {
     toolId: string;
     configPath: string;
-    serverIds: string[];
+    serverIds: string[] | null | undefined;
     strategy?: SyncStrategy;
     sourceId?: string; // Optional: ID of specific MCP set to sync
 }

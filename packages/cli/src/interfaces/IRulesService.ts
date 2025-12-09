@@ -27,8 +27,7 @@ export interface Rule {
 }
 
 export interface IRulesService {
-    loadMasterRules(): string;
-    saveMasterRules(content: string): Promise<void>;
+    // Master rules methods removed
     loadRulesConfig(): RulesConfig;
     saveRulesConfig(config: RulesConfig): void;
     syncToolRules(toolId: string, targetPath: string, global: boolean, strategy: SyncStrategy, backupOptions?: { maxBackups?: number; skipBackup?: boolean }, sourceId?: string): Promise<void>;

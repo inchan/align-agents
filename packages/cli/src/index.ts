@@ -27,8 +27,7 @@ export type { UserProject } from './services/ProjectService.js';
 // UseCase exports
 export { SyncRulesToToolUseCase } from './use-cases/rules/SyncRulesToToolUseCase.js';
 export { SyncRulesToAllToolsUseCase } from './use-cases/rules/SyncRulesToAllToolsUseCase.js';
-export { LoadMasterRulesUseCase } from './use-cases/rules/LoadMasterRulesUseCase.js';
-export { LoadMasterMcpUseCase } from './use-cases/mcp/LoadMasterMcpUseCase.js';
+// Master use case exports removed
 export { SyncMcpToToolUseCase } from './use-cases/mcp/SyncMcpToToolUseCase.js';
 export { SyncMcpToAllToolsUseCase } from './use-cases/mcp/SyncMcpToAllToolsUseCase.js';
 import { backupCommand } from './commands/backup.js';

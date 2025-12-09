@@ -1,4 +1,5 @@
 import os from 'os';
+import { getConfigDir } from '../../constants/paths.js';
 import { IRulesService, RulesConfig, RulesSyncResult, Rule } from '../../interfaces/IRulesService.js';
 import { IFileSystem } from '../../interfaces/IFileSystem.js';
 import { applySyncStrategy, type SyncStrategy } from '../strategies.js';
@@ -26,7 +27,7 @@ export class RulesService implements IRulesService {
     }
 
     private getDefaultMasterDir(): string {
-        return this.fs.join(os.homedir(), '.config', 'ai-cli-syncer');
+        return getConfigDir();
     }
 
     private getMasterDir(): string {
@@ -58,70 +59,7 @@ export class RulesService implements IRulesService {
         return this.repository.setActiveRule(id);
     }
 
-    loadMasterRules(): string {
-        const masterDir = this.getMasterDir();
-        const rulesPath = this.fs.join(masterDir, 'master-rules.md');
-
-        console.log(`[CLI] DEBUG: loadMasterRules - masterDir=${masterDir}, rulesPath=${rulesPath}`);
-
-        if (!this.fs.exists(masterDir)) {
-            console.log(`[CLI] DEBUG: masterDir does not exist, creating: ${masterDir}`);
-            this.fs.mkdir(masterDir);
-        }
-
-        if (this.fs.exists(rulesPath)) {
-            const content = this.fs.readFile(rulesPath);
-            console.log(`[CLI] DEBUG: loadMasterRules - file exists, content length=${content.length}`);
-            return content;
-        }
-
-        console.log(`[CLI] DEBUG: loadMasterRules - file does not exist, returning default template`);
-        const defaultRules = `# 프로젝트 Rules
-
-## 코딩 스타일
-- 명확하고 읽기 쉬운 코드 작성
-- 일관된 네이밍 컨벤션 사용
-
-## 프로젝트 컨텍스트
-이 프로젝트에 대한 설명을 여기에 작성하세요.
-
-## 제약사항
-- 특별한 제약사항이 있다면 여기에 작성하세요.
-`;
-
-        this.fs.writeFile(rulesPath, defaultRules);
-        console.log(`[CLI] 기본 master-rules.md 파일을 생성했습니다: ${rulesPath}`);
-
-        return defaultRules;
-    }
-
-    async saveMasterRules(content: string): Promise<void> {
-        const masterDir = this.getMasterDir();
-        if (!this.fs.exists(masterDir)) {
-            this.fs.mkdir(masterDir);
-        }
-
-        try {
-            saveVersion('rules', content, 'Manual update of Master Rules');
-        } catch (e) {
-            console.warn('[CLI] Failed to save history version for rules', e);
-        }
-
-        const rulesPath = this.fs.join(masterDir, 'master-rules.md');
-        this.fs.writeFile(rulesPath, content);
-
-        // 자동 백업 (순환 의존성 방지를 위해 동적 임포트 유지 또는 추후 리팩토링)
-        const { getGlobalConfig } = await import('../../services/sync.js');
-        const globalConfig = getGlobalConfig();
-        if (globalConfig.autoBackup) {
-            try {
-                const { createBackup } = await import('../../services/backup.js');
-                await createBackup('Auto-backup: Rules updated');
-            } catch (error) {
-                // 백업 실패 무시
-            }
-        }
-    }
+    // Master rules methods removed
 
     loadRulesConfig(): RulesConfig {
         const masterDir = this.getMasterDir();
@@ -190,8 +128,7 @@ export class RulesService implements IRulesService {
             masterRules = rule.content;
             console.log(`[CLI] Syncing specific rule: ${rule.name} (${rule.id})`);
         } else {
-            masterRules = this.loadMasterRules();
-            console.log(`[CLI] Syncing master rules`);
+            throw new Error('[CLI] Source ID (Rule ID) is required for synchronization.');
         }
 
         const filename = this.getToolRulesFilename(toolId);
@@ -426,6 +363,10 @@ export class RulesService implements IRulesService {
 
         this.saveRulesConfig(defaultConfig);
         console.log(`[CLI] rules-config.json이 생성되었습니다: ${configPath}`);
+    }
+
+    async getRulesConfig(): Promise<RulesConfig> {
+        return this.repository.load();
     }
 
     listSupportedTools(): string[] {

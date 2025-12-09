@@ -9,7 +9,7 @@ macOS 환경에서 다양한 **AI Tools**(CLI, IDE, 에디터 확장 등)의 설
 - **Tools**: AI 기능을 제공하는 모든 애플리케이션 (Claude Desktop, Cursor, GitHub Copilot 등).
 - **Rules Library**: 중앙 관리되는 Rules 집합. 각 Rule은 고유 ID를 가지며 선택적으로 동기화됨.
 - **Data Source**: 중앙에서 관리되는 Rules 및 MCP Set 데이터 (DB 또는 JSON).
-- **Master Folder**: 설정과 Rules가 저장되는 루트 경로 (`~/.config/ai-cli-syncer/`).
+- **Master Folder**: 설정과 Rules가 저장되는 루트 경로 (`~/.ai-cli-syncer/`).
 
 ## 3. 지원 Tools
 

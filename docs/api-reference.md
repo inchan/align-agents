@@ -70,7 +70,7 @@ Master Rules를 조회합니다.
 ```json
 {
   "content": "# Agent Guidelines\n\n...",
-  "path": "/Users/username/.config/ai-cli-syncer/master-rules.md"
+  "path": "/Users/username/.ai-cli-syncer/master-rules.md"
 }
 ```
 
@@ -174,7 +174,7 @@ Master MCP 설정을 조회합니다.
       }
     }
   },
-  "path": "/Users/username/.config/ai-cli-syncer/master-mcp.json"
+  "path": "/Users/username/.ai-cli-syncer/master-mcp.json"
 }
 ```
 
@@ -219,6 +219,8 @@ MCP 설정을 도구에 동기화합니다.
 
 - `sourceId` (required): 동기화할 MCP Set ID
 - `toolId` (optional): 특정 도구 ID. 생략 시 모든 도구에 동기화
+- `targetPath` (optional): 프로젝트 경로 (global=false일 때 필수)
+- `global` (optional): 전역 설정 사용 여부. 기본값: `true`
 - `strategy` (optional): 동기화 전략. 기본값: `"smart-update"`
 
 **Response (단일 도구):**

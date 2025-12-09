@@ -8,12 +8,9 @@ export class McpRepository {
         private masterDir: string
     ) { }
 
-    private getDefinitionsPath(): string {
-        return this.fs.join(this.masterDir, 'mcp', 'definitions.json');
-    }
-
-    private getSetsPath(): string {
-        return this.fs.join(this.masterDir, 'mcp', 'sets.json');
+    private getIndexPath(): string {
+        // Use single index.json for both pool and sets (unified with mcp-multi.ts)
+        return this.fs.join(this.masterDir, 'mcp', 'index.json');
     }
 
     private ensureMcpDir(): void {
@@ -25,15 +22,15 @@ export class McpRepository {
 
     // MCP Definitions Management
     async getDefinitions(): Promise<McpDef[]> {
-        const defsPath = this.getDefinitionsPath();
+        const indexPath = this.getIndexPath();
 
-        if (this.fs.exists(defsPath)) {
+        if (this.fs.exists(indexPath)) {
             try {
-                const data = this.fs.readFile(defsPath);
+                const data = this.fs.readFile(indexPath);
                 const json = JSON.parse(data);
-                return json.definitions || [];
+                return json.pool || [];
             } catch (error) {
-                console.error('Failed to parse MCP definitions:', error);
+                console.error('Failed to parse MCP index:', error);
                 return [];
             }
         }
@@ -48,70 +45,86 @@ export class McpRepository {
 
     async createDefinition(def: Omit<McpDef, 'id'>): Promise<McpDef> {
         this.ensureMcpDir();
-        const definitions = await this.getDefinitions();
+        const index = await this.loadIndex();
 
         const newDef: McpDef = {
             id: randomUUID(),
             ...def
         };
 
-        definitions.push(newDef);
-        await this.saveDefinitions(definitions);
+        index.pool.push(newDef);
+        await this.saveIndex(index);
 
         return newDef;
     }
 
     async updateDefinition(id: string, updates: Partial<Omit<McpDef, 'id'>>): Promise<McpDef> {
-        const definitions = await this.getDefinitions();
-        const index = definitions.findIndex(d => d.id === id);
+        const index = await this.loadIndex();
+        const defIndex = index.pool.findIndex(d => d.id === id);
 
-        if (index === -1) {
+        if (defIndex === -1) {
             throw new Error(`MCP Definition not found: ${id}`);
         }
 
-        definitions[index] = {
-            ...definitions[index],
+        index.pool[defIndex] = {
+            ...index.pool[defIndex],
             ...updates
         };
 
-        await this.saveDefinitions(definitions);
-        return definitions[index];
+        await this.saveIndex(index);
+        return index.pool[defIndex];
     }
 
     async deleteDefinition(id: string): Promise<void> {
-        const definitions = await this.getDefinitions();
-        const newDefinitions = definitions.filter(d => d.id !== id);
+        const index = await this.loadIndex();
+        const poolIndex = index.pool.findIndex(d => d.id === id);
 
-        if (newDefinitions.length === definitions.length) {
+        if (poolIndex === -1) {
             throw new Error(`MCP Definition not found: ${id}`);
         }
 
-        await this.saveDefinitions(newDefinitions);
+        // Remove from pool
+        index.pool.splice(poolIndex, 1);
+
+        // Remove references from all sets
+        index.sets.forEach(set => {
+            set.items = set.items.filter(item => item.serverId !== id);
+        });
+
+        await this.saveIndex(index);
     }
 
-    private async saveDefinitions(definitions: McpDef[]): Promise<void> {
+    private async loadIndex(): Promise<{ pool: McpDef[]; sets: McpSet[]; activeSetId: string | null }> {
+        const indexPath = this.getIndexPath();
+
+        if (this.fs.exists(indexPath)) {
+            try {
+                const data = this.fs.readFile(indexPath);
+                const json = JSON.parse(data);
+                return {
+                    pool: json.pool || [],
+                    sets: json.sets || [],
+                    activeSetId: json.activeSetId || null
+                };
+            } catch (error) {
+                console.error('Failed to parse MCP index:', error);
+            }
+        }
+
+        return { pool: [], sets: [], activeSetId: null };
+    }
+
+    private async saveIndex(index: { pool: McpDef[]; sets: McpSet[]; activeSetId: string | null }): Promise<void> {
         this.ensureMcpDir();
-        const defsPath = this.getDefinitionsPath();
-        const content = JSON.stringify({ definitions }, null, 2);
-        this.fs.writeFile(defsPath, content);
+        const indexPath = this.getIndexPath();
+        const content = JSON.stringify(index, null, 2);
+        this.fs.writeFile(indexPath, content);
     }
 
     // MCP Sets Management
     async getSets(): Promise<McpSet[]> {
-        const setsPath = this.getSetsPath();
-
-        if (this.fs.exists(setsPath)) {
-            try {
-                const data = this.fs.readFile(setsPath);
-                const json = JSON.parse(data);
-                return json.sets || [];
-            } catch (error) {
-                console.error('Failed to parse MCP sets:', error);
-                return [];
-            }
-        }
-
-        return [];
+        const index = await this.loadIndex();
+        return index.sets;
     }
 
     async getSet(id: string): Promise<McpSet | null> {
@@ -121,10 +134,10 @@ export class McpRepository {
 
     async createSet(name: string, items: McpSetItem[], description?: string): Promise<McpSet> {
         this.ensureMcpDir();
-        const sets = await this.getSets();
+        const index = await this.loadIndex();
 
         // If this is the first set, make it active
-        const isActive = sets.length === 0;
+        const isActive = index.sets.length === 0;
 
         const newSet: McpSet = {
             id: randomUUID(),
@@ -136,75 +149,84 @@ export class McpRepository {
             updatedAt: new Date().toISOString()
         };
 
-        sets.push(newSet);
-        await this.saveSets(sets);
+        index.sets.push(newSet);
+        if (isActive) {
+            index.activeSetId = newSet.id;
+        }
+        await this.saveIndex(index);
 
         return newSet;
     }
 
     async updateSet(id: string, updates: { name?: string; description?: string; items?: McpSetItem[]; isArchived?: boolean }): Promise<McpSet> {
-        const sets = await this.getSets();
-        const index = sets.findIndex(s => s.id === id);
+        const index = await this.loadIndex();
+        const setIndex = index.sets.findIndex(s => s.id === id);
 
-        if (index === -1) {
+        if (setIndex === -1) {
             throw new Error(`MCP Set not found: ${id}`);
         }
 
         if (updates.name !== undefined) {
-            sets[index].name = updates.name;
+            index.sets[setIndex].name = updates.name;
         }
         if (updates.description !== undefined) {
-            sets[index].description = updates.description;
+            index.sets[setIndex].description = updates.description;
         }
         if (updates.items) {
-            sets[index].items = updates.items;
+            index.sets[setIndex].items = updates.items;
         }
         if (updates.isArchived !== undefined) {
-            sets[index].isArchived = updates.isArchived;
+            index.sets[setIndex].isArchived = updates.isArchived;
         }
-        sets[index].updatedAt = new Date().toISOString();
+        index.sets[setIndex].updatedAt = new Date().toISOString();
 
-        await this.saveSets(sets);
-        return sets[index];
+        await this.saveIndex(index);
+        return index.sets[setIndex];
     }
 
     async deleteSet(id: string): Promise<void> {
-        const sets = await this.getSets();
-        const set = sets.find(s => s.id === id);
+        const index = await this.loadIndex();
+        const setIndex = index.sets.findIndex(s => s.id === id);
 
-        if (!set) {
+        if (setIndex === -1) {
             throw new Error(`MCP Set not found: ${id}`);
         }
 
-        if (set.isActive) {
+        if (index.sets[setIndex].isActive) {
             throw new Error('Cannot delete active MCP set');
         }
 
-        const newSets = sets.filter(s => s.id !== id);
-        await this.saveSets(newSets);
+        const wasActive = index.sets[setIndex].isActive;
+        index.sets.splice(setIndex, 1);
+
+        if (wasActive) {
+            index.activeSetId = null;
+            if (index.sets.length > 0) {
+                index.sets[0].isActive = true;
+                index.activeSetId = index.sets[0].id;
+            }
+        }
+
+        await this.saveIndex(index);
     }
 
     async setActiveSet(id: string): Promise<void> {
-        const sets = await this.getSets();
-        const index = sets.findIndex(s => s.id === id);
+        const index = await this.loadIndex();
+        const setIndex = index.sets.findIndex(s => s.id === id);
 
-        if (index === -1) {
+        if (setIndex === -1) {
             throw new Error(`MCP Set not found: ${id}`);
         }
 
         // Deactivate all
-        sets.forEach(s => s.isActive = false);
+        index.sets.forEach(s => s.isActive = false);
 
         // Activate target
-        sets[index].isActive = true;
+        index.sets[setIndex].isActive = true;
+        index.activeSetId = id;
 
-        await this.saveSets(sets);
+        await this.saveIndex(index);
     }
 
-    private async saveSets(sets: McpSet[]): Promise<void> {
-        this.ensureMcpDir();
-        const setsPath = this.getSetsPath();
-        const content = JSON.stringify({ sets }, null, 2);
-        this.fs.writeFile(setsPath, content);
-    }
+    // saveSets removed - now using unified saveIndex
 }

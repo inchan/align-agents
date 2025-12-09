@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { KNOWN_TOOLS } from '../constants/tools.js';
+import { getConfigDir, getRegistryPath } from '../constants/paths.js';
 
 export interface ToolConfig {
     id: string;
@@ -66,11 +67,11 @@ export async function scanForTools(): Promise<ToolConfig[]> {
 }
 
 export function saveRegistry(tools: ToolConfig[]) {
-    const registryDir = path.join(os.homedir(), '.ai-cli-syncer');
+    const registryDir = getConfigDir();
     if (!fs.existsSync(registryDir)) {
         fs.mkdirSync(registryDir, { recursive: true });
     }
-    const registryPath = path.join(registryDir, 'registry.json');
+    const registryPath = getRegistryPath();
     fs.writeFileSync(registryPath, JSON.stringify({ tools, lastScan: new Date().toISOString() }, null, 2));
     return registryPath;
 }

@@ -27,13 +27,7 @@ export function setMasterDir(dir: string): void {
     return syncService.setMasterDir(dir);
 }
 
-export function loadMasterMcp(): MasterMcpConfig {
-    return syncService.loadMasterMcp();
-}
-
-export async function saveMasterMcp(config: MasterMcpConfig): Promise<void> {
-    return syncService.saveMasterMcp(config);
-}
+// Master MCP methods removed
 
 export function loadSyncConfig(): SyncConfig {
     return syncService.loadSyncConfig();

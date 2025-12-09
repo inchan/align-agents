@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { v4 as uuidv4 } from 'uuid'
+import { getMcpDir } from '../constants/paths.js';
 
 // --- Data Models ---
 
@@ -56,9 +57,10 @@ interface LegacyMcpIndex {
     activeSetId: string | null;
 }
 
-const MCP_DIR = path.join(os.homedir(), '.ai-cli-syncer', 'mcp')
+
+
+const MCP_DIR = getMcpDir()
 const MCP_INDEX_PATH = path.join(MCP_DIR, 'index.json')
-const MASTER_MCP_PATH = path.join(os.homedir(), '.ai-cli-syncer', 'master-mcp.json')
 
 // Ensure mcp directory exists
 function ensureMcpDir() {
@@ -97,47 +99,8 @@ function loadIndex(): McpIndex {
 }
 
 function migrateFromMasterMcp(): McpIndex {
-    const pool: McpDef[] = [];
-    const items: McpSetItem[] = [];
-
-    if (fs.existsSync(MASTER_MCP_PATH)) {
-        try {
-            const masterContent = JSON.parse(fs.readFileSync(MASTER_MCP_PATH, 'utf-8'));
-            const servers = masterContent.mcpServers || {};
-
-            for (const [name, config] of Object.entries(servers) as [string, any][]) {
-                const def: McpDef = {
-                    id: uuidv4(),
-                    name: name,
-                    command: config.command,
-                    args: config.args || [],
-                    env: config.env
-                };
-                pool.push(def);
-                items.push({ serverId: def.id, disabled: false });
-            }
-        } catch (e) {
-            console.error('Failed to migrate master-mcp.json:', e);
-        }
-    }
-
-    const defaultSet: McpSet = {
-        id: uuidv4(),
-        name: 'Default Set',
-        items: items,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
-
-    const index: McpIndex = {
-        pool,
-        sets: [defaultSet],
-        activeSetId: defaultSet.id
-    };
-
-    saveIndex(index);
-    return index;
+    // Master MCP migration removed - master-mcp.json no longer exists
+    return { pool: [], sets: [], activeSetId: null };
 }
 
 function migrateFromLegacyIndex(legacy: LegacyMcpIndex): McpIndex {

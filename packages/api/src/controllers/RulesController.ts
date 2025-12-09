@@ -4,35 +4,11 @@ import path from 'path';
 import { rulesService } from '../container.js';
 import {
     SyncRulesToToolUseCase,
-    SyncRulesToAllToolsUseCase,
-    LoadMasterRulesUseCase
+    SyncRulesToAllToolsUseCase
 } from '@ai-cli-syncer/cli';
 
 export class RulesController {
-    async getMasterRules(req: Request, res: Response) {
-        try {
-            const useCase = new LoadMasterRulesUseCase(rulesService);
-            const result = useCase.execute({});
-            res.json(result);
-        } catch (error) {
-            console.error('Error loading master rules:', error);
-            res.status(500).json({ error: 'Failed to load master rules' });
-        }
-    }
-
-    async saveMasterRules(req: Request, res: Response) {
-        try {
-            const { content } = req.body;
-            if (content === undefined) {
-                return res.status(400).json({ error: 'Content is required' });
-            }
-            await rulesService.saveMasterRules(content);
-            res.json({ success: true });
-        } catch (error) {
-            console.error('Error saving master rules:', error);
-            res.status(500).json({ error: 'Failed to save master rules' });
-        }
-    }
+    // Master rules methods removed
 
     async sync(req: Request, res: Response) {
         try {
@@ -43,13 +19,19 @@ export class RulesController {
 
             console.log(`[API] Rules sync requested:`, req.body);
             console.log(`[API] shouldUseGlobal:`, shouldUseGlobal);
+            console.log(`[API] Strategy received: '${strategy}' (type: ${typeof strategy})`);
+
+            if (!sourceId) {
+                return res.status(400).json({ error: 'Source ID(Rule ID) is required for sync.' });
+            }
 
             if (!toolId) {
                 // If toolId is not provided, sync to all tools
                 const useCase = new SyncRulesToAllToolsUseCase(rulesService);
                 const result = await useCase.execute({
                     targetPath: targetPath || process.cwd(),
-                    strategy
+                    strategy,
+                    sourceId
                 });
                 if (result.success) {
                     res.json(result);

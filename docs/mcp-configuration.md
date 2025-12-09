@@ -473,7 +473,7 @@ interface McpConfig {
 | Gemini | `~/.gemini/settings.json` | User scope |
 | Qwen | `~/.qwen/settings.json` | User scope |
 
-> **참고**: 프로젝트 레벨 설정(`.mcp.json`, `.cursor/mcp.json` 등)은 현재 동기화 대상에 포함되지 않습니다.
+> **참고**: UI에서 `Project` 스코프 선택 시, 지원되는 도구에 한해 프로젝트 루트의 MCP 설정 파일(`.cursor/mcp.json` 등)로 동기화됩니다. 지원되지 않는 도구는 에러가 반환됩니다.
 
 ---
 
@@ -538,4 +538,5 @@ env = { API_KEY = "value" }
 | 2025-12-07 | Gemini CLI `supportsMcp: true` 수정 |
 | 2025-12-07 | Claude Code 경로 `~/.claude.json`으로 수정 |
 | 2025-12-07 | Codex TOML `mcp_servers` 키 처리 로직 추가 |
+| 2025-12-09 | MCP 프로젝트 레벨 동기화 지원 (UI Scope/Mode 연동) |
 | 2025-12-07 | 조사 방법론 섹션 추가 |

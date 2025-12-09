@@ -5,6 +5,7 @@ import { ProjectScanner } from './ProjectScanner.js';
 import type { ProjectInfo } from './ProjectScanner.js';
 import { v4 as uuidv4 } from 'uuid';
 import { ToolRepository } from '../repositories/ToolRepository.js';
+import { getProjectsConfigPath } from '../constants/paths.js';
 
 export interface UserProject extends Omit<ProjectInfo, 'source'> {
     id: string;
@@ -20,7 +21,7 @@ export class ProjectService {
     private scanner: ProjectScanner;
 
     private constructor() {
-        this.configPath = path.join(os.homedir(), '.ai-cli-syncer', 'projects.json');
+        this.configPath = getProjectsConfigPath();
         this.scanner = new ProjectScanner();
         this.ensureConfig();
     }

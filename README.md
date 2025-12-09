@@ -250,8 +250,7 @@ npm run dev -w packages/web         # 웹 UI (포트 5173)
 
 - **Dashboard**: 설치된 도구 현황 및 통계
 - **Rules 관리**: Master Rules 조회, 편집, 저장, 동기화
-- **Dashboard**: 설치된 도구 현황 및 통계
-- **Rules 관리**: Master Rules 조회, 편집, 저장, 동기화
+
 - **MCP 관리**:
     - **MCP Sets**: 여러 MCP 구성을 Set으로 관리하고 원클릭으로 전환 (활성화)
     - **Import**: JSON 파일 또는 GitHub URL(자동 감지)에서 MCP 설정 가져오기
@@ -259,14 +258,13 @@ npm run dev -w packages/web         # 웹 UI (포트 5173)
 
 ## 📁 디렉토리 구조
 
+- **설정 파일**: `~/.ai-cli-syncer/`
 ```text
-~/.config/ai-cli-syncer/
 ├── master-mcp.json       # 마스터 MCP 서버 목록
 ├── master-rules.md       # 마스터 Rules
 ├── sync-config.json      # MCP 동기화 설정
 ├── rules-config.json     # Rules 동기화 설정
 ├── config.json           # 전역 설정
-└── .git/                 # Git 저장소 (백업용)
 ```
 
 ## 🔧 지원하는 AI 도구

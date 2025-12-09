@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { v4 as uuidv4 } from 'uuid'
+import { getRulesDir } from '../constants/paths.js';
 
 export interface Rule {
     id: string
@@ -17,7 +18,7 @@ interface RulesIndex {
     activeRuleId: string | null
 }
 
-const RULES_DIR = path.join(os.homedir(), '.ai-cli-syncer', 'rules')
+const RULES_DIR = getRulesDir()
 const RULES_INDEX_PATH = path.join(RULES_DIR, 'index.json')
 
 

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { getConfigDir } from '../constants/paths.js';
 
 export type HistoryType = 'rules' | 'mcp' | 'sync';
 
@@ -14,8 +15,7 @@ import os from 'os';
 
 function getHistoryDir(): string {
     // 동기 함수이므로 직접 경로 계산
-    const homedir = os.homedir();
-    return path.join(homedir, '.config', 'ai-cli-syncer', 'history');
+    return path.join(getConfigDir(), 'history');
 }
 
 function getHistoryIndexFile(): string {

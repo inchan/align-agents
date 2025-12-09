@@ -1,6 +1,8 @@
 import os from 'os';
 import path from 'path';
-import { ToolRepository } from '../../repositories/ToolRepository.js';
+import chalk from 'chalk';
+import { ToolConfig, ToolRepository } from '../../repositories/ToolRepository.js';
+import { getConfigDir } from '../../constants/paths.js';
 import { ISyncService, MasterMcpConfig, SyncConfig, GlobalConfig, SyncResult, SyncResultStatus, SyncOptions } from '../../interfaces/ISyncService.js';
 import { IFileSystem } from '../../interfaces/IFileSystem.js';
 import { validateData } from '../../utils/validation.js';
@@ -38,8 +40,8 @@ export class SyncService implements ISyncService {
 
 
     private getPaths() {
-        const masterDir = this.fs.join(os.homedir(), '.config', 'ai-cli-syncer');
-        const globalConfigDir = this.fs.join(os.homedir(), '.ai-cli-syncer');
+        const masterDir = getConfigDir();
+        const globalConfigDir = getConfigDir();
         return {
             defaultMasterDir: masterDir,
             globalConfigDir: globalConfigDir,
@@ -106,57 +108,7 @@ export class SyncService implements ISyncService {
         this.mcpService.setMasterDir(dir);
     }
 
-    loadMasterMcp(): MasterMcpConfig {
-        const masterDir = this.getMasterDir();
-        const mcpPath = this.fs.join(masterDir, 'master-mcp.json');
-
-        if (!this.fs.exists(masterDir)) {
-            this.fs.mkdir(masterDir);
-        }
-
-        if (this.fs.exists(mcpPath)) {
-            try {
-                const data = this.fs.readFile(mcpPath);
-                return JSON.parse(data);
-            } catch (error) {
-                console.warn(`[CLI] master-mcp.json을 파싱할 수 없어 빈 설정으로 대체합니다. (${mcpPath})`, error);
-            }
-        }
-
-        const defaultConfig = { mcpServers: {} };
-        this.fs.writeFile(mcpPath, JSON.stringify(defaultConfig, null, 2));
-        console.log(`[CLI] 기본 master-mcp.json 파일을 생성했습니다: ${mcpPath}`);
-
-        return defaultConfig;
-    }
-
-    async saveMasterMcp(config: MasterMcpConfig): Promise<void> {
-        const validatedConfig = validateData(MasterMcpConfigSchema, config, 'Invalid MCP config');
-
-        const masterDir = this.getMasterDir();
-        if (!this.fs.exists(masterDir)) {
-            this.fs.mkdir(masterDir);
-        }
-
-        try {
-            saveVersion('mcp', JSON.stringify(validatedConfig, null, 2), 'Manual update of Master MCP config');
-        } catch (e) {
-            console.warn('[CLI] Failed to save history version for mcp', e);
-        }
-
-        const mcpPath = this.fs.join(masterDir, 'master-mcp.json');
-        this.fs.writeFile(mcpPath, JSON.stringify(validatedConfig, null, 2));
-
-        const globalConfig = this.getGlobalConfig();
-        if (globalConfig.autoBackup) {
-            try {
-                const { createBackup } = await import('../backup.js');
-                await createBackup('Auto-backup: MCP config updated');
-            } catch (error) {
-                // 백업 실패 무시
-            }
-        }
-    }
+    // Master MCP methods removed
 
     private getToolConfigPath(toolId: string): string | null {
         const meta = getToolMetadata(toolId);
@@ -272,36 +224,34 @@ export class SyncService implements ISyncService {
     async syncToolMcp(toolId: string, toolConfigPath: string, serverNames: string[] | null, strategy: SyncStrategy = 'overwrite', backupOptions?: { maxBackups?: number; skipBackup?: boolean }, sourceId?: string): Promise<string[]> {
         let masterMcpServers: Record<string, any> = {};
 
-        if (sourceId) {
-            const mcpSet = await this.mcpRepository.getSet(sourceId);
-            if (!mcpSet) {
-                throw new Error(`MCP Set not found with ID: ${sourceId}`);
-            }
-            console.log(`[CLI] Syncing specific MCP Set: ${mcpSet.name} (${mcpSet.id})`);
+        if (!sourceId) {
+            throw new Error('[CLI] Source ID (MCP Set ID) is required for synchronization.');
+        }
 
-            const definitions = await this.mcpRepository.getDefinitions();
-            const defMap = new Map(definitions.map(d => [d.id, d]));
+        const mcpSet = await this.mcpRepository.getSet(sourceId);
+        if (!mcpSet) {
+            throw new Error(`MCP Set not found with ID: ${sourceId}`);
+        }
+        console.log(`[CLI] Syncing specific MCP Set: ${mcpSet.name} (${mcpSet.id})`);
 
-            for (const item of mcpSet.items) {
-                if (item.disabled) continue;
-                const def = defMap.get(item.serverId);
-                if (def) {
-                    masterMcpServers[def.name] = {
-                        command: def.command,
-                        args: def.args,
-                        env: def.env
-                    };
-                }
+        const definitions = await this.mcpRepository.getDefinitions();
+        const defMap = new Map(definitions.map(d => [d.id, d]));
+
+        for (const item of (mcpSet.items || [])) {
+            if (item.disabled) continue;
+            const def = defMap.get(item.serverId);
+            if (def) {
+                masterMcpServers[def.name] = {
+                    command: def.command,
+                    args: def.args,
+                    env: def.env
+                };
             }
-        } else {
-            const masterMcp = this.loadMasterMcp();
-            masterMcpServers = masterMcp.mcpServers;
-            console.log(`[CLI] Syncing master MCP config`);
         }
 
         const availableServers = Object.keys(masterMcpServers);
         if (availableServers.length === 0) {
-            console.warn(`[CLI] ${toolId}: 마스터 MCP 서버가 없어 동기화를 건너뜁니다.`);
+            console.warn(`[CLI] ${toolId}: No valid MCP servers found in the selected set. Skipping sync.`);
             return [];
         }
 
@@ -357,16 +307,90 @@ export class SyncService implements ISyncService {
             return [];
         }
 
+        const existingKeys = Object.keys(toolConfig[mcpKey] || {});
+
         if (strategy === 'overwrite') {
+            // Overwrite strategy:
+            // For TOML files, we must clean up legacy keys (mcpServers) if we are switching to new key (mcp_servers)
+            // or simply ensure we don't have duplicate sections.
+            // Since we are overwriting, we should remove known MCP keys and only set the active one.
+            if (format === 'toml') {
+                delete toolConfig['mcpServers'];
+                delete toolConfig['mcp_servers'];
+            }
             toolConfig[mcpKey] = newMcpServers;
-        } else if (strategy === 'append') {
-            toolConfig[mcpKey] = { ...toolConfig[mcpKey], ...newMcpServers };
-        } else if (strategy === 'deep-merge') {
-            // Preserve existing properties (timeout, trust, includeTools, etc.)
-            toolConfig[mcpKey] = deepMergeMcpServers(toolConfig[mcpKey] || {}, newMcpServers);
+        } else if (strategy === 'smart-update') {
+            // Smart Update strategy:
+            // 1. Iterate through new servers
+            // 2. Check overlap with existing servers (by Name OR by Args deep equality)
+            // 3. If overlap: Warning -> Remove Existing -> Add New
+            // 4. If no overlap: Add New
+
+            const currentServers = toolConfig[mcpKey] || {};
+            const updatedServers = { ...currentServers };
+
+            for (const [newServerName, newServerConfig] of Object.entries(newMcpServers)) {
+                let isDuplicate = false;
+                let duplicateKey = null;
+
+                // Check for name collision
+                if (updatedServers[newServerName]) {
+                    isDuplicate = true;
+                    duplicateKey = newServerName;
+                } else {
+                    // Check for args collision
+                    for (const [existingName, existingConfig] of Object.entries(updatedServers)) {
+                        const existingArgs = JSON.stringify((existingConfig as any).args || []);
+                        const newArgs = JSON.stringify((newServerConfig as any).args || []);
+                        if (existingArgs === newArgs) {
+                            isDuplicate = true;
+                            duplicateKey = existingName;
+                            break;
+                        }
+                    }
+                }
+
+                if (isDuplicate && duplicateKey) {
+                    console.log(`[CLI] Smart Update: Duplicate detected for '${newServerName}' (matches '${duplicateKey}'). Replaced.`);
+                    // If name is different but content same, remove the old one (duplicateKey)
+                    // If name is same, it gets overwritten anyway
+                    if (duplicateKey !== newServerName) {
+                        delete updatedServers[duplicateKey];
+                    }
+                }
+
+                // Add/Overwrite with new config
+                updatedServers[newServerName] = newServerConfig;
+            }
+            toolConfig[mcpKey] = updatedServers;
         } else {
-            toolConfig[mcpKey] = { ...toolConfig[mcpKey], ...newMcpServers };
+            // Fallback to overwrite if unknown
+            toolConfig[mcpKey] = newMcpServers;
         }
+
+        const finalKeys = Object.keys(toolConfig[mcpKey] || {});
+        const addedKeys = finalKeys.filter(k => !existingKeys.includes(k));
+        const deletedKeys = existingKeys.filter(k => !finalKeys.includes(k));
+        // For smart update, "deleted" might be technically "replaced", but strictly keys missing from final are deleted.
+        // If we replaced 'old' with 'new', 'old' is deleted, 'new' is added.
+        const keptKeys = existingKeys.filter(k => finalKeys.includes(k));
+
+
+
+        console.log(chalk.cyan(`\n  ${chalk.bold('✔')} Sync Summary: ${chalk.bold(toolId)}`));
+        if (keptKeys.length > 0) {
+            console.log(chalk.gray(`    • Kept (${keptKeys.length}): ${keptKeys.join(', ')}`));
+        }
+        if (addedKeys.length > 0) {
+            console.log(chalk.green(`    + Added (${addedKeys.length}): ${addedKeys.join(', ')}`));
+        }
+        if (deletedKeys.length > 0) {
+            console.log(chalk.red(`    - Removed (${deletedKeys.length}): ${deletedKeys.join(', ')}`));
+        }
+        if (addedKeys.length === 0 && deletedKeys.length === 0) {
+            console.log(chalk.gray(`    (No changes made)`));
+        }
+        console.log(''); // Empty line for spacing
 
         const serialized = format === 'toml'
             ? TOML.stringify(toolConfig)
@@ -461,5 +485,17 @@ export class SyncService implements ISyncService {
         }
 
         return results;
+    }
+    async getSyncConfig(): Promise<SyncConfig> {
+        const configPath = this.fs.join(this.getMasterDir(), 'sync-config.json');
+        if (this.fs.exists(configPath)) {
+            try {
+                return JSON.parse(this.fs.readFile(configPath));
+            } catch (e) {
+                console.warn('Failed to parse sync-config.json', e);
+                return {};
+            }
+        }
+        return {};
     }
 }

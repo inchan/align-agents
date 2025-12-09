@@ -1,35 +1,94 @@
+# AI CLI Syncer (acs) Context
 
-# Agent Guidelines
+## 1. Project Overview
+**AI CLI Syncer** is a comprehensive tool for centrally managing and synchronizing configurations across various AI tools (Claude Desktop, Cursor, Gemini CLI, etc.). It manages MCP servers, Rules, and global settings, deploying them to specific tool configurations.
 
-## **핵심 지침**
+-   **Architecture**: Monorepo managed by **TurboRepo**.
+-   **Core Components**:
+    -   `packages/cli`: The primary CLI tool (`acs`).
+    -   `packages/api`: Express-based backend API for management.
+    -   `packages/web`: React-based Web UI for visual management.
+-   **Design Pattern**: Clean Architecture (Domain Entities, Use Cases, Repositories, Services) with Dependency Injection.
+-   **Language**: TypeScript (strict mode).
 
-- 모든 응답은 확인된 사실과 검증 가능한 근거에 기반해야 합니다.  
-- 추정, 추측, 또는 불확실한 정보를 생성하거나 제시하지 마세요.  
-- 사실 관계가 모호하거나 판단이 어려운 경우, 임의로 결론을 내리지 말고 사용자에게 명확히 질문하세요.  
-- 판단 불가 사유(정보 부족, 모순된 데이터 등)는 명시적으로 언급하세요.
-- 무언가를 하기 전에, 당신이 생각하는 과제가 무엇인지 한 문장으로 다시 말하세요. 불분명한 것이 있으면, 추측하는 대신 저에게 물어보세요. 제가 확인한 후에만 실행하세요
+## 2. Key Directories & Files
+-   `packages/cli/bin/acs`: The executable CLI entry point.
+-   `packages/cli/src/`: Source code for the CLI.
+    -   `commands/`: CLI command definitions (Commander.js).
+    -   `services/`: Domain services.
+    -   `use-cases/`: Application business logic.
+    -   `infrastructure/`: Data access implementations.
+-   `packages/api/src/`: Source code for the API server.
+-   `packages/web/src/`: Source code for the React Web UI.
+-   `docs/`: Extensive documentation (Architecture, Dev Guidelines, usage).
+-   `runbooks/`: Operational runbooks.
 
-## **Output Style**
+## 3. Build & Run
+The project uses **npm** and **TurboRepo**.
 
-- 언어: 한글로 출력.
-- 기술 용어는 영어 가능.
-- 온도는 차갑게 출력
-- 깔끔하게 군더기 없이 출력
+### Installation
+```bash
+npm install
+```
 
-## **Micro checklist**
+### Build
+```bash
+# Build all packages
+npm run build
+```
 
-가정하기 전에 물어보세요.
-순서 = 효율성 + 일치성 + 활성
+### Development
+```bash
+# Start development mode (API + Web UI + Watch CLI)
+npm run dev
 
-1. 목표를 명확히 하십시오(Order).
-2. 제약 조건(효율성/가능성)을 식별합니다.
-3. 모순(엔트로피 경로)을 제거하십시오.
-4. 명확성 + 안전을 보장합니다.
-5. 옵션 생성(높은 효율성).
-6. 정제(Viability 극대화).
-7. 요약 + Order를 정량화합니다.
+# Run CLI directly during development
+./packages/cli/bin/acs <command>
+# Example: ./packages/cli/bin/acs status
+```
 
-## **Subagent guidelines**
+### Testing
+The project strictly follows TDD.
+```bash
+# Run all tests (Vitest)
+npm test
 
-- 서브에이전트를 적극적으로 사용 합니다.
-- 가능한 병렬로 서브에이전트를 사용 합니다.
+# Run tests for specific package
+npm test -w @ai-cli-syncer/cli
+
+# Run specific test file
+npm test -- packages/cli/src/services/__tests__/rules.test.ts
+```
+
+## 4. Development Conventions
+**Strict adherence to these guidelines is required.**
+
+### Coding Style
+-   **Naming**:
+    -   Classes/Interfaces: `PascalCase` (e.g., `RulesService`, `ISyncStrategy`)
+    -   Functions/Variables: `camelCase` (e.g., `syncRules`)
+    -   Files: `kebab-case` (e.g., `rules-service.ts`)
+    -   Constants: `UPPER_SNAKE_CASE`
+-   **TypeScript**:
+    -   **No `any`**: Strictly forbidden. Use interfaces/types.
+    -   **Async/Await**: Preferred over raw promises.
+    -   **Null vs Undefined**: Handle explicitly.
+
+### Architecture & Patterns
+-   **Dependency Injection**: All services must be injected via interfaces.
+-   **Repository Pattern**: Abstract data access (file system, git, etc.).
+-   **Result Pattern**: Use a Result type for business logic failures instead of throwing exceptions (reserve exceptions for unexpected crashes).
+
+### Testing Strategy (TDD)
+1.  **Red**: Write a failing unit test first.
+2.  **Green**: Write minimal code to pass the test.
+3.  **Refactor**: Clean up while keeping tests passing.
+-   **Mocking**: Heavily mock external dependencies (FS, Git) in unit tests.
+
+## 5. Key CLI Commands
+-   `acs init`: Initialize configuration.
+-   `acs scan`: Scan for installed AI tools.
+-   `acs sync`: Sync MCP/Rules to tools.
+-   `acs rules`: Manage rules (list, edit, template).
+-   `acs mcp`: Manage MCP servers.
+-   `acs status`: Check synchronization status.

@@ -1,8 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { listVersions, getVersionContent } from '../services/history.js';
-import { saveMasterRules } from '../services/rules.js';
-import { saveMasterMcp } from '../services/sync.js';
+// Master methods removed - history restore functionality disabled
 
 export const historyCommand = new Command('history')
     .description('설정 히스토리 관리')
@@ -49,35 +48,11 @@ historyCommand
         console.log('');
     });
 
-// acs history restore
+// acs history restore - DISABLED (master concepts removed)
 historyCommand
     .command('restore <id>')
-    .description('특정 버전으로 복원')
+    .description('[DEPRECATED] 특정 버전으로 복원 (Master 개념 제거로 비활성화)')
     .action(async (id) => {
-        const versions = listVersions();
-        const version = versions.find(v => v.id === id);
-
-        if (!version) {
-            console.log(chalk.red(`\n✖ 버전 '${id}'를 찾을 수 없습니다.\n`));
-            return;
-        }
-
-        const content = getVersionContent(id);
-        if (!content) {
-            console.log(chalk.red(`\n✖ 버전 내용을 읽을 수 없습니다.\n`));
-            return;
-        }
-
-        try {
-            if (version.type === 'rules') {
-                await saveMasterRules(content);
-                console.log(chalk.green(`\n✓ Master Rules를 버전 ${id}로 복원했습니다.\n`));
-            } else if (version.type === 'mcp') {
-                const config = JSON.parse(content);
-                await saveMasterMcp(config);
-                console.log(chalk.green(`\n✓ Master MCP를 버전 ${id}로 복원했습니다.\n`));
-            }
-        } catch (error: any) {
-            console.log(chalk.red(`\n✖ 복원 실패: ${error.message}\n`));
-        }
+        console.log(chalk.yellow('\n⚠ 이 명령어는 Master MCP/Rules 개념 제거로 인해 비활성화되었습니다.'));
+        console.log(chalk.gray('대신 Rules 또는 MCP Sets를 직접 편집하여 사용하세요.\n'));
     });

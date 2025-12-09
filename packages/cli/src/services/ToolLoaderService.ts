@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { DEFAULT_TOOLS, ToolMetadata } from '../constants/ToolDefinitions.js';
+import { getToolsConfigPath } from '../constants/paths.js';
 
 export interface ToolsConfig {
     tools: ToolMetadata[];
@@ -38,8 +39,7 @@ export class ToolLoaderService {
 
     private loadCustomTools(): ToolMetadata[] {
         const configPaths = [
-            path.join(os.homedir(), '.config', 'ai-cli-syncer', 'tools.json'),
-            path.join(os.homedir(), '.ai-cli-syncer', 'tools.json')
+            getToolsConfigPath()
         ];
 
         for (const configPath of configPaths) {

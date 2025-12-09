@@ -20,7 +20,7 @@ export class SyncRulesToToolUseCase implements IUseCase<SyncRulesToToolRequest, 
                 success: true,
                 toolId: request.toolId,
                 targetPath: request.targetPath,
-                message: `Successfully synced rules to ${request.toolId}`,
+                message: `VERIFIED_UPDATE: Successfully synced rules to ${request.toolId}`,
             };
         } catch (error: any) {
             return {

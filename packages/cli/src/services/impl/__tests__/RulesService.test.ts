@@ -140,62 +140,7 @@ describe('RulesService', () => {
         });
     });
 
-    describe('loadMasterRules', () => {
-        it('should load existing master rules file', () => {
-            const mockContent = '# Existing Rules';
-            mockFs.exists = vi.fn().mockReturnValue(true);
-            mockFs.readFile = vi.fn().mockReturnValue(mockContent);
-
-            const result = service.loadMasterRules();
-
-            expect(result).toBe(mockContent);
-        });
-
-        it('should create default rules if file does not exist', () => {
-            mockFs.exists = vi.fn()
-                .mockReturnValueOnce(true)  // masterDir exists
-                .mockReturnValueOnce(false); // rulesPath does not exist
-
-            const result = service.loadMasterRules();
-
-            expect(mockFs.writeFile).toHaveBeenCalled();
-            expect(result).toContain('# 프로젝트 Rules');
-        });
-
-        it('should create master directory if it does not exist', () => {
-            mockFs.exists = vi.fn().mockReturnValue(false);
-
-            service.loadMasterRules();
-
-            expect(mockFs.mkdir).toHaveBeenCalled();
-        });
-    });
-
-    describe('saveMasterRules', () => {
-        it('should save rules content to file', async () => {
-            mockFs.exists = vi.fn().mockReturnValue(true);
-
-            // Mock dynamic imports
-            vi.doMock('../../../services/sync.js', () => ({
-                getGlobalConfig: vi.fn(() => ({ autoBackup: false })),
-            }));
-
-            await service.saveMasterRules('# New Rules Content');
-
-            expect(mockFs.writeFile).toHaveBeenCalledWith(
-                expect.stringContaining('master-rules.md'),
-                '# New Rules Content'
-            );
-        });
-
-        it('should create master directory if not exists', async () => {
-            mockFs.exists = vi.fn().mockReturnValue(false);
-
-            await service.saveMasterRules('# Content');
-
-            expect(mockFs.mkdir).toHaveBeenCalled();
-        });
-    });
+    // Master rules tests removed - methods no longer exist
 
     describe('loadRulesConfig', () => {
         it('should load existing config file', () => {

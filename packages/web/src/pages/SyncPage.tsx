@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
     fetchTools,
@@ -8,7 +8,10 @@ import {
     type Rule,
     type McpSet,
     type McpDef,
-    fetchMcpPool
+    fetchMcpPool,
+    scanTools,
+    type SyncStatus,
+    fetchSyncStatus
 } from '../lib/api'
 import { cn } from '../lib/utils'
 import {
@@ -74,6 +77,27 @@ export function SyncPage() {
         queryKey: ['mcpPool'],
         queryFn: fetchMcpPool,
     })
+
+    const { refetch: refetchTools } = useQuery<ToolConfig[]>({
+        queryKey: ['tools'],
+        queryFn: fetchTools,
+    })
+
+    // Loop protection
+    const hasScannedRef = useRef(false);
+
+    // Auto-scan if no tools found
+    useEffect(() => {
+        if (!isToolsLoading && tools.length === 0 && !hasScannedRef.current) {
+            console.log('No tools found, triggering auto-scan...');
+            hasScannedRef.current = true;
+            scanTools()
+                .then(() => {
+                    refetchTools();
+                })
+                .catch(console.error);
+        }
+    }, [tools.length, isToolsLoading, refetchTools])
 
     // Sort tools logic
     // --- Types & Constants ---
@@ -200,25 +224,98 @@ export function SyncPage() {
     // --- Effects ---
 
     // Auto-selection of Rules and MCPs based on Tool Set (Last Successful Sync)
+    // --- Effects ---
+
+    // Fetch Sync Status
+    const { data: syncStatus } = useQuery<SyncStatus>({
+        queryKey: ['syncStatus'],
+        queryFn: fetchSyncStatus,
+        refetchInterval: 5000 // Poll every 5s for updates
+    })
+
+    // --- Unified Sync State Derivation ---
+    // Priority: Data Integrity (Validation) > Auto-Detection > Persistence (Store)
+
     useEffect(() => {
-        try {
+        if (!syncStatus || !activeSet || !rules.length || !mcpSets.length || isMcpSetsLoading) return;
+
+        // 1. Validation: specific checks for active selections
+        // Ensure selectedMcpSetId exists in loaded sets
+        if (store.selectedMcpSetId) {
+            const exists = mcpSets.find(s => s.id === store.selectedMcpSetId);
+            if (!exists) {
+                console.warn(`[SyncPage] Selected McpSet ${store.selectedMcpSetId} not found. Clearing.`);
+                store.setSelectedMcpSetId(null);
+                // Trigger auto-selection in next render cycle by returning early?
+                // No, we can fall through to auto-selection below if we reset it to null here.
+                // However, state updates are batched. Better to calc new ID and set once.
+            }
+        }
+
+        // 2. Auto-Selection Logic (Run if no valid selection exists OR explicitly re-evaluating)
+        // We only run auto-selection if we don't have a valid selection (i.e. it was null or just cleared)
+        // OR if the active tool set changes (dependency array).
+
+        const currentSelectionValid = store.selectedMcpSetId && mcpSets.find(s => s.id === store.selectedMcpSetId);
+
+        if (!currentSelectionValid) {
+            const targetTools = activeSet.toolIds;
+            if (targetTools.length === 0) return;
+
+            // MCP Auto-Selection based on common servers
+            const firstToolMcp = syncStatus.mcp[targetTools[0]];
+            const commonServers = firstToolMcp?.servers;
+
+            let resolvedMcpSetId: string | null = null;
+
+            if (commonServers) {
+                const allMatch = targetTools.every(tid => {
+                    const conf = syncStatus.mcp[tid];
+                    return conf && conf.servers &&
+                        conf.servers.length === commonServers.length &&
+                        conf.servers.every(s => commonServers.includes(s));
+                });
+
+                if (allMatch) {
+                    const matchingSet = mcpSets.find(set => {
+                        const getNames = (items: any[]) => items.map(i => (typeof i === 'string' ? i : i.name));
+                        const setItems = getNames(set.items);
+                        return setItems.length === commonServers.length && setItems.every(s => commonServers.includes(s));
+                    });
+                    if (matchingSet) resolvedMcpSetId = matchingSet.id;
+                }
+            }
+
+            if (resolvedMcpSetId) {
+                store.setSelectedMcpSetId(resolvedMcpSetId);
+            } else {
+                // If auto-detection fails, fallback to clearing (already null in this branch)
+                store.setSelectedMcpSetId(null);
+            }
+        }
+
+        // Rule Auto-Selection (Legacy/Fallback)
+        // Keeping this separate or integrated?
+        // Let's integrate for rules too: Validation > Persistence
+        // Since we don't fully auto-detect rules from backend yet (no Rule ID in sync status), 
+        // we just validate if selectedRuleId exists.
+        if (store.selectedRuleId) {
+            const ruleExists = rules.find(r => r.id === store.selectedRuleId);
+            if (!ruleExists) {
+                console.warn(`[SyncPage] Rule ${store.selectedRuleId} not found. Clearing.`);
+                store.setSelectedRuleId(null);
+            }
+        } else {
+            // Try to load legacy preference if store is empty
             const savedItem = window.localStorage.getItem('sync-selections')
             const savedSelections = savedItem ? JSON.parse(savedItem) : {}
             const saved = savedSelections[store.activeToolSetId]
-
-            if (saved) {
-                // Only update if different to avoid loops
-                if (store.selectedRuleId !== saved.ruleId) store.setSelectedRuleId(saved.ruleId)
-                if (store.selectedMcpSetId !== saved.mcpId) store.setSelectedMcpSetId(saved.mcpId)
-            } else {
-                // Default to None if no saved selection for this set
-                store.setSelectedRuleId(null)
-                store.setSelectedMcpSetId(null)
+            if (saved && saved.ruleId && rules.find(r => r.id === saved.ruleId)) {
+                store.setSelectedRuleId(saved.ruleId)
             }
-        } catch (e) {
-            console.error('Failed to load sync selections', e)
         }
-    }, [store.activeToolSetId])
+
+    }, [store.activeToolSetId, syncStatus, rules, mcpSets, isMcpSetsLoading, activeSet]);
 
     // Placeholder for watchMode and isSyncing, handleSync, setWatchMode
 

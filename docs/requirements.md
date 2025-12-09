@@ -11,7 +11,7 @@
 | **Tools** | AI 기능을 제공하는 모든 애플리케이션 (Claude Desktop, Cursor, GitHub Copilot 등) |
 | **Master Rules** | 모든 Tools에 공통 적용되는 전역 지침(System Instructions). **최우선 순위**로 관리됩니다. |
 | **Master MCP** | 중앙에서 관리하는 Model Context Protocol (MCP) 서버 설정 집합. |
-| **Master Folder** | 설정과 Rules가 저장되는 루트 경로 (`~/.config/ai-cli-syncer/`). |
+| **Master Folder** | 설정과 Rules가 저장되는 루트 경로 (`~/.ai-cli-syncer/`). |
 
 ## 3. 지원 대상 (Supported Tools)
 

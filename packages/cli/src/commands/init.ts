@@ -7,6 +7,7 @@ import os from 'os';
 import { getMasterDir, saveGlobalConfig } from '../services/sync.js';
 import { initBackupRepo, createBackup } from '../services/backup.js';
 import { scanForTools, type ToolConfig } from '../services/scanner.js';
+import { getConfigDir } from '../constants/paths.js';
 
 export const initCommand = new Command('init')
     .description('AI CLI Syncer 초기 설정')
@@ -52,7 +53,7 @@ export const initCommand = new Command('init')
         console.log(chalk.blue('\n⚙️  기본 설정 파일 생성 중...'));
 
         // 전역 설정
-        const configDir = path.join(os.homedir(), '.ai-cli-syncer');
+        const configDir = getConfigDir();
         if (!fs.existsSync(configDir)) {
             fs.mkdirSync(configDir, { recursive: true });
         }
@@ -62,30 +63,8 @@ export const initCommand = new Command('init')
         });
         console.log(chalk.green('✓ config.json'));
 
-        // 마스터 MCP
-        const mcpPath = path.join(masterDir, 'master-mcp.json');
-        const defaultMcp = {
-            mcpServers: {},
-        };
-        fs.writeFileSync(mcpPath, JSON.stringify(defaultMcp, null, 2));
-        console.log(chalk.green('✓ master-mcp.json'));
+        // Master MCP and Rules creation removed
 
-        // 마스터 Rules
-        const rulesPath = path.join(masterDir, 'master-rules.md');
-        const defaultRules = `# 프로젝트 Rules
-
-## 코딩 스타일
-- 명확하고 읽기 쉬운 코드 작성
-- 일관된 네이밍 컨벤션 사용
-
-## 프로젝트 컨텍스트
-이 프로젝트에 대한 설명을 여기에 작성하세요.
-
-## 제약사항
-특별한 제약사항이나 요구사항을 여기에 작성하세요.
-`;
-        fs.writeFileSync(rulesPath, defaultRules);
-        console.log(chalk.green('✓ master-rules.md'));
 
         // 동기화 설정
         const syncConfigPath = path.join(masterDir, 'sync-config.json');

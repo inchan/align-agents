@@ -46,7 +46,10 @@ export const useTargetStore = create<TargetState>()(
                 projectName: name
             }),
 
-            setStrategy: (strategy) => set({ strategy }),
+            setStrategy: (strategy) => {
+                console.log(`[Web] targetStore: setStrategy called with ${strategy}`);
+                set({ strategy });
+            },
 
             setSelectedToolIds: (ids) => set({ selectedToolIds: ids }),
             setSelectedRuleId: (id) => set({ selectedRuleId: id }),

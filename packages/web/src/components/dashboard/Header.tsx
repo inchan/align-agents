@@ -62,6 +62,11 @@ export function Header({ onMenuClick }: HeaderProps) {
         <Button
           size="sm"
           onClick={() => {
+            console.log('[Header] Sync button clicked:', {
+              pathname: location.pathname,
+              canSync,
+              isSyncPending
+            })
             if (location.pathname === '/rules') {
               handleSync({ scope: 'rules', forceAllTools: true })
             } else if (location.pathname === '/mcp') {

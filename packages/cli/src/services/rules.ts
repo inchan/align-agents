@@ -10,13 +10,7 @@ const rulesService = new RulesService(fileSystem);
 
 export type { RulesConfig, RulesSyncResult };
 
-export function loadMasterRules(): string {
-    return rulesService.loadMasterRules();
-}
-
-export async function saveMasterRules(content: string): Promise<void> {
-    return rulesService.saveMasterRules(content);
-}
+// Master rules methods removed
 
 export function loadRulesConfig(): RulesConfig {
     return rulesService.loadRulesConfig();
