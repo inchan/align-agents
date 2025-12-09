@@ -1,0 +1,27 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+build
+.turbo
+
+# Test coverage
+coverage
+test-results
+
+# System files
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+
+# Editor directories
+.vscode
+.idea
+
+# AI Agent / Backup directories
+.agent
+.backup
+.claude/settings.local.json

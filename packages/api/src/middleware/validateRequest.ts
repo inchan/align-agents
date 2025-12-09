@@ -1,0 +1,83 @@
+import { Request, Response, NextFunction } from 'express';
+import { ZodSchema, ZodError } from 'zod';
+
+/**
+ * Zod schema validation middleware factory
+ *
+ * @param schema - Zod schema to validate against
+ * @param source - Where to find the data to validate ('body' | 'query' | 'params')
+ * @returns Express middleware function
+ */
+export function validateRequest<T>(
+    schema: ZodSchema<T>,
+    source: 'body' | 'query' | 'params' = 'body'
+) {
+    return (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const data = req[source];
+            const validated = schema.parse(data);
+
+            // Replace original data with validated data
+            (req as any)[source] = validated;
+
+            next();
+        } catch (error) {
+            if (error instanceof ZodError) {
+                const formattedErrors = error.errors.map(err => ({
+                    path: err.path.join('.'),
+                    message: err.message,
+                }));
+
+                return res.status(400).json({
+                    error: 'Validation failed',
+                    details: formattedErrors,
+                });
+            }
+
+            return res.status(500).json({
+                error: 'Internal validation error',
+            });
+        }
+    };
+}
+
+/**
+ * Validate multiple sources at once
+ */
+export function validateMultiple(schemas: {
+    body?: ZodSchema;
+    query?: ZodSchema;
+    params?: ZodSchema;
+}) {
+    return (req: Request, res: Response, next: NextFunction) => {
+        try {
+            if (schemas.body) {
+                req.body = schemas.body.parse(req.body);
+            }
+            if (schemas.query) {
+                (req as any).query = schemas.query.parse(req.query);
+            }
+            if (schemas.params) {
+                req.params = schemas.params.parse(req.params) as any;
+            }
+
+            next();
+        } catch (error) {
+            if (error instanceof ZodError) {
+                const formattedErrors = error.errors.map(err => ({
+                    path: err.path.join('.'),
+                    message: err.message,
+                }));
+
+                return res.status(400).json({
+                    error: 'Validation failed',
+                    details: formattedErrors,
+                });
+            }
+
+            return res.status(500).json({
+                error: 'Internal validation error',
+            });
+        }
+    };
+}

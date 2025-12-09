@@ -1,0 +1,967 @@
+openapi: 3.0.3
+info:
+  title: AI CLI Syncer API
+  description: |
+    API for managing AI CLI tools (Claude, Cursor, Codex, Gemini, etc.) MCP configurations and Rules.
+    This API enables synchronization of Model Context Protocol (MCP) servers and coding rules across multiple AI development tools.
+  version: 0.1.0
+  contact:
+    name: AI CLI Syncer
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3001/api
+    description: Development server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Tools
+    description: AI tool management
+  - name: Rules
+    description: Rules management and synchronization
+  - name: MCP
+    description: MCP configuration management
+  - name: MCP Definitions
+    description: MCP server definitions pool
+  - name: MCP Sets
+    description: MCP server sets management
+  - name: Config
+    description: Configuration file management
+  - name: Logs
+    description: System logs
+  - name: Stats
+    description: Statistics and activity
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /tools:
+    get:
+      tags: [Tools]
+      summary: Get installed AI tools
+      operationId: getTools
+      responses:
+        '200':
+          description: List of installed tools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tool'
+
+  /tools/scan:
+    post:
+      tags: [Tools]
+      summary: Scan for installed tools
+      operationId: scanTools
+      responses:
+        '200':
+          description: Scan results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tools:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tool'
+
+  /tools/recent-projects:
+    get:
+      tags: [Tools]
+      summary: Get recent projects from IDEs
+      operationId: getRecentProjects
+      responses:
+        '200':
+          description: List of recent projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectInfo'
+
+  /rules/master:
+    get:
+      tags: [Rules]
+      summary: Get master rules content
+      operationId: getMasterRules
+      responses:
+        '200':
+          description: Master rules content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: string
+    post:
+      tags: [Rules]
+      summary: Save master rules content
+      operationId: saveMasterRules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveMasterRulesRequest'
+      responses:
+        '200':
+          description: Rules saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /rules/templates:
+    get:
+      tags: [Rules]
+      summary: Get rule templates
+      operationId: getRuleTemplates
+      responses:
+        '200':
+          description: List of templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RuleTemplate'
+
+  /rules/sync:
+    post:
+      tags: [Rules]
+      summary: Sync rules to tools
+      operationId: syncRules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncRulesRequest'
+      responses:
+        '200':
+          description: Sync results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncRulesResponse'
+
+  /rules:
+    get:
+      tags: [Rules]
+      summary: Get all rules
+      operationId: getRulesList
+      responses:
+        '200':
+          description: List of rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rule'
+    post:
+      tags: [Rules]
+      summary: Create a new rule
+      operationId: createRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRuleRequest'
+      responses:
+        '201':
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /rules/{id}:
+    put:
+      tags: [Rules]
+      summary: Update a rule
+      operationId: updateRule
+      parameters:
+        - $ref: '#/components/parameters/RuleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRuleRequest'
+      responses:
+        '200':
+          description: Rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Rules]
+      summary: Delete a rule
+      operationId: deleteRule
+      parameters:
+        - $ref: '#/components/parameters/RuleId'
+      responses:
+        '200':
+          description: Rule deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '400':
+          description: Cannot delete active rule
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rules/{id}/activate:
+    put:
+      tags: [Rules]
+      summary: Activate a rule (set as master)
+      operationId: activateRule
+      parameters:
+        - $ref: '#/components/parameters/RuleId'
+      responses:
+        '200':
+          description: Rule activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mcp/master:
+    get:
+      tags: [MCP]
+      summary: Get master MCP configuration
+      operationId: getMasterMcp
+      responses:
+        '200':
+          description: Master MCP config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MasterMcpConfig'
+    post:
+      tags: [MCP]
+      summary: Save master MCP configuration
+      operationId: saveMasterMcp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MasterMcpConfig'
+      responses:
+        '200':
+          description: MCP config saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /mcp/sync:
+    post:
+      tags: [MCP]
+      summary: Sync MCP to tools
+      operationId: syncMcp
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncMcpRequest'
+      responses:
+        '200':
+          description: Sync results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncMcpResponse'
+
+  /mcp/definitions:
+    get:
+      tags: [MCP Definitions]
+      summary: Get MCP definitions
+      operationId: getMcpDefinitions
+      responses:
+        '200':
+          description: List of MCP definitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/McpDefinition'
+    post:
+      tags: [MCP Definitions]
+      summary: Create MCP definition
+      operationId: createMcpDefinition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMcpDefinitionRequest'
+      responses:
+        '201':
+          description: Definition created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpDefinition'
+
+  /mcp/definitions/{id}:
+    put:
+      tags: [MCP Definitions]
+      summary: Update MCP definition
+      operationId: updateMcpDefinition
+      parameters:
+        - $ref: '#/components/parameters/McpId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMcpDefinitionRequest'
+      responses:
+        '200':
+          description: Definition updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpDefinition'
+    delete:
+      tags: [MCP Definitions]
+      summary: Delete MCP definition
+      operationId: deleteMcpDefinition
+      parameters:
+        - $ref: '#/components/parameters/McpId'
+      responses:
+        '200':
+          description: Definition deleted
+
+  /mcp/sets:
+    get:
+      tags: [MCP Sets]
+      summary: Get MCP sets
+      operationId: getMcpSets
+      responses:
+        '200':
+          description: List of MCP sets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/McpSet'
+    post:
+      tags: [MCP Sets]
+      summary: Create MCP set
+      operationId: createMcpSet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMcpSetRequest'
+      responses:
+        '201':
+          description: Set created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpSet'
+
+  /mcp/sets/{id}:
+    put:
+      tags: [MCP Sets]
+      summary: Update MCP set
+      operationId: updateMcpSet
+      parameters:
+        - $ref: '#/components/parameters/McpSetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMcpSetRequest'
+      responses:
+        '200':
+          description: Set updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpSet'
+    delete:
+      tags: [MCP Sets]
+      summary: Delete MCP set
+      operationId: deleteMcpSet
+      parameters:
+        - $ref: '#/components/parameters/McpSetId'
+      responses:
+        '200':
+          description: Set deleted
+
+  /mcp/sets/{id}/activate:
+    put:
+      tags: [MCP Sets]
+      summary: Activate MCP set
+      operationId: activateMcpSet
+      parameters:
+        - $ref: '#/components/parameters/McpSetId'
+      responses:
+        '200':
+          description: Set activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpSet'
+
+  /config:
+    get:
+      tags: [Config]
+      summary: Get config file content
+      operationId: getConfig
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Path to config file
+      responses:
+        '200':
+          description: Config content
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Config]
+      summary: Save config file
+      operationId: saveConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveConfigRequest'
+      responses:
+        '200':
+          description: Config saved
+
+  /logs/history:
+    get:
+      tags: [Logs]
+      summary: Get log history
+      operationId: getLogHistory
+      responses:
+        '200':
+          description: Log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogEntry'
+
+  /logs/stream:
+    get:
+      tags: [Logs]
+      summary: Stream logs via SSE
+      operationId: streamLogs
+      responses:
+        '200':
+          description: SSE log stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /stats/summary:
+    get:
+      tags: [Stats]
+      summary: Get sync statistics summary
+      operationId: getStatsSummary
+      responses:
+        '200':
+          description: Statistics summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsSummary'
+
+  /stats/activity:
+    get:
+      tags: [Stats]
+      summary: Get recent activity feed
+      operationId: getActivityFeed
+      responses:
+        '200':
+          description: Activity entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ActivityEntry'
+
+components:
+  parameters:
+    RuleId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Rule UUID
+    McpId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: MCP definition UUID
+    McpSetId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: MCP set UUID
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                    message:
+                      type: string
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+  schemas:
+    Tool:
+      type: object
+      properties:
+        id:
+          type: string
+          example: claude
+        name:
+          type: string
+          example: Claude Desktop
+        exists:
+          type: boolean
+        configPath:
+          type: string
+        supportsMcp:
+          type: boolean
+        supportsRules:
+          type: boolean
+      required: [id, name, exists]
+
+    ProjectInfo:
+      type: object
+      properties:
+        path:
+          type: string
+        name:
+          type: string
+        lastOpened:
+          type: string
+          format: date-time
+
+    Rule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        content:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, name, content, isActive, createdAt, updatedAt]
+
+    RuleTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        content:
+          type: string
+
+    SaveMasterRulesRequest:
+      type: object
+      properties:
+        content:
+          type: string
+      required: [content]
+
+    CreateRuleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        content:
+          type: string
+      required: [name, content]
+
+    UpdateRuleRequest:
+      type: object
+      properties:
+        content:
+          type: string
+        name:
+          type: string
+
+    SyncRulesRequest:
+      type: object
+      properties:
+        toolId:
+          type: string
+        strategy:
+          type: string
+          enum: [overwrite, append, smart-update]
+        global:
+          type: boolean
+        sourceId:
+          type: string
+          format: uuid
+
+    SyncRulesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              toolId:
+                type: string
+              toolName:
+                type: string
+              status:
+                type: string
+                enum: [success, error, skipped, not-supported]
+              targetPath:
+                type: string
+              message:
+                type: string
+
+    McpServer:
+      type: object
+      properties:
+        command:
+          type: string
+          minLength: 1
+        args:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        category:
+          type: string
+        env:
+          type: object
+          additionalProperties:
+            type: string
+      required: [command, args]
+
+    MasterMcpConfig:
+      type: object
+      properties:
+        mcpServers:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/McpServer'
+      required: [mcpServers]
+
+    McpDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        command:
+          type: string
+        args:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        env:
+          type: object
+          additionalProperties:
+            type: string
+      required: [id, name, command, args]
+
+    CreateMcpDefinitionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        command:
+          type: string
+          minLength: 1
+        args:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        env:
+          type: object
+          additionalProperties:
+            type: string
+      required: [name, command, args]
+
+    UpdateMcpDefinitionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        command:
+          type: string
+        args:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        env:
+          type: object
+          additionalProperties:
+            type: string
+
+    McpSetItem:
+      type: object
+      properties:
+        serverId:
+          type: string
+          format: uuid
+        disabled:
+          type: boolean
+      required: [serverId]
+
+    McpSet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/McpSetItem'
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, name, items, isActive, createdAt, updatedAt]
+
+    CreateMcpSetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/McpSetItem'
+        description:
+          type: string
+      required: [name, items]
+
+    UpdateMcpSetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/McpSetItem'
+        description:
+          type: string
+
+    SyncMcpRequest:
+      type: object
+      properties:
+        toolId:
+          type: string
+        serverIds:
+          type: array
+          items:
+            type: string
+        strategy:
+          type: string
+          enum: [overwrite, append, smart-update]
+        sourceId:
+          type: string
+          format: uuid
+
+    SyncMcpResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              toolId:
+                type: string
+              name:
+                type: string
+              path:
+                type: string
+              status:
+                type: string
+                enum: [success, error, skipped, unsupported]
+              servers:
+                type: array
+                items:
+                  type: string
+              message:
+                type: string
+
+    SaveConfigRequest:
+      type: object
+      properties:
+        path:
+          type: string
+          minLength: 1
+        content:
+          type: string
+      required: [path, content]
+
+    LogEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [info, warn, error, debug]
+        message:
+          type: string
+        category:
+          type: string
+
+    StatsSummary:
+      type: object
+      properties:
+        totalSyncs:
+          type: integer
+        lastSync:
+          type: string
+          format: date-time
+        successCount:
+          type: integer
+        errorCount:
+          type: integer
+
+    ActivityEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string

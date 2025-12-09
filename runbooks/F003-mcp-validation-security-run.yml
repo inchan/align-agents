@@ -1,0 +1,19 @@
+id: F003-mcp-validation-security-run
+prechecks:
+  - file exists packages/cli/src/commands/ui.ts
+  - file exists packages/cli/src/schemas/mcp.schema.ts
+steps:
+  - cmd: npm run build --workspace packages/cli
+    expect: success
+  - cmd: node packages/cli/dist/index.js ui --port 3100
+    expect: 서버 로그에 listening 메시지 출력
+  - cmd: curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3100/api/master-mcp -H "Content-Type: application/json" -d '{}'
+    expect: "400"
+  - cmd: curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3100/api/sync -H "Content-Type: application/json" -d '{"toolId":"unknown"}'
+    expect: "400"
+postchecks:
+  - cmd: curl -s -o /dev/null -w "%{http_code}" http://localhost:3100/api/tools
+    expect: "200"
+rollback:
+  - cmd: (실행 중인 UI 서버를 Ctrl+C로 중지)
+    expect: 서버 종료
