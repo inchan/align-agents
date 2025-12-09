@@ -22,7 +22,8 @@ acs init
 **동작:**
 
 - `~/.ai-cli-syncer` 디렉토리 생성
-- 기본 설정 파일 생성 (`master-mcp.json`, `master-rules.md`, `config.json`)
+- 기본 설정 파일 생성 (`config.json`, `sync-config.json`, `rules-config.json`)
+- MCP 및 Rules 디렉토리 생성
 - Git 저장소 초기화 (백업용)
 
 ---
@@ -51,6 +52,8 @@ acs scan --verbose
 
 전체 동기화 상태를 확인합니다.
 
+> **Note**: Master MCP/Rules 상태 표시는 제거되었습니다.
+
 ```bash
 acs status
 ```
@@ -58,75 +61,22 @@ acs status
 **출력:**
 
 - 설치된 도구 목록
-- 각 도구의 동기화 상태
-- 마지막 동기화 시간
+- 동기화 활성화된 도구 수
+- Deprecation 안내
 
 ---
 
-## `acs mcp`
+## `acs mcp` [DEPRECATED]
 
-마스터 MCP 서버를 관리합니다.
-
-### `acs mcp add`
-
-MCP 서버를 추가합니다.
+> ⚠️ **Deprecated**: Master MCP 개념이 제거되었습니다. Web UI를 사용하여 MCP Sets를 관리하세요.
 
 ```bash
-acs mcp add <name> --command <cmd> --args <arg1> [arg2...] [options]
+acs mcp
 ```
 
-**인자:**
+**출력:**
 
-- `<name>`: 서버 이름 (고유 식별자)
-- `--command <cmd>`: 실행 명령어 (예: `npx`, `node`)
-- `--args <arg1> [arg2...]`: 명령어 인자
-
-**옵션:**
-
-- `--env <KEY=VALUE>`: 환경 변수 설정 (여러 번 사용 가능)
-- `--description <desc>`: 서버 설명
-- `--category <cat>`: 서버 카테고리
-
-**예제:**
-
-```bash
-# Filesystem MCP 서버 추가
-acs mcp add filesystem \
-  --command npx \
-  --args "-y @modelcontextprotocol/server-filesystem /Users/username/Documents"
-
-# Brave Search MCP 서버 추가 (환경 변수 포함)
-acs mcp add brave-search \
-  --command npx \
-  --args "-y @modelcontextprotocol/server-brave-search" \
-  --env BRAVE_API_KEY=your_api_key
-```
-
-### `acs mcp list`
-
-등록된 MCP 서버 목록을 표시합니다.
-
-```bash
-acs mcp list
-```
-
-### `acs mcp remove`
-
-MCP 서버를 삭제합니다.
-
-```bash
-acs mcp remove <name>
-```
-
-**인자:**
-
-- `<name>`: 삭제할 서버 이름
-
-**예제:**
-
-```bash
-acs mcp remove filesystem
-```
+Deprecation 메시지와 Web UI 사용 안내
 
 ---
 
@@ -167,58 +117,8 @@ acs sync --tool claude-desktop --verbose
 ## `acs rules`
 
 Rules를 관리하고 동기화합니다.
-Stateless 방식을 통해 선택적으로 Rules를 배포합니다.
 
-### `acs rules show`
-
-Rules 목록을 표시합니다.
- 
- ### `acs rules show`
- 
- 상세 Rules 내용을 표시합니다.
-
-```bash
-acs rules show
-```
-
-### `acs rules edit`
-
-기본 에디터로 Rule을 편집하거나 생성합니다.
-
-```bash
-acs rules edit
-```
-
-**동작:**
-
-- `$EDITOR` 환경 변수에 설정된 에디터 사용
-- 에디터가 설정되지 않은 경우 `vi` 사용
-
-### `acs rules template list`
-
-사용 가능한 템플릿 목록을 표시합니다.
-
-```bash
-acs rules template list
-```
-
-### `acs rules template apply`
-
-템플릿을 기반으로 새로운 Rule을 생성합니다.
-
-```bash
-acs rules template apply <template-name>
-```
-
-**인자:**
-
-- `<template-name>`: 적용할 템플릿 이름
-
-**예제:**
-
-```bash
-acs rules template apply react
-```
+> **Note**: `show`, `edit`, `template` 명령어는 제거되었습니다. Web UI를 사용하세요.
 
 ### `acs rules sync`
 
@@ -331,23 +231,17 @@ acs history list [options]
 
 - `--limit <n>`: 표시할 항목 수 (기본값: 10)
 
-### `acs history restore`
+### `acs history restore` [DEPRECATED]
 
-특정 버전으로 롤백합니다.
+> ⚠️ **Deprecated**: Master 개념 제거로 인해 비활성화되었습니다.
 
 ```bash
 acs history restore <version-id>
 ```
 
-**인자:**
+**출력:**
 
-- `<version-id>`: 복원할 버전 ID
-
-**예제:**
-
-```bash
-acs history restore v1.2.3
-```
+Deprecation 메시지와 대안 안내
 
 ---
 

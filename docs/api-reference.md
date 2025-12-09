@@ -61,38 +61,7 @@ http://localhost:3001/api
 
 ## Rules API
 
-### GET /api/rules/master
-
-Master Rules를 조회합니다.
-
-**Response:**
-
-```json
-{
-  "content": "# Agent Guidelines\n\n...",
-  "path": "/Users/username/.ai-cli-syncer/master-rules.md"
-}
-```
-
-### POST /api/rules/master
-
-Master Rules를 저장합니다.
-
-**Request Body:**
-
-```json
-{
-  "content": "# Updated Agent Guidelines\n\n..."
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true
-}
-```
+> **Note**: Master Rules 엔드포인트(`GET/POST /api/rules/master`)는 제거되었습니다. Multi-Rules API를 사용하세요.
 
 ### POST /api/rules/sync
 
@@ -153,55 +122,7 @@ Rules를 도구에 동기화합니다.
 
 ## MCP API
 
-### GET /api/mcp/master
-
-Master MCP 설정을 조회합니다.
-
-**Response:**
-
-```json
-{
-  "servers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/username/Documents"]
-    },
-    "brave-search": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
-      "env": {
-        "BRAVE_API_KEY": "your_api_key"
-      }
-    }
-  },
-  "path": "/Users/username/.ai-cli-syncer/master-mcp.json"
-}
-```
-
-### POST /api/mcp/master
-
-Master MCP 설정을 저장합니다.
-
-**Request Body:**
-
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/username/Documents"]
-    }
-  }
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true
-}
-```
+> **Note**: Master MCP 엔드포인트(`GET/POST /api/mcp/master`)는 제거되었습니다. MCP Sets API를 사용하세요.
 
 ### POST /api/mcp/sync
 

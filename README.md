@@ -11,8 +11,8 @@ AI CLI Syncer는 여러 AI 도구(Claude Desktop, Cursor, Gemini CLI 등)의 설
 ### 주요 기능
 
 - ✅ **8개 AI 도구 지원**: Claude Desktop, Cursor, Gemini CLI, Codex 등
-- ✅ **Stateless 동기화**: 'Active' 상태 없이 원하는 Rule/MCP Set을 명시적으로 선택하여 동기화
-- ✅ **Rules Library 관리**: 여러 버전의 Rules를 저장하고 필요에 따라 골라서 배포
+- ✅ **명시적 동기화**: sourceId(Rule ID 또는 MCP Set ID)를 지정하여 명시적으로 동기화
+- ✅ **Multi-Rules 관리**: 여러 버전의 Rules를 저장하고 필요에 따라 선택하여 배포
 - ✅ **동기화 전략**: Overwrite, Merge, Smart Update (마커 기반)
 - ✅ **타임스탬프 백업**: `.backup` 디렉토리에 자동 백업 (최대 5개 유지)
 - ✅ **히스토리 관리**: 버전 관리 및 롤백 기능
@@ -73,12 +73,11 @@ AI CLI Syncer는 첫 실행 시 자동으로 초기화됩니다!
 # 3. 동기화 전략 선택
 ./packages/cli/bin/acs rules sync --all --strategy overwrite
 
-# 4. 히스토리 관리
+# 4. 히스토리 관리 (list만 사용 가능, restore는 deprecated)
 ./packages/cli/bin/acs history list
-./packages/cli/bin/acs history restore <version-id>
 
-# 5. MCP 서버 추가
-./packages/cli/bin/acs mcp add my-server --command node --args server.js
+# 5. MCP 서버 관리 (Web UI 사용 권장, CLI는 deprecated)
+# Web UI에서 MCP Sets 및 Definitions 관리
 
 # 6. MCP 동기화 (대화형으로 Set 선택)
 ./packages/cli/bin/acs sync --tool claude-desktop
@@ -113,83 +112,56 @@ acs scan
 acs status
 ```
 
-### `acs mcp`
+### `acs mcp` [DEPRECATED]
 
-마스터 MCP 서버를 관리합니다.
-
-```bash
-# 서버 추가
-acs mcp add <name> --command <cmd> --args <arg1> <arg2>
-
-# 서버 목록
-acs mcp list
-
-# 서버 삭제
-acs mcp remove <name>
-```
-
-**예제:**
+> ⚠️ **Deprecated**: Master MCP 개념이 제거되었습니다. Web UI를 사용하여 MCP Sets를 관리하세요.
 
 ```bash
-# Filesystem MCP 서버 추가
-acs mcp add filesystem --command npx --args "-y @modelcontextprotocol/server-filesystem /Users/username/Documents"
-
-# Brave Search MCP 서버 추가
-acs mcp add brave-search --command npx --args "-y @modelcontextprotocol/server-brave-search" --env BRAVE_API_KEY=your_key
+acs mcp  # Deprecation 메시지 표시
 ```
 
-### `acs mcp-set`
 
-MCP 서버 그룹(Set)을 관리합니다. 상황에 따라 다른 MCP 구성을 빠르게 전환할 수 있습니다.
 
-```bash
-# Set 목록
-acs mcp-set list
+### MCP Sets 관리
 
-# Set 생성
-acs mcp-set create "Dev Tools"
-
-# Set 활성화
-acs mcp-set activate "Dev Tools"
-```
+MCP Sets는 Web UI를 통해 관리합니다:
+- MCP Definitions (서버 정의) 생성/수정/삭제
+- MCP Sets (서버 그룹) 생성/수정/삭제
+- Import from JSON or GitHub URL
 
 ### `acs sync`
 
 MCP 설정을 각 도구에 동기화합니다.
 
 ```bash
-# 특정 도구에 동기화
+# 특정 도구에 동기화 (대화형 MCP Set 선택)
 acs sync --tool claude-desktop
 
-# 모든 도구에 동기화 (프로젝트 경로 필요)
-acs sync --all --project /path/to/project
+# 특정 도구에 동기화 (MCP Set ID 지정)
+acs sync --tool claude-desktop --source <mcp-set-id>
+
+# 모든 도구에 동기화 (MCP Set ID 지정)
+acs sync --all --source <mcp-set-id>
 ```
 
 ### `acs rules`
 
-마스터 Rules를 관리하고 동기화합니다.
+Rules를 관리하고 동기화합니다.
+
+> **Note**: `show`, `edit` 명령어는 제거되었습니다. Web UI를 사용하세요.
 
 ```bash
-# Rules 보기 (대화형 리스트)
-acs rules list
-
-# Rules 보기 (상세)
-acs rules show <id>
-
-# Rules 편집 (기본 에디터)
-acs rules edit
-
-# 템플릿 목록
-acs rules template list
-
-# 템플릿 적용
-acs rules template apply react
-
-# Rules 동기화 (대화형)
+# Rules 동기화 (대화형 Rule 선택)
 acs rules sync --tool claude-code --project /path/to/project
 
-# Rules 동기화 (ID 지정)
+# Rules 동기화 (Rule ID 지정)
 acs rules sync --tool claude-code --project /path/to/project --source <rule-id>
+
+# 모든 도구에 전역 Rules 동기화 (대화형)
+acs rules sync --all --global
+
+# 모든 도구에 전역 Rules 동기화 (Rule ID 지정)
+acs rules sync --all --global --source <rule-id>
 ```
 
 ### `acs backup`
@@ -260,8 +232,10 @@ npm run dev -w packages/web         # 웹 UI (포트 5173)
 
 - **설정 파일**: `~/.ai-cli-syncer/`
 ```text
-├── master-mcp.json       # 마스터 MCP 서버 목록
-├── master-rules.md       # 마스터 Rules
+├── mcp/
+│   └── index.json        # MCP Definitions (pool) + Sets
+├── rules/
+│   └── index.json        # Rules 목록
 ├── sync-config.json      # MCP 동기화 설정
 ├── rules-config.json     # Rules 동기화 설정
 ├── config.json           # 전역 설정
@@ -282,35 +256,30 @@ npm run dev -w packages/web         # 웹 UI (포트 5173)
 
 ## 💡 사용 예제
 
-### 예제 1: MCP 서버 설정 및 동기화
+### 예제 1: MCP Set 동기화
 
 ```bash
-# 1. Filesystem MCP 서버 추가
-acs mcp add filesystem \
-  --command npx \
-  --args "-y @modelcontextprotocol/server-filesystem /Users/username/Documents"
+# 1. Web UI에서 MCP Set 생성 및 서버 추가
+# http://localhost:5173 접속 → MCP 페이지
 
-# 2. Claude Desktop에 동기화
+# 2. Claude Desktop에 동기화 (대화형 선택)
 acs sync --tool claude-desktop
 
-# 3. 백업 생성
-acs backup create "Added filesystem MCP server"
+# 3. 또는 MCP Set ID 지정
+acs sync --tool claude-desktop --source <mcp-set-id>
 ```
 
-### 예제 2: Rules 템플릿 적용 및 동기화
+### 예제 2: Rules 동기화
 
 ```bash
-# 1. React 템플릿 적용
-acs rules template apply react
+# 1. Web UI에서 Rule 생성 및 편집
+# http://localhost:5173 접속 → Rules 페이지
 
-# 2. Rules 편집 (추가 커스터마이징)
-acs rules edit
-
-# 3. Claude Code CLI에 동기화
+# 2. Claude Code CLI에 동기화 (대화형 선택)
 acs rules sync --tool claude-code --project /path/to/my-react-project
 
-# 4. 백업 생성
-acs backup create "Applied React rules template"
+# 3. 또는 Rule ID 지정
+acs rules sync --tool claude-code --project /path/to/my-react-project --source <rule-id>
 ```
 
 ### 예제 3: 백업 및 복원
