@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { RulesController } from '../controllers/RulesController.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import {
-    SaveMasterRulesBodySchema,
     CreateRuleBodySchema,
     UpdateRuleBodySchema,
     RuleIdParamsSchema,

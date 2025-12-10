@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { McpController } from '../controllers/McpController.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import {
-    SaveMasterMcpBodySchema,
     SyncMcpBodySchema,
     CreateMcpDefinitionBodySchema,
     UpdateMcpDefinitionBodySchema,

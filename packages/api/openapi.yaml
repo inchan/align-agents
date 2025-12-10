@@ -100,57 +100,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/ProjectInfo'
 
-  /rules/master:
-    get:
-      tags: [Rules]
-      summary: Get master rules content
-      operationId: getMasterRules
-      responses:
-        '200':
-          description: Master rules content
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  content:
-                    type: string
-    post:
-      tags: [Rules]
-      summary: Save master rules content
-      operationId: saveMasterRules
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SaveMasterRulesRequest'
-      responses:
-        '200':
-          description: Rules saved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-
-  /rules/templates:
-    get:
-      tags: [Rules]
-      summary: Get rule templates
-      operationId: getRuleTemplates
-      responses:
-        '200':
-          description: List of templates
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/RuleTemplate'
-
   /rules/sync:
     post:
       tags: [Rules]
@@ -249,7 +198,7 @@ paths:
   /rules/{id}/activate:
     put:
       tags: [Rules]
-      summary: Activate a rule (set as master)
+      summary: Activate a rule (set as default for sync)
       operationId: activateRule
       parameters:
         - $ref: '#/components/parameters/RuleId'
@@ -262,39 +211,6 @@ paths:
                 $ref: '#/components/schemas/Rule'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /mcp/master:
-    get:
-      tags: [MCP]
-      summary: Get master MCP configuration
-      operationId: getMasterMcp
-      responses:
-        '200':
-          description: Master MCP config
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MasterMcpConfig'
-    post:
-      tags: [MCP]
-      summary: Save master MCP configuration
-      operationId: saveMasterMcp
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MasterMcpConfig'
-      responses:
-        '200':
-          description: MCP config saved
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
 
   /mcp/sync:
     post:
@@ -651,25 +567,6 @@ components:
           format: date-time
       required: [id, name, content, isActive, createdAt, updatedAt]
 
-    RuleTemplate:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        content:
-          type: string
-
-    SaveMasterRulesRequest:
-      type: object
-      properties:
-        content:
-          type: string
-      required: [content]
-
     CreateRuleRequest:
       type: object
       properties:
@@ -744,15 +641,6 @@ components:
           additionalProperties:
             type: string
       required: [command, args]
-
-    MasterMcpConfig:
-      type: object
-      properties:
-        mcpServers:
-          type: object
-          additionalProperties:
-            $ref: '#/components/schemas/McpServer'
-      required: [mcpServers]
 
     McpDefinition:
       type: object

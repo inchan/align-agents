@@ -3,7 +3,6 @@ import { z } from 'zod';
 // Re-export schemas from CLI package for consistency
 export {
     McpServerSchema,
-    MasterMcpConfigSchema,
     SyncConfigSchema,
 } from '@align-agents/cli';
 
@@ -29,10 +28,6 @@ export const SaveConfigBodySchema = z.object({
 // Rules API Schemas
 // ==========================================
 
-export const SaveMasterRulesBodySchema = z.object({
-    content: z.string(),
-});
-
 export const CreateRuleBodySchema = z.object({
     name: z.string().min(1, 'Name is required'),
     content: z.string(),
@@ -57,18 +52,6 @@ export const SyncRulesBodySchema = z.object({
 // ==========================================
 // MCP API Schemas
 // ==========================================
-
-export const SaveMasterMcpBodySchema = z.object({
-    mcpServers: z.record(
-        z.object({
-            command: z.string().min(1, 'Command is required'),
-            args: z.array(z.string()),
-            description: z.string().optional(),
-            category: z.string().optional(),
-            env: z.record(z.string()).optional(),
-        })
-    ),
-});
 
 export const SyncMcpBodySchema = z.object({
     toolId: z.string().optional(),
@@ -139,11 +122,9 @@ export const GetActivityQuerySchema = z.object({
 
 export type GetConfigQuery = z.infer<typeof GetConfigQuerySchema>;
 export type SaveConfigBody = z.infer<typeof SaveConfigBodySchema>;
-export type SaveMasterRulesBody = z.infer<typeof SaveMasterRulesBodySchema>;
 export type CreateRuleBody = z.infer<typeof CreateRuleBodySchema>;
 export type UpdateRuleBody = z.infer<typeof UpdateRuleBodySchema>;
 export type SyncRulesBody = z.infer<typeof SyncRulesBodySchema>;
-export type SaveMasterMcpBody = z.infer<typeof SaveMasterMcpBodySchema>;
 export type SyncMcpBody = z.infer<typeof SyncMcpBodySchema>;
 export type CreateMcpDefinitionBody = z.infer<typeof CreateMcpDefinitionBodySchema>;
 export type UpdateMcpDefinitionBody = z.infer<typeof UpdateMcpDefinitionBodySchema>;
