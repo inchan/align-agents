@@ -3,13 +3,14 @@ import path from 'path';
 import chalk from 'chalk';
 import { ToolConfig, ToolRepository } from '../../repositories/ToolRepository.js';
 import { getConfigDir } from '../../constants/paths.js';
-import { ISyncService, MasterMcpConfig, SyncConfig, GlobalConfig, SyncResult, SyncResultStatus, SyncOptions } from '../../interfaces/ISyncService.js';
+import { ISyncService, SyncOptions, SyncResult, SyncResultStatus } from '../../interfaces/ISyncService.js';
 import { IFileSystem } from '../../interfaces/IFileSystem.js';
+import { SyncConfig, GlobalConfig } from '../../interfaces/ISyncService.js';
 import { validateData } from '../../utils/validation.js';
-import { MasterMcpConfigSchema, SyncConfigSchema } from '../../schemas/mcp.schema.js';
-import { GlobalConfigSchema } from '../../schemas/rules.schema.js';
 import { KNOWN_TOOLS, getToolMetadata } from '../../constants/tools.js';
-import { SyncStrategy, deepMergeMcpServers } from '../strategies.js';
+import { SyncStrategy } from '../strategies.js';
+import { GlobalConfigSchema } from '../../schemas/rules.schema.js';
+import { SyncConfigSchema } from '../../schemas/mcp.schema.js';
 import { saveVersion } from '../history.js';
 import { createTimestampedBackup } from '../../utils/backup.js';
 import * as TOML from '@iarna/toml';
@@ -17,6 +18,9 @@ import * as TOML from '@iarna/toml';
 import { McpRepository } from '../../infrastructure/repositories/McpRepository.js';
 import { McpService } from './McpService.js';
 import { RulesService } from './RulesService.js';
+import { getDatabase } from '../../infrastructure/database.js';
+import { SyncConfigRepository } from '../../infrastructure/repositories/SyncConfigRepository.js';
+import { GlobalConfigRepository } from '../../infrastructure/repositories/GlobalConfigRepository.js';
 
 import { ChecksumService } from './ChecksumService.js';
 import { StateService } from './StateService.js';
@@ -25,14 +29,23 @@ export class SyncService implements ISyncService {
     private mcpRepository: McpRepository;
     private mcpService: McpService;
     private rulesService: RulesService;
+    private syncConfigRepository: SyncConfigRepository;
+    private globalConfigRepository: GlobalConfigRepository;
     private checksumService: ChecksumService;
     private stateService: StateService;
 
     constructor(private fs: IFileSystem) {
-        const masterDir = this.getMasterDir();
-        this.mcpRepository = new McpRepository(fs, masterDir);
-        this.mcpService = new McpService(fs, masterDir);
+        const db = getDatabase();
+
+        // Initialize with default config first
+        const defaultConfig = this.getDefaultConfig();
+        this.globalConfigRepository = new GlobalConfigRepository(db, defaultConfig);
+        const masterDir = defaultConfig.masterDir;
+
+        this.mcpRepository = new McpRepository(db);
+        this.mcpService = new McpService(masterDir);
         this.rulesService = new RulesService(fs, masterDir);
+        this.syncConfigRepository = new SyncConfigRepository(db);
         this.checksumService = new ChecksumService();
         this.stateService = new StateService();
     }
@@ -57,55 +70,28 @@ export class SyncService implements ISyncService {
         };
     }
 
-    getGlobalConfig(): GlobalConfig {
-        const paths = this.getPaths();
-        const defaultConfig = this.getDefaultConfig();
-
-        if (this.fs.exists(paths.globalConfigPath)) {
-            try {
-                const data = this.fs.readFile(paths.globalConfigPath);
-                return { ...defaultConfig, ...JSON.parse(data) };
-            } catch (error) {
-                console.warn('[CLI] 전역 설정 파일을 읽을 수 없어 기본값으로 대체합니다.', error);
-            }
-        }
-
-        if (this.fs.exists(paths.legacyGlobalConfigPath)) {
-            try {
-                const legacyData = JSON.parse(this.fs.readFile(paths.legacyGlobalConfigPath));
-                const migrated = { ...defaultConfig, ...legacyData };
-                this.saveGlobalConfig(migrated);
-                console.warn(`[CLI] 레거시 전역 설정을 ${paths.globalConfigPath}로 마이그레이션했습니다.`);
-                return migrated;
-            } catch (error) {
-                console.warn('[CLI] 레거시 전역 설정 마이그레이션에 실패하여 기본값을 사용합니다.', error);
-            }
-        }
-
-        return defaultConfig;
+    async getGlobalConfig(): Promise<GlobalConfig> {
+        return this.globalConfigRepository.load();
     }
 
-    saveGlobalConfig(config: GlobalConfig): void {
-        const paths = this.getPaths();
+    async saveGlobalConfig(config: GlobalConfig): Promise<void> {
         const validatedConfig = validateData(GlobalConfigSchema, config, 'Invalid global config');
-
-        if (!this.fs.exists(paths.globalConfigDir)) {
-            this.fs.mkdir(paths.globalConfigDir);
-        }
-        this.fs.writeFile(paths.globalConfigPath, JSON.stringify(validatedConfig, null, 2));
+        return this.globalConfigRepository.save(validatedConfig);
     }
 
-    getMasterDir(): string {
-        return this.getGlobalConfig().masterDir;
+    async getMasterDir(): Promise<string> {
+        const config = await this.getGlobalConfig();
+        return config.masterDir;
     }
 
-    setMasterDir(dir: string): void {
-        const config = this.getGlobalConfig();
+    async setMasterDir(dir: string): Promise<void> {
+        const config = await this.getGlobalConfig();
         config.masterDir = dir;
-        this.saveGlobalConfig(config);
+        await this.saveGlobalConfig(config);
 
-        this.mcpRepository = new McpRepository(this.fs, dir);
+        // Repository uses global DB instance, no need to recreate
         this.mcpService.setMasterDir(dir);
+        this.rulesService.setMasterDir(dir);
     }
 
     // Master MCP methods removed
@@ -124,8 +110,21 @@ export class SyncService implements ISyncService {
         // 1. Sync MCP
         try {
             const toolConfigPath = this.getToolConfigPath(toolId);
+
+            let sourceId = options.sourceId; // Assuming SyncOptions has this, strictly typed interface might need update if it doesn't.
+            // But syncTool signature in ISyncService might not have it exposed? 
+            // The syncTool signature in SyncService.ts line 107 is (toolId: string, options: SyncOptions = {}).
+            // Let's assume options has it or casts.
+
+            if (!sourceId) {
+                const syncConfig = await this.loadSyncConfig();
+                if (syncConfig[toolId]?.mcpSetId) {
+                    sourceId = syncConfig[toolId].mcpSetId;
+                }
+            }
+
             if (toolConfigPath) {
-                await this.syncToolMcp(toolId, toolConfigPath, null, options.mcpStrategy || 'overwrite', options.backup);
+                await this.syncToolMcp(toolId, toolConfigPath, null, options.mcpStrategy || 'overwrite', options.backup, sourceId as string);
             }
         } catch (error: any) {
             console.error(`[CLI] Failed to sync MCP for ${toolId}:`, error.message);
@@ -134,7 +133,7 @@ export class SyncService implements ISyncService {
 
         // 2. Sync Rules
         try {
-            const config = this.rulesService.loadRulesConfig();
+            const config = await this.rulesService.loadRulesConfig();
             const toolConfig = config[toolId];
             const targetPath = toolConfig?.targetPath || '';
             const global = toolConfig?.global !== undefined ? toolConfig.global : true;
@@ -150,24 +149,11 @@ export class SyncService implements ISyncService {
         }
     }
 
-    loadSyncConfig(): SyncConfig {
-        const masterDir = this.getMasterDir();
-        const syncPath = this.fs.join(masterDir, 'sync-config.json');
-
-        let parsed: any = {};
-        if (this.fs.exists(syncPath)) {
-            try {
-                const data = this.fs.readFile(syncPath);
-                parsed = JSON.parse(data);
-            } catch {
-                parsed = {};
-            }
-        }
-
-        return this.normalizeSyncConfig(parsed);
+    async loadSyncConfig(): Promise<SyncConfig> {
+        return this.syncConfigRepository.load();
     }
 
-    saveSyncConfig(config: SyncConfig): void {
+    async saveSyncConfig(config: SyncConfig): Promise<void> {
         const validatedConfig = validateData(SyncConfigSchema, config, 'Invalid sync config');
 
         for (const toolId of Object.keys(validatedConfig)) {
@@ -176,14 +162,7 @@ export class SyncService implements ISyncService {
                 throw new Error(`Unknown tool in sync-config: ${toolId}`);
             }
         }
-
-        const masterDir = this.getMasterDir();
-        if (!this.fs.exists(masterDir)) {
-            this.fs.mkdir(masterDir);
-        }
-
-        const syncPath = this.fs.join(masterDir, 'sync-config.json');
-        this.fs.writeFile(syncPath, JSON.stringify(validatedConfig, null, 2));
+        return this.syncConfigRepository.save(validatedConfig);
     }
 
     private getDefaultSyncConfig(): SyncConfig {
@@ -287,7 +266,9 @@ export class SyncService implements ISyncService {
         }
 
         // Codex uses 'mcp_servers' (underscore) in TOML, others use 'mcpServers' (camelCase)
-        const mcpKey = format === 'toml' ? 'mcp_servers' : 'mcpServers';
+        // Check metadata first
+        const meta = getToolMetadata(toolId);
+        const mcpKey = meta?.mcpConfigKey || (format === 'toml' ? 'mcp_servers' : 'mcpServers');
 
         if (!toolConfig[mcpKey]) {
             toolConfig[mcpKey] = {};
@@ -377,7 +358,22 @@ export class SyncService implements ISyncService {
 
 
 
+        const isProjectLevel = sourceId && toolConfigPath.includes(sourceId); // Crude check, or better check if path matches global or project
+        // Actually we don't know easily if it's user or project from here without more context, 
+        // but we can infer from path location usually.
+        // Let's just print the path.
+
         console.log(chalk.cyan(`\n  ${chalk.bold('✔')} Sync Summary: ${chalk.bold(toolId)}`));
+
+        // meta is already defined above
+        // If the path matches any of the known global paths, it's Global.
+        const isGlobal = meta?.configPaths.some(p => path.resolve(p) === path.resolve(toolConfigPath))
+            || meta?.mcpConfigPath && path.resolve(meta.mcpConfigPath) === path.resolve(toolConfigPath);
+
+        const targetType = isGlobal ? 'Global' : 'Project';
+
+        console.log(chalk.gray(`    • Target: ${targetType}`));
+        console.log(chalk.gray(`    • Config Path: ${toolConfigPath}`));
         if (keptKeys.length > 0) {
             console.log(chalk.gray(`    • Kept (${keptKeys.length}): ${keptKeys.join(', ')}`));
         }
@@ -419,11 +415,38 @@ export class SyncService implements ISyncService {
         const hash = this.checksumService.calculateStringChecksum(serialized);
         this.stateService.updateState(toolConfigPath, hash);
 
+        this.stateService.updateState(toolConfigPath, hash);
+
+        // Save mcpSetId to config
+        if (sourceId) {
+            try {
+                const currentConfig = await this.loadSyncConfig();
+                // Ensure entry exists (it usually does if enabled, but good to be safe)
+                if (!currentConfig[toolId]) {
+                    // Create minimal config if missing? Or just skip?
+                    // Should exist if enabled, or if defaults loaded previously.
+                    // If not found, we shouldn't fail the sync, but saving ID is good practice.
+                    // Let's assume we can fetch defaults or use empty if not found, 
+                    // but safer to only update if exists or we just loaded it.
+                    // Actually loadSyncConfig merges defaults.
+                }
+
+                if (!currentConfig[toolId]) {
+                    currentConfig[toolId] = { enabled: true, servers: null };
+                }
+
+                currentConfig[toolId].mcpSetId = sourceId;
+                await this.saveSyncConfig(currentConfig);
+            } catch (e) {
+                console.warn(`[CLI] Failed to save mcpSetId to config for ${toolId}:`, e);
+            }
+        }
+
         return Object.keys(newMcpServers);
     }
 
     async syncAllTools(sourceId?: string, tools?: any[]): Promise<SyncResult[]> {
-        const syncConfig = this.loadSyncConfig();
+        const syncConfig = await this.loadSyncConfig();
         const results: SyncResult[] = [];
 
         if (!sourceId) {
@@ -487,15 +510,6 @@ export class SyncService implements ISyncService {
         return results;
     }
     async getSyncConfig(): Promise<SyncConfig> {
-        const configPath = this.fs.join(this.getMasterDir(), 'sync-config.json');
-        if (this.fs.exists(configPath)) {
-            try {
-                return JSON.parse(this.fs.readFile(configPath));
-            } catch (e) {
-                console.warn('Failed to parse sync-config.json', e);
-                return {};
-            }
-        }
-        return {};
+        return this.loadSyncConfig();
     }
 }

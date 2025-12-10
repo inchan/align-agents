@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { execSync } from 'child_process';
 import path from 'path';
 import os from 'os';
 import { TOOL_METADATA } from '../constants/ToolDefinitions.js';
@@ -152,15 +153,43 @@ export class ToolRepository {
 
     private verifyTools() {
         if (!this.registry) return;
-        // Simple verification - maybe we don't want to hit FS for every tool on every load,
-        // but for a CLI/Local app it's usually fine and ensures consistency.
-        // Let's do it light - only check if we have configPath
-        this.registry.tools = this.registry.tools.map(t => ({
-            ...t,
-            exists: t.configPath ? fs.existsSync(t.configPath) : false
-        }));
+
+        this.registry.tools = this.registry.tools.map(t => {
+            const hasConfig = t.configPath ? fs.existsSync(t.configPath) : false;
+            if (hasConfig) {
+                return { ...t, exists: true };
+            }
+
+            // If config missing, check if tool itself is installed (e.g. CLI/App exists)
+            // We need full metadata for isToolInstalled
+            const staticMeta = TOOL_METADATA.find(m => m.id === t.id);
+            if (staticMeta && this.isToolInstalled({ ...staticMeta, ...t })) {
+                return { ...t, exists: true };
+            }
+
+            return { ...t, exists: false };
+        });
     }
 
+
+    private isToolInstalled(meta: any): boolean {
+        // Check App Path (macOS/specific)
+        if (meta.appPath && fs.existsSync(meta.appPath)) {
+            return true;
+        }
+        // Check CLI Command
+        if (meta.cliCommand) {
+            try {
+                // 'which' works on macOS/Linux. For Windows 'where' might be needed.
+                // Since user is mac, 'which' is fine.
+                execSync(`which ${meta.cliCommand}`, { stdio: 'ignore' });
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        return false;
+    }
 
     private async scanAndRegisterTools() {
         if (!this.registry) return;
@@ -194,16 +223,51 @@ export class ToolRepository {
                     tool.configPath = detectedPath;
                     hasChanges = true;
                 }
+
+                // Force update legacy paths:
+                // If the current tool.configPath is NOT in the new meta.configPaths AND doesn't match mcpConfigPath,
+                // we should migrate it to the new default.
+                const normalizedCurrentPath = path.resolve(tool.configPath);
+                const allowedPaths = meta.configPaths.map(p => path.resolve(p));
+                if (meta.mcpConfigPath) {
+                    allowedPaths.push(path.resolve(meta.mcpConfigPath));
+                }
+
+                const isValidPath = allowedPaths.includes(normalizedCurrentPath);
+
+                if (!isValidPath) {
+                    // Path is legacy or invalid. Update to default.
+                    const newDefault = meta.mcpConfigPath || meta.configPaths[0];
+                    if (newDefault && newDefault !== tool.configPath) {
+                        console.log(`[CLI] Migrating legacy path for ${tool.name}: ${tool.configPath} -> ${newDefault}`);
+                        tool.configPath = newDefault;
+                        // Re-check existence at new path
+                        tool.exists = fs.existsSync(newDefault) || this.isToolInstalled({ ...meta, configPath: newDefault });
+                        hasChanges = true;
+                    }
+                }
             } else if (detectedPath) {
-                // New tool detected - Add to registry
+                // New tool detected via config presence
                 this.registry.tools.push({
                     id: meta.id,
                     name: meta.name,
                     configPath: detectedPath,
                     exists: true,
-                    // Add other defaults if needed, can be extended later
                 });
                 hasChanges = true;
+            } else if (this.isToolInstalled(meta)) {
+                // Tool installed but config missing -> Register with default config path
+                // Prefer mcpConfigPath (since we care about MCP) or first configPath
+                const defaultPath = meta.mcpConfigPath || meta.configPaths[0];
+                if (defaultPath) {
+                    this.registry.tools.push({
+                        id: meta.id,
+                        name: meta.name,
+                        configPath: defaultPath,
+                        exists: true, // It "exists" as a tool, even if file is missing (SyncService handles file creation)
+                    });
+                    hasChanges = true;
+                }
             }
         }
 

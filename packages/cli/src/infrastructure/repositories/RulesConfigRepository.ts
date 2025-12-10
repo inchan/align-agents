@@ -1,232 +1,347 @@
-import { IFileSystem } from '../../interfaces/IFileSystem.js';
 import { IRulesConfigRepository } from '../../interfaces/repositories/IRulesConfigRepository.js';
 import { RulesConfig, Rule } from '../../interfaces/IRulesService.js';
+import { IDatabase } from '../../interfaces/IDatabase.js';
 import { validateData } from '../../utils/validation.js';
 import { RulesConfigSchema } from '../../schemas/rules.schema.js';
 import { getToolMetadata, getRulesCapableTools } from '../../constants/tools.js';
 import { randomUUID } from 'crypto';
 
+/**
+ * SQLite-based Rules Configuration Repository
+ * Uses async wrappers around synchronous better-sqlite3 calls for:
+ * 1. Interface consistency across all repositories
+ * 2. Future extensibility (easy migration to async DB like PostgreSQL)
+ * 3. Minimal code changes in calling code
+ */
 export class RulesConfigRepository implements IRulesConfigRepository {
-    constructor(
-        private fs: IFileSystem,
-        private masterDir: string
-    ) { }
+    constructor(private db: IDatabase) { }
 
-    private getConfigPath(): string {
-        return this.fs.join(this.masterDir, 'rules-config.json');
+    /**
+     * Helper to wrap synchronous operations in Promise
+     * Maintains async interface while using sync SQLite
+     */
+    private async query<R>(fn: () => R): Promise<R> {
+        return fn();
     }
 
-    private getRulesListPath(): string {
-        return this.fs.join(this.masterDir, 'rules', 'index.json');
-    }
-
-    private getMasterRulesPath(): string {
-        return this.fs.join(this.masterDir, 'master-rules.md');
-    }
-
-    load(): RulesConfig {
-        const configPath = this.getConfigPath();
-
-        if (this.fs.exists(configPath)) {
+    async load(): Promise<RulesConfig> {
+        return this.query(() => {
             try {
-                const data = this.fs.readFile(configPath);
-                return JSON.parse(data);
+                const rows = this.db.prepare<any>(`
+                    SELECT tool_id, enabled, target_path, global
+                    FROM rules_config
+                `).all();
+
+                const config: RulesConfig = {};
+                for (const row of rows) {
+                    config[row.tool_id] = {
+                        enabled: Boolean(row.enabled),
+                        targetPath: row.target_path,
+                        global: Boolean(row.global)
+                    };
+                }
+
+                return config;
             } catch (error) {
-                console.warn(`[CLI] rules-config.json을 파싱할 수 없어 빈 설정으로 대체합니다. (${configPath})`, error);
+                console.warn('[CLI] rules_config 테이블을 읽을 수 없어 빈 설정으로 대체합니다.', error);
                 return {};
             }
-        }
-
-        return {};
-    }
-
-    save(config: RulesConfig): void {
-        const validatedConfig = validateData(RulesConfigSchema, config, 'Invalid rules config');
-
-        Object.keys(validatedConfig).forEach(toolId => {
-            const meta = getToolMetadata(toolId);
-            if (!meta?.rulesFilename) {
-                throw new Error(`Unknown tool in rules-config: ${toolId}`);
-            }
         });
-
-        if (!this.fs.exists(this.masterDir)) {
-            this.fs.mkdir(this.masterDir);
-        }
-
-        const configPath = this.getConfigPath();
-        this.fs.writeFile(configPath, JSON.stringify(validatedConfig, null, 2));
     }
 
-    init(): void {
-        const configPath = this.getConfigPath();
+    async save(config: RulesConfig): Promise<void> {
+        return this.query(() => {
+            const validatedConfig = validateData(RulesConfigSchema, config, 'Invalid rules config');
 
-        if (this.fs.exists(configPath)) {
-            return;
-        }
+            // Validate all tool IDs
+            Object.keys(validatedConfig).forEach(toolId => {
+                const meta = getToolMetadata(toolId);
+                if (!meta?.rulesFilename) {
+                    throw new Error(`Unknown tool in rules-config: ${toolId}`);
+                }
+            });
 
-        const defaultConfig: RulesConfig = {};
-        const rulesTools = getRulesCapableTools();
+            this.db.transaction(() => {
+                // Clear existing config
+                this.db.prepare('DELETE FROM rules_config').run();
 
-        for (const tool of rulesTools) {
-            defaultConfig[tool.id] = {
-                enabled: true,
-                targetPath: '',
-                global: true,
-            };
-        }
+                // Insert new config
+                const stmt = this.db.prepare(`
+                    INSERT INTO rules_config (tool_id, enabled, target_path, global, updated_at)
+                    VALUES (?, ?, ?, ?, datetime('now'))
+                `);
 
-        this.save(defaultConfig);
-        console.log(`[CLI] rules-config.json이 생성되었습니다: ${configPath}`);
+                for (const [toolId, value] of Object.entries(validatedConfig)) {
+                    stmt.run(
+                        toolId,
+                        value.enabled ? 1 : 0,
+                        value.targetPath,
+                        value.global ? 1 : 0
+                    );
+                }
+            });
+        });
     }
 
-    // Multi-rules management implementation
+    async init(): Promise<void> {
+        return this.query(() => {
+            // Check if config already exists
+            const count = this.db.prepare<{ count: number }>(`
+                SELECT COUNT(*) as count FROM rules_config
+            `).get();
+
+            if (count && count.count > 0) {
+                return;
+            }
+
+            const defaultConfig: RulesConfig = {};
+            const rulesTools = getRulesCapableTools();
+
+            for (const tool of rulesTools) {
+                defaultConfig[tool.id] = {
+                    enabled: true,
+                    targetPath: '',
+                    global: true,
+                };
+            }
+
+            // Use sync version of save within this query
+            const validatedConfig = validateData(RulesConfigSchema, defaultConfig, 'Invalid rules config');
+
+            this.db.transaction(() => {
+                const stmt = this.db.prepare(`
+                    INSERT INTO rules_config (tool_id, enabled, target_path, global, updated_at)
+                    VALUES (?, ?, ?, ?, datetime('now'))
+                `);
+
+                for (const [toolId, value] of Object.entries(validatedConfig)) {
+                    stmt.run(
+                        toolId,
+                        value.enabled ? 1 : 0,
+                        value.targetPath,
+                        value.global ? 1 : 0
+                    );
+                }
+            });
+
+            console.log('[CLI] rules_config 테이블이 초기화되었습니다.');
+        });
+    }
 
     async getRulesList(): Promise<Rule[]> {
-        const listPath = this.getRulesListPath();
-
-        if (this.fs.exists(listPath)) {
+        return this.query(() => {
             try {
-                const data = this.fs.readFile(listPath);
-                const json = JSON.parse(data);
-                return json.rules || [];
+                const rows = this.db.prepare<any>(`
+                    SELECT id, name, content, is_active, order_index, created_at, updated_at
+                    FROM rules
+                    WHERE is_archived = 0
+                    ORDER BY order_index ASC, created_at DESC
+                `).all();
+
+                return rows.map(row => ({
+                    id: row.id,
+                    name: row.name,
+                    content: row.content,
+                    isActive: Boolean(row.is_active),
+                    orderIndex: row.order_index,
+                    createdAt: row.created_at,
+                    updatedAt: row.updated_at
+                }));
             } catch (error) {
-                console.error('Failed to parse rules list:', error);
+                console.warn('[CLI] rules 테이블을 읽을 수 없어 빈 목록으로 대체합니다.', error);
                 return [];
             }
-        }
+        });
+    }
 
-        // Migration: If list.json doesn't exist but master-rules.md does
-        const masterPath = this.getMasterRulesPath();
-        if (this.fs.exists(masterPath)) {
-            const content = this.fs.readFile(masterPath);
-            const defaultRule: Rule = {
-                id: randomUUID(),
-                name: 'Default Rules',
-                content: content,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
+    async saveRulesList(rules: Rule[]): Promise<void> {
+        return this.query(() => {
+            this.db.transaction(() => {
+                // Clear existing rules
+                this.db.prepare('DELETE FROM rules').run();
 
-            await this.saveRulesList([defaultRule]);
-            return [defaultRule];
-        }
+                // Insert new rules
+                const stmt = this.db.prepare(`
+                    INSERT INTO rules (id, name, content, is_active, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `);
 
-        return [];
+                for (const rule of rules) {
+                    stmt.run(
+                        rule.id,
+                        rule.name,
+                        rule.content,
+                        rule.isActive ? 1 : 0,
+                        rule.createdAt,
+                        rule.updatedAt
+                    );
+                }
+            });
+        });
     }
 
     async getRule(id: string): Promise<Rule | null> {
-        const rules = await this.getRulesList();
-        return rules.find(r => r.id === id) || null;
+        return this.query(() => {
+            try {
+                const row = this.db.prepare<any>(`
+                    SELECT id, name, content, is_active, order_index, created_at, updated_at
+                    FROM rules
+                    WHERE id = ? AND is_archived = 0
+                `).get(id);
+
+                if (!row) {
+                    return null;
+                }
+
+                return {
+                    id: row.id,
+                    name: row.name,
+                    content: row.content,
+                    isActive: Boolean(row.is_active),
+                    orderIndex: row.order_index,
+                    createdAt: row.created_at,
+                    updatedAt: row.updated_at
+                };
+            } catch (error) {
+                console.warn(`[CLI] Rule ${id}를 읽을 수 없습니다.`, error);
+                return null;
+            }
+        });
     }
 
     async createRule(name: string, content: string): Promise<Rule> {
-        const rules = await this.getRulesList();
+        return this.query(() => {
+            const now = new Date().toISOString();
+            const maxOrder = this.db.prepare<{ maxIndex: number }>(`
+                SELECT MAX(order_index) as maxIndex FROM rules
+            `).get();
+            const nextOrder = (maxOrder?.maxIndex ?? 0) + 1;
 
-        // If this is the first rule, make it active
-        const isActive = rules.length === 0;
+            const rule: Rule = {
+                id: randomUUID(),
+                name,
+                content,
+                isActive: false,
+                orderIndex: nextOrder,
+                createdAt: now,
+                updatedAt: now
+            };
 
-        const newRule: Rule = {
-            id: randomUUID(),
-            name,
-            content,
-            isActive,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
+            this.db.prepare(`
+                INSERT INTO rules (id, name, content, is_active, order_index, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).run(
+                rule.id,
+                rule.name,
+                rule.content,
+                rule.isActive ? 1 : 0,
+                rule.orderIndex,
+                rule.createdAt,
+                rule.updatedAt
+            );
 
-        rules.push(newRule);
-        await this.saveRulesList(rules);
-
-        if (isActive) {
-            await this.updateMasterRulesFile(content);
-        }
-
-        return newRule;
+            return rule;
+        });
     }
 
     async updateRule(id: string, content: string, name?: string): Promise<Rule> {
-        const rules = await this.getRulesList();
-        const index = rules.findIndex(r => r.id === id);
+        return this.query(async () => {
+            const existing = await this.getRule(id);
+            if (!existing) {
+                throw new Error(`Rule not found: ${id}`);
+            }
 
-        if (index === -1) {
-            throw new Error(`Rule not found: ${id}`);
-        }
+            const updated: Rule = {
+                ...existing,
+                content,
+                ...(name && { name }),
+                updatedAt: new Date().toISOString()
+            };
 
-        rules[index].content = content;
-        if (name !== undefined) {
-            rules[index].name = name;
-        }
-        rules[index].updatedAt = new Date().toISOString();
+            this.db.prepare(`
+                UPDATE rules
+                SET name = ?, content = ?, updated_at = ?
+                WHERE id = ?
+            `).run(
+                updated.name,
+                updated.content,
+                updated.updatedAt,
+                id
+            );
 
-        await this.saveRulesList(rules);
-
-        if (rules[index].isActive) {
-            await this.updateMasterRulesFile(content);
-        }
-
-        return rules[index];
+            return updated;
+        });
     }
 
     async deleteRule(id: string): Promise<void> {
-        const rules = await this.getRulesList();
-        const rule = rules.find(r => r.id === id);
-
-        if (!rule) {
-            throw new Error(`Rule not found: ${id}`);
-        }
-
-        if (rule.isActive) {
-            throw new Error('Cannot delete active rule');
-        }
-
-        const newRules = rules.filter(r => r.id !== id);
-        await this.saveRulesList(newRules);
+        return this.query(() => {
+            // Soft delete
+            const now = new Date().toISOString();
+            this.db.prepare(`
+                UPDATE rules 
+                SET is_archived = 1, is_active = 0, updated_at = ? 
+                WHERE id = ?
+            `).run(now, id);
+        });
     }
 
     async setActiveRule(id: string): Promise<void> {
-        const rules = await this.getRulesList();
-        const index = rules.findIndex(r => r.id === id);
+        return this.query(() => {
+            this.db.transaction(() => {
+                // Deactivate all rules
+                this.db.prepare('UPDATE rules SET is_active = 0').run();
 
-        if (index === -1) {
-            throw new Error(`Rule not found: ${id}`);
-        }
-
-        // Deactivate all
-        rules.forEach(r => r.isActive = false);
-
-        // Activate target
-        rules[index].isActive = true;
-
-        await this.saveRulesList(rules);
-        await this.updateMasterRulesFile(rules[index].content);
+                // Activate the specified rule
+                this.db.prepare(`
+                    UPDATE rules SET is_active = 1, updated_at = datetime('now')
+                    WHERE id = ?
+                `).run(id);
+            });
+        });
     }
 
-    private async saveRulesList(rules: Rule[]): Promise<void> {
-        const listPath = this.getRulesListPath();
-        const dir = this.fs.dirname(listPath);
+    async getActiveRule(): Promise<Rule | null> {
+        return this.query(() => {
+            try {
+                const row = this.db.prepare<any>(`
+                    SELECT id, name, content, is_active, created_at, updated_at
+                    FROM rules
+                    WHERE is_active = 1 AND is_archived = 0
+                    LIMIT 1
+                `).get();
 
-        console.log(`[CLI] DEBUG: saveRulesList - listPath=${listPath}, dir=${dir}`);
+                if (!row) {
+                    return null;
+                }
 
-        if (!this.fs.exists(dir)) {
-            console.log(`[CLI] DEBUG: Creating directory: ${dir}`);
-            // Create parent directory first if needed
-            const parentDir = this.fs.dirname(dir);
-            if (!this.fs.exists(parentDir)) {
-                this.fs.mkdir(parentDir);
+                return {
+                    id: row.id,
+                    name: row.name,
+                    content: row.content,
+                    isActive: Boolean(row.is_active),
+                    createdAt: row.created_at,
+                    updatedAt: row.updated_at
+                };
+            } catch (error) {
+                console.warn('[CLI] Active rule을 읽을 수 없습니다.', error);
+                return null;
             }
-            this.fs.mkdir(dir);
-        }
-
-        const content = JSON.stringify({ rules }, null, 2);
-        console.log(`[CLI] DEBUG: Writing rules list - ${rules.length} rules`);
-        this.fs.writeFile(listPath, content);
-        console.log(`[CLI] DEBUG: Rules list saved successfully`);
+        });
     }
 
-    private async updateMasterRulesFile(content: string): Promise<void> {
-        const masterPath = this.getMasterRulesPath();
-        this.fs.writeFile(masterPath, content);
+    async reorderRules(ids: string[]): Promise<void> {
+        return this.query(() => {
+            this.db.transaction(() => {
+                const stmt = this.db.prepare(`
+                    UPDATE rules
+                    SET order_index = ?, updated_at = datetime('now')
+                    WHERE id = ?
+                `);
+
+                ids.forEach((id, index) => {
+                    stmt.run(index, id);
+                });
+            });
+        });
     }
 }

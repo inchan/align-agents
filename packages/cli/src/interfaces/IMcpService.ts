@@ -22,6 +22,7 @@ export interface McpSet {
     items: McpSetItem[];
     isActive: boolean;
     isArchived?: boolean;
+    orderIndex?: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -41,4 +42,5 @@ export interface IMcpService {
     updateMcpSet(id: string, updates: { name?: string; description?: string; items?: McpSetItem[]; isArchived?: boolean }): Promise<McpSet>;
     deleteMcpSet(id: string): Promise<void>;
     setActiveMcpSet(id: string): Promise<void>;
+    reorderMcpSets(ids: string[]): Promise<void>;
 }

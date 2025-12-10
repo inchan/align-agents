@@ -1,18 +1,19 @@
-import { IFileSystem } from '../../interfaces/IFileSystem.js';
 import { ISyncConfigRepository } from '../../interfaces/repositories/ISyncConfigRepository.js';
 import { SyncConfig } from '../../interfaces/ISyncService.js';
+import { IDatabase } from '../../interfaces/IDatabase.js';
 import { validateData } from '../../utils/validation.js';
 import { SyncConfigSchema } from '../../schemas/mcp.schema.js';
 import { KNOWN_TOOLS, getToolMetadata } from '../../constants/tools.js';
 
+/**
+ * SQLite-based Sync Configuration Repository
+ * Uses async wrappers for interface consistency
+ */
 export class SyncConfigRepository implements ISyncConfigRepository {
-    constructor(
-        private fs: IFileSystem,
-        private masterDir: string
-    ) { }
+    constructor(private db: IDatabase) { }
 
-    private getConfigPath(): string {
-        return this.fs.join(this.masterDir, 'sync-config.json');
+    private async query<R>(fn: () => R): Promise<R> {
+        return fn();
     }
 
     private getDefaultSyncConfig(): SyncConfig {
@@ -25,62 +26,62 @@ export class SyncConfigRepository implements ISyncConfigRepository {
         return defaults;
     }
 
-    private normalizeSyncConfig(raw: any): SyncConfig {
-        if (raw && typeof raw === 'object' && raw.tools && typeof raw.tools === 'object') {
-            raw = raw.tools;
-        }
-
-        const defaults = this.getDefaultSyncConfig();
-        if (!raw || typeof raw !== 'object') {
-            return defaults;
-        }
-
-        const result: SyncConfig = { ...defaults };
-
-        for (const [toolId, value] of Object.entries(raw)) {
-            if (!value || typeof value !== 'object') continue;
-            const enabled = typeof (value as any).enabled === 'boolean' ? (value as any).enabled : true;
-            const servers = Array.isArray((value as any).servers)
-                ? (value as any).servers.filter((s: any) => typeof s === 'string')
-                : null;
-
-            result[toolId] = { enabled, servers };
-        }
-
-        return result;
-    }
-
-    load(): SyncConfig {
-        const configPath = this.getConfigPath();
-
-        let parsed: any = {};
-        if (this.fs.exists(configPath)) {
+    async load(): Promise<SyncConfig> {
+        return this.query(() => {
             try {
-                const data = this.fs.readFile(configPath);
-                parsed = JSON.parse(data);
-            } catch {
-                parsed = {};
-            }
-        }
+                const rows = this.db.prepare<any>(`
+                    SELECT tool_id, enabled, servers
+                    FROM sync_config
+                `).all();
 
-        return this.normalizeSyncConfig(parsed);
+                const defaults = this.getDefaultSyncConfig();
+                const config: SyncConfig = { ...defaults };
+
+                for (const row of rows) {
+                    config[row.tool_id] = {
+                        enabled: Boolean(row.enabled),
+                        servers: row.servers ? JSON.parse(row.servers) : null
+                    };
+                }
+
+                return config;
+            } catch (error) {
+                console.warn('[CLI] sync_config 테이블을 읽을 수 없어 기본 설정으로 대체합니다.', error);
+                return this.getDefaultSyncConfig();
+            }
+        });
     }
 
-    save(config: SyncConfig): void {
-        const validatedConfig = validateData(SyncConfigSchema, config, 'Invalid sync config');
+    async save(config: SyncConfig): Promise<void> {
+        return this.query(() => {
+            const validatedConfig = validateData(SyncConfigSchema, config, 'Invalid sync config');
 
-        for (const toolId of Object.keys(validatedConfig)) {
-            const known = KNOWN_TOOLS.find(t => t.id === toolId);
-            if (!known) {
-                throw new Error(`Unknown tool in sync-config: ${toolId}`);
+            // Validate all tool IDs
+            for (const toolId of Object.keys(validatedConfig)) {
+                const known = KNOWN_TOOLS.find(t => t.id === toolId);
+                if (!known) {
+                    throw new Error(`Unknown tool in sync-config: ${toolId}`);
+                }
             }
-        }
 
-        if (!this.fs.exists(this.masterDir)) {
-            this.fs.mkdir(this.masterDir);
-        }
+            this.db.transaction(() => {
+                // Clear existing config
+                this.db.prepare('DELETE FROM sync_config').run();
 
-        const configPath = this.getConfigPath();
-        this.fs.writeFile(configPath, JSON.stringify(validatedConfig, null, 2));
+                // Insert new config
+                const stmt = this.db.prepare(`
+                    INSERT INTO sync_config (tool_id, enabled, servers, updated_at)
+                    VALUES (?, ?, ?, datetime('now'))
+                `);
+
+                for (const [toolId, value] of Object.entries(validatedConfig)) {
+                    stmt.run(
+                        toolId,
+                        value.enabled ? 1 : 0,
+                        value.servers ? JSON.stringify(value.servers) : null
+                    );
+                }
+            });
+        });
     }
 }

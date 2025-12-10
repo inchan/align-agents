@@ -1,16 +1,17 @@
 import os from 'os';
 import { getConfigDir } from '../../constants/paths.js';
 import { IMcpService, McpDef, McpSet, McpSetItem } from '../../interfaces/IMcpService.js';
-import { IFileSystem } from '../../interfaces/IFileSystem.js';
 import { McpRepository } from '../../infrastructure/repositories/McpRepository.js';
+import { getDatabase } from '../../infrastructure/database.js';
 
 export class McpService implements IMcpService {
     private repository: McpRepository;
     private masterDir: string;
 
-    constructor(private fs: IFileSystem, masterDir?: string) {
+    constructor(masterDir?: string) {
         this.masterDir = masterDir || this.getDefaultMasterDir();
-        this.repository = new McpRepository(fs, this.masterDir);
+        const db = getDatabase();
+        this.repository = new McpRepository(db);
     }
 
     private getDefaultMasterDir(): string {
@@ -23,7 +24,7 @@ export class McpService implements IMcpService {
 
     public setMasterDir(dir: string): void {
         this.masterDir = dir;
-        this.repository = new McpRepository(this.fs, dir);
+        // Repository doesn't need to be recreated as it uses global DB instance
     }
 
     // MCP Definitions Pool Management
@@ -70,5 +71,9 @@ export class McpService implements IMcpService {
 
     async setActiveMcpSet(id: string): Promise<void> {
         return this.repository.setActiveSet(id);
+    }
+
+    async reorderMcpSets(ids: string[]): Promise<void> {
+        return this.repository.reorderMcpSets(ids);
     }
 }

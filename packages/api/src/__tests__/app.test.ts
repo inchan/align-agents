@@ -68,6 +68,7 @@ describe('API controllers', () => {
 
     describe('RulesController', () => {
         // Master rules tests removed - methods no longer exist
+        it.skip('placeholder', () => {});
     });
 
     describe('ToolsController', () => {
@@ -98,7 +99,7 @@ describe('API controllers', () => {
             ]);
             const controller = new McpController();
             const res = createRes();
-            await controller.sync({ body: { toolId: 't1', serverIds: ['s1'], strategy: 'merge' } } as any, res);
+            await controller.sync({ body: { toolId: 't1', serverIds: ['s1'], strategy: 'merge', sourceId: 'test-source-id' } } as any, res);
             expect(res.statusCode).toBe(200);
             expect(res.body.syncedServers).toContain('s1');
         });
@@ -106,7 +107,7 @@ describe('API controllers', () => {
         it('sync all tools delegates to use case', async () => {
             const controller = new McpController();
             const res = createRes();
-            await controller.sync({ body: { strategy: 'merge' } } as any, res);
+            await controller.sync({ body: { strategy: 'merge', sourceId: 'test-source-id' } } as any, res);
             expect(res.statusCode).toBe(200);
             expect(res.body.success).toBe(true);
         });

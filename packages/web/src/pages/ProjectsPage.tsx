@@ -5,6 +5,7 @@ import {
     createProject,
     updateProject,
     deleteProject,
+    reorderProjects,
     scanProjects,
     pickProjectFolder,
     fetchToolMetadata,
@@ -13,7 +14,7 @@ import {
     type ToolMetadata,
     fetchProjectDetails
 } from '../lib/api'
-import { cn, getErrorMessage } from '../lib/utils'
+import { cn, getErrorMessage, getCommonSortableStyle } from '../lib/utils'
 import {
     Briefcase,
     Plus,
@@ -29,13 +30,14 @@ import {
     FolderOpen,
     Settings,
     FileJson,
-    Box
+    Box,
+    GripVertical
 } from 'lucide-react'
 
 // Shared Components
-// import { StatusBadge } from '@/components/ui/status-badge'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingState } from '@/components/shared/loading-state'
+import { SortMenu } from '../components/common/SortMenu'
 
 // UI Components
 import { Button } from '@/components/ui/button'
@@ -67,6 +69,120 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { TruncateTooltip } from '@/components/ui/truncate-tooltip'
+
+import { DndContext, closestCenter } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+
+import { useSortableList } from '../hooks/useSortableList'
+
+// --- Components ---
+
+function getSourceIcon(source: string) {
+    switch (source) {
+        case 'cursor': return <Code2 className="w-4 h-4 text-blue-500" />
+        case 'vscode': return <Code2 className="w-4 h-4 text-sky-500" />
+        case 'windsurf': return <Terminal className="w-4 h-4 text-purple-500" />
+        case 'global': return <Globe className="w-4 h-4 text-secondary" />
+        default: return <Folder className="w-4 h-4" />
+    }
+}
+
+interface SortableProjectItemProps {
+    project: UserProject
+    selectedProjectId: string | null
+    setSelectedProjectId: (id: string) => void
+    openEditModal: (project: UserProject) => void
+    handleDeleteClick: (id: string) => void
+    isDragEnabled?: boolean
+}
+
+function SortableProjectItem({
+    project,
+    selectedProjectId,
+    setSelectedProjectId,
+    openEditModal,
+    handleDeleteClick,
+    isDragEnabled
+}: SortableProjectItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({
+        id: project.id,
+        disabled: !isDragEnabled
+    })
+
+    const style = getCommonSortableStyle(transform, transition, isDragging)
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            onClick={() => setSelectedProjectId(project.id)}
+            className={cn(
+                "group relative px-3 py-3 rounded-lg border transition-all duration-200 cursor-pointer",
+                selectedProjectId === project.id
+                    ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                    : "border-border bg-card hover:bg-accent/50 hover:border-primary/30"
+            )}
+        >
+            <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        className={cn(
+                            "group/handle shrink-0 text-muted-foreground transition-colors",
+                            isDragEnabled ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-default opacity-50"
+                        )}
+                    >
+                        <GripVertical className="w-4 h-4" />
+                    </div>
+
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        {getSourceIcon(project.source)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <TruncateTooltip className="font-medium text-sm">{project.name}</TruncateTooltip>
+                        <TruncateTooltip
+                            className="text-xs text-muted-foreground"
+                            content={project.path}
+                        >
+                            {project.path.split('/').pop()}
+                        </TruncateTooltip>
+                    </div>
+                </div>
+                <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity flex items-center", selectedProjectId === project.id ? "opacity-100" : "")}>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+                                <MoreVertical className="w-3.5 h-3.5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditModal(project) }}>
+                                <Edit className="w-4 h-4 mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClick(project.id)
+                                }}
+                                className="text-destructive focus:text-destructive"
+                            >
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+        </div>
+    )
+}
 
 export function ProjectsPage() {
     const queryClient = useQueryClient()
@@ -104,6 +220,28 @@ export function ProjectsPage() {
         queryKey: ['projectDetails', selectedProjectId],
         queryFn: () => selectedProjectId && selectedProjectId !== 'global' ? fetchProjectDetails(selectedProjectId) : null,
         enabled: !!selectedProjectId && selectedProjectId !== 'global'
+    })
+
+    // --- Sorting & Drag-Drop ---
+    const {
+        sortMode,
+        setSortMode,
+        sortedItems: sortedProjects,
+        handleDragEnd,
+        sensors,
+        isDragEnabled
+    } = useSortableList<UserProject>({
+        items: projects,
+        onReorder: async (ids) => {
+            await reorderProjects(ids)
+            queryClient.invalidateQueries({ queryKey: ['projects'] })
+        },
+        getName: (item) => item.name,
+        // Projects might not have explicit createdAt/updatedAt types in api.ts, fallback to current time
+        getCreatedAt: (item) => (item as any).createdAt || new Date().toISOString(),
+        getUpdatedAt: (item) => (item as any).updatedAt || new Date().toISOString(),
+        getOrderIndex: (item) => (item as any).orderIndex,
+        storageKey: 'projects-list-sort'
     })
 
     // --- Mutations ---
@@ -201,21 +339,17 @@ export function ProjectsPage() {
         setIsEditOpen(true)
     }
 
+    const handleDeleteClick = (id: string) => {
+        if (confirm('Are you sure you want to delete this project?')) {
+            deleteMutation.mutate(id)
+        }
+    }
+
     // --- Render Helpers ---
-    const filteredProjects = projects.filter(p =>
+    const filteredProjects = sortedProjects.filter(p =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.path.toLowerCase().includes(searchQuery.toLowerCase())
     )
-
-    const getSourceIcon = (source: string) => {
-        switch (source) {
-            case 'cursor': return <Code2 className="w-4 h-4 text-blue-500" />
-            case 'vscode': return <Code2 className="w-4 h-4 text-sky-500" />
-            case 'windsurf': return <Terminal className="w-4 h-4 text-purple-500" />
-            case 'global': return <Globe className="w-4 h-4 text-secondary" />
-            default: return <Folder className="w-4 h-4" />
-        }
-    }
 
     const getToolInfo = (meta: ToolMetadata) => {
         const tool = installedTools.find(t => t.id === meta.id)
@@ -245,13 +379,14 @@ export function ProjectsPage() {
                                     <h3 className="font-semibold text-sm flex items-center gap-2">
                                         <Briefcase className="w-4 h-4" /> Projects
                                     </h3>
-                                    <div className="flex gap-1">
+                                    <div className="flex gap-1 items-center">
                                         <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => scanMutation.mutate()} title="Scan Projects">
                                             <RefreshCw className={cn("w-3.5 h-3.5", scanMutation.isPending && "animate-spin")} />
                                         </Button>
                                         <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => { resetForm(); setIsCreateOpen(true) }} title="Add Project">
                                             <Plus className="w-4 h-4" />
                                         </Button>
+                                        <SortMenu currentSort={sortMode} onSortChange={setSortMode} className="-mr-1" />
                                     </div>
                                 </div>
                                 <div className="relative">
@@ -267,7 +402,7 @@ export function ProjectsPage() {
 
                             <div className="p-3 flex-1 flex flex-col min-h-0">
                                 <ScrollArea className="flex-1">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 pr-2.5">
                                         {/* Global Item */}
                                         <div
                                             onClick={() => setSelectedProjectId('global')}
@@ -292,58 +427,28 @@ export function ProjectsPage() {
                                         <Separator className="my-2" />
 
                                         {/* Project Items */}
-                                        {filteredProjects.map(project => (
-                                            <div
-                                                key={project.id}
-                                                onClick={() => setSelectedProjectId(project.id)}
-                                                className={cn(
-                                                    "group relative px-3 py-3 rounded-lg border transition-all duration-200 cursor-pointer",
-                                                    selectedProjectId === project.id
-                                                        ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
-                                                        : "border-border bg-card hover:bg-accent/50 hover:border-primary/30"
-                                                )}
+                                        <DndContext
+                                            sensors={sensors}
+                                            collisionDetection={closestCenter}
+                                            onDragEnd={handleDragEnd}
+                                        >
+                                            <SortableContext
+                                                items={filteredProjects.map(p => p.id)}
+                                                strategy={verticalListSortingStrategy}
                                             >
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                                            {getSourceIcon(project.source)}
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <TruncateTooltip className="font-medium text-sm">{project.name}</TruncateTooltip>
-                                                            <TruncateTooltip
-                                                                className="text-xs text-muted-foreground"
-                                                                content={project.path}
-                                                            >
-                                                                {project.path.split('/').pop()}
-                                                            </TruncateTooltip>
-                                                        </div>
-                                                    </div>
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-7 w-7">
-                                                                    <MoreVertical className="w-3.5 h-3.5" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditModal(project) }}>
-                                                                    <Edit className="w-4 h-4 mr-2" /> Edit
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (confirm('Are you sure?')) deleteMutation.mutate(project.id)
-                                                                    }}
-                                                                    className="text-destructive focus:text-destructive"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4 mr-2" /> Delete
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
+                                                {filteredProjects.map(project => (
+                                                    <SortableProjectItem
+                                                        key={project.id}
+                                                        project={project}
+                                                        selectedProjectId={selectedProjectId}
+                                                        setSelectedProjectId={setSelectedProjectId}
+                                                        openEditModal={openEditModal}
+                                                        handleDeleteClick={handleDeleteClick}
+                                                        isDragEnabled={isDragEnabled}
+                                                    />
+                                                ))}
+                                            </SortableContext>
+                                        </DndContext>
                                     </div>
                                 </ScrollArea>
                             </div>

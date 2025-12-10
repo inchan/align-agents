@@ -1,9 +1,10 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { loadSyncConfig, getGlobalConfig } from '../services/sync.js';
-import { loadRulesConfig } from '../services/rules.js';
+import { SyncService } from '../services/impl/SyncService.js';
+import { RulesService } from '../services/impl/RulesService.js';
+import { NodeFileSystem } from '../infrastructure/NodeFileSystem.js';
 import { validateDataSafe } from '../utils/validation.js';
-import { MasterMcpConfigSchema, SyncConfigSchema } from '../schemas/mcp.schema.js';
+import { SyncConfigSchema } from '../schemas/mcp.schema.js';
 import { RulesConfigSchema, GlobalConfigSchema } from '../schemas/rules.schema.js';
 
 export const validateCommand = new Command('validate')
@@ -11,8 +12,13 @@ export const validateCommand = new Command('validate')
     .option('--mcp', 'MCP 설정만 검증')
     .option('--rules', 'Rules 설정만 검증')
     .option('--config', '전역 설정만 검증')
-    .action((options) => {
+    .action(async (options) => {
         console.log(chalk.bold('\n🔍 설정 파일 검증\n'));
+
+        // Initialize Services
+        const fs = new NodeFileSystem();
+        const syncService = new SyncService(fs);
+        const rulesService = new RulesService(fs);
 
         let hasErrors = false;
 
@@ -21,17 +27,17 @@ export const validateCommand = new Command('validate')
 
         // MCP 설정 검증
         if (validateAll || options.mcp) {
-            hasErrors = validateMcp() || hasErrors;
+            hasErrors = (await validateMcp(syncService)) || hasErrors;
         }
 
         // Rules 설정 검증
         if (validateAll || options.rules) {
-            hasErrors = validateRules() || hasErrors;
+            hasErrors = (await validateRules(rulesService)) || hasErrors;
         }
 
         // 전역 설정 검증
         if (validateAll || options.config) {
-            hasErrors = validateGlobalConfig() || hasErrors;
+            hasErrors = (await validateGlobalConfig(syncService)) || hasErrors;
         }
 
         console.log('');
@@ -44,7 +50,7 @@ export const validateCommand = new Command('validate')
         }
     });
 
-function validateMcp(): boolean {
+async function validateMcp(syncService: SyncService): Promise<boolean> {
     console.log(chalk.bold('📦 MCP 설정 검증'));
 
     let hasErrors = false;
@@ -53,7 +59,7 @@ function validateMcp(): boolean {
         // Master MCP validation removed
 
         // 동기화 설정 검증
-        const syncConfig = loadSyncConfig();
+        const syncConfig = await syncService.loadSyncConfig();
         const syncResult = validateDataSafe(SyncConfigSchema, syncConfig);
 
         if (!syncResult.success) {
@@ -72,13 +78,13 @@ function validateMcp(): boolean {
     return hasErrors;
 }
 
-function validateRules(): boolean {
+async function validateRules(rulesService: RulesService): Promise<boolean> {
     console.log(chalk.bold('📝 Rules 설정 검증'));
 
     let hasErrors = false;
 
     try {
-        const rulesConfig = loadRulesConfig();
+        const rulesConfig = await rulesService.loadRulesConfig();
         const result = validateDataSafe(RulesConfigSchema, rulesConfig);
 
         if (!result.success) {
@@ -97,13 +103,13 @@ function validateRules(): boolean {
     return hasErrors;
 }
 
-function validateGlobalConfig(): boolean {
+async function validateGlobalConfig(syncService: SyncService): Promise<boolean> {
     console.log(chalk.bold('⚙️  전역 설정 검증'));
 
     let hasErrors = false;
 
     try {
-        const globalConfig = getGlobalConfig();
+        const globalConfig = await syncService.getGlobalConfig();
         const result = validateDataSafe(GlobalConfigSchema, globalConfig);
 
         if (!result.success) {

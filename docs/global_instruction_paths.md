@@ -12,7 +12,7 @@
 ## 2. Claude Code CLI
 
 - **전역 지침 파일**: `~/.claude/CLAUDE.md`
-- **전역 설정 파일**: `~/.claude/settings.json`
+- **전역 설정 파일**: `~/.claude.json`
 - **설명**: `CLAUDE.md` 파일에 작성된 내용은 모든 프로젝트에서 Claude Code가 참조하는 전역 컨텍스트로 사용됩니다.
 
 ## 3. GitHub Copilot CLI
@@ -63,7 +63,7 @@
 | 도구 | 전역 지침 파일 (Global Instructions) | 전역 설정 파일 (Config) | 비고 |
 |------|-----------------------------------|------------------------|-----|
 | **Claude Desktop** | (없음 / 앱 내장) | `~/Library/Application Support/Claude/claude_desktop_config.json` | MCP 설정 가능 |
-| **Claude Code** | `~/.claude/CLAUDE.md` | `~/.claude/settings.json` | |
+| **Claude Code** | `~/.claude/CLAUDE.md` | `~/.claude.json` | |
 | **GitHub Copilot** | (리포지토리 단위 `.github/copilot-instructions.md`) | `~/.copilot/config.json` | CLI 전역 지침 파일 없음 |
 | **OpenAI Codex** | `~/.codex/AGENTS.md` | `~/.codex/config.toml` | |
 | **Gemini CLI** | `~/.gemini/GEMINI.md` | `~/.gemini/settings.json` | |

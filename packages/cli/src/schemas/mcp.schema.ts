@@ -19,6 +19,7 @@ export const SyncConfigSchema = z.record(
     z.object({
         enabled: z.boolean(),
         servers: z.array(z.string()).nullable(),
+        mcpSetId: z.string().nullable().optional(),
     })
 );
 

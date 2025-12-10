@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchRulesList, createRule, updateRule, deleteRule, type Rule } from '../lib/api'
+import { fetchRulesList, createRule, updateRule, deleteRule, reorderRules, type Rule } from '../lib/api'
 import { useState, useEffect } from 'react'
 
 import { toast } from 'sonner'
 import { Spinner } from '../components/ui/Spinner'
-import { getErrorMessage, cn } from '../lib/utils'
+import { getErrorMessage, cn, getCommonSortableStyle } from '../lib/utils'
 import { Plus, Trash2, Save, FileText, X, GripVertical } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -12,10 +12,14 @@ import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { DndContext, closestCenter } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+
 import { TruncateTooltip } from '@/components/ui/truncate-tooltip'
+import { SortMenu } from '../components/common/SortMenu'
+import { useSortableList } from '../hooks/useSortableList'
+import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/shared/empty-state'
 
 interface SortableRuleItemProps {
     rule: Rule
@@ -23,9 +27,10 @@ interface SortableRuleItemProps {
     setViewedRuleId: (id: string) => void
     setIsEditing: (editing: boolean) => void
     handleDeleteClick: (id: string, name: string) => void
+    isDragEnabled?: boolean
 }
 
-function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, handleDeleteClick }: SortableRuleItemProps) {
+function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, handleDeleteClick, isDragEnabled }: SortableRuleItemProps) {
     const {
         attributes,
         listeners,
@@ -33,13 +38,14 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: rule.id })
+    } = useSortable({
+        id: rule.id,
+        disabled: !isDragEnabled
+    })
 
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-    }
+    const style = getCommonSortableStyle(transform, transition, isDragging)
+
+    const isActive = rule.isActive;
 
     return (
         <div
@@ -53,7 +59,12 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
                 "group relative px-3 py-2.5 rounded-lg border transition-all duration-200 cursor-pointer",
                 viewedRuleId === rule.id
                     ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
-                    : "border-border bg-muted/40 hover:bg-muted/60 hover:border-primary/30 hover:shadow-sm"
+                    : cn(
+                        "border-border hover:shadow-sm",
+                        !isActive
+                            ? "bg-muted/20 hover:bg-muted/40 opacity-70 grayscale-[0.5]"
+                            : "bg-muted/40 hover:bg-muted/60 hover:border-primary/30"
+                    )
             )}
         >
             <div className="flex items-start justify-between gap-2">
@@ -61,26 +72,40 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
                     <div
                         {...attributes}
                         {...listeners}
-                        className="cursor-grab active:cursor-grabbing shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                        className={cn(
+                            "group/handle shrink-0 transition-colors",
+                            isDragEnabled ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-default opacity-50",
+                            !isActive ? "text-muted-foreground/50" : "text-muted-foreground"
+                        )}
                     >
                         <GripVertical className="w-4 h-4" />
                     </div>
 
                     <div className="min-w-0 flex-1">
-                        <TruncateTooltip className="font-medium text-sm transition-colors">
-                            {rule.name}
-                        </TruncateTooltip>
+                        <div className="flex items-center gap-2">
+                            <TruncateTooltip className={cn("font-medium text-sm transition-colors",
+                                viewedRuleId === rule.id ? "text-primary font-semibold" : "",
+                                !isActive && "text-muted-foreground line-through decoration-muted-foreground/50"
+                            )}>
+                                {rule.name}
+                            </TruncateTooltip>
+                            {!isActive && (
+                                <Badge variant="outline" className="h-4 px-1 text-[9px] text-muted-foreground bg-muted/50 border-muted-foreground/20 font-normal">
+                                    Disabled
+                                </Badge>
+                            )}
+                        </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
                             {new Date(rule.updatedAt).toLocaleDateString()}
                         </div>
                     </div>
                 </div>
 
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity", viewedRuleId === rule.id ? "opacity-100" : "")}>
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="h-7 w-7 text-destructive/80 hover:text-destructive hover:bg-destructive/10"
                         onClick={(e) => {
                             e.stopPropagation()
                             handleDeleteClick(rule.id, rule.name)
@@ -120,26 +145,39 @@ export function RulesPage() {
         queryFn: fetchRulesList,
     })
 
-    // Set default viewed rule to active rule
-    // Set default viewed rule to active rule only when initializing or rules list changes
+    // --- Sorting & Drag-Drop ---
+    const {
+        sortMode,
+        setSortMode,
+        sortedItems: sortedRules,
+        handleDragEnd,
+        sensors,
+        isDragEnabled
+    } = useSortableList<Rule>({
+        items: rulesList,
+        onReorder: async (ids) => {
+            await reorderRules(ids)
+            queryClient.invalidateQueries({ queryKey: ['rulesList'] })
+        },
+        getName: (item) => item.name,
+        getCreatedAt: (item) => item.createdAt || new Date().toISOString(),
+        getUpdatedAt: (item) => item.updatedAt || new Date().toISOString(),
+        getOrderIndex: (item) => item.orderIndex,
+        storageKey: 'rules-list-sort'
+    })
+
+    // Set default viewed rule
     useEffect(() => {
-        if (rulesList.length > 0 && !viewedRuleId) {
-            const active = rulesList.find(r => r.isActive) || rulesList[0]
+        if (sortedRules.length > 0 && !viewedRuleId) {
+            // Find active or first in sorted list
+            const active = sortedRules.find(r => r.isActive) || sortedRules[0]
             if (active) {
                 setViewedRuleId(active.id)
             }
         }
-    }, [rulesList, viewedRuleId])
+    }, [sortedRules, viewedRuleId])
 
-    // Derived state for the view
-    const activeRule = rulesList.find(r => r.isActive)
-    // If viewedRuleId is set, find that rule. If not, fallback to active or first.
-    // This removes the need for the effect above entirely for READ purposes.
-    // However, the "Edit" functionality relies on `viewedRule`.
-    // Let's change the selection logic.
-
-    const targetRuleId = viewedRuleId || activeRule?.id || rulesList[0]?.id;
-    const viewedRule = rulesList.find(r => r.id === targetRuleId);
+    const viewedRule = rulesList.find(r => r.id === viewedRuleId) || null
 
     // Mutations
     const createMutation = useMutation({
@@ -171,7 +209,7 @@ export function RulesPage() {
         mutationFn: deleteRule,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['rulesList'] })
-            if (viewedRuleId === deleteMutation.variables) {
+            if (viewedRuleId === deleteConfirmDialog.ruleId) {
                 setViewedRuleId(null)
             }
             toast.success('Rule deleted successfully')
@@ -182,8 +220,6 @@ export function RulesPage() {
             setDeleteConfirmDialog({ isOpen: false, ruleId: null, ruleName: '' })
         }
     })
-
-
 
     const handleCreate = () => {
         if (!newRuleName.trim()) return
@@ -216,35 +252,6 @@ export function RulesPage() {
         }
     }
 
-    // Drag and drop sensors
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 8, // 8px movement required to start drag
-            },
-        })
-    )
-
-    // Handle drag end
-    const handleDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event
-
-        if (over && active.id !== over.id) {
-            const oldIndex = rulesList.findIndex(r => r.id === active.id)
-            const newIndex = rulesList.findIndex(r => r.id === over.id)
-
-            const newOrder = arrayMove(rulesList, oldIndex, newIndex)
-
-            // Update local state immediately for smooth UX
-            queryClient.setQueryData(['rulesList'], newOrder)
-
-            // TODO: Call API to persist the new order
-            // For now, the order will reset on page refresh
-            toast.success('Rule order updated')
-        }
-    }
-
-
     if (rulesLoading) {
         return <div className="h-full flex items-center justify-center"><Spinner size={32} /></div>
     }
@@ -259,9 +266,12 @@ export function RulesPage() {
                         <div className="w-80 flex-shrink-0 flex flex-col min-h-0 border rounded-xl overflow-hidden bg-card/50">
                             <div className="p-4 border-b bg-muted/40 flex items-center justify-between shrink-0">
                                 <h3 className="font-semibold text-sm">Rules</h3>
-                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsCreateModalOpen(true)}>
-                                    <Plus className="w-4 h-4" />
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsCreateModalOpen(true)}>
+                                        <Plus className="w-4 h-4" />
+                                    </Button>
+                                    <SortMenu currentSort={sortMode} onSortChange={setSortMode} className="-mr-1" />
+                                </div>
                             </div>
                             <div className="p-3 flex-1 flex flex-col min-h-0">
                                 <DndContext
@@ -270,11 +280,11 @@ export function RulesPage() {
                                     onDragEnd={handleDragEnd}
                                 >
                                     <SortableContext
-                                        items={rulesList.map(r => r.id)}
+                                        items={sortedRules.map(r => r.id)}
                                         strategy={verticalListSortingStrategy}
                                     >
-                                        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                                            {rulesList.map(rule => (
+                                        <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                            {sortedRules.map(rule => (
                                                 <SortableRuleItem
                                                     key={rule.id}
                                                     rule={rule}
@@ -282,8 +292,16 @@ export function RulesPage() {
                                                     setViewedRuleId={setViewedRuleId}
                                                     setIsEditing={setIsEditing}
                                                     handleDeleteClick={handleDeleteClick}
+                                                    isDragEnabled={isDragEnabled}
                                                 />
                                             ))}
+                                            {sortedRules.length === 0 && (
+                                                <EmptyState
+                                                    icon={FileText}
+                                                    title="No Rules"
+                                                    description="Create a rule to get started."
+                                                />
+                                            )}
                                         </div>
                                     </SortableContext>
                                 </DndContext>
@@ -291,14 +309,14 @@ export function RulesPage() {
                         </div>
 
                         {/* Right: Editor */}
-                        <Card className="flex-1 flex flex-col h-full border-none shadow-lg overflow-hidden">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4 px-6 border-b shrink-0 bg-muted/40">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+                        <Card className="flex-1 flex flex-col h-full border-none shadow-lg overflow-hidden bg-card/50">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4 px-6 border-b shrink-0 bg-muted/40 h-[65px]">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="p-1.5 rounded-md bg-primary/10 text-primary shrink-0">
                                         <FileText className="w-4 h-4" />
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <CardTitle className="text-base font-semibold">
+                                    <div className="min-w-0">
+                                        <CardTitle className="text-base font-semibold truncate">
                                             {viewedRule?.name || 'No rule selected'}
                                         </CardTitle>
                                     </div>
@@ -361,7 +379,6 @@ export function RulesPage() {
                             </CardContent>
                         </Card>
                     </div>
-
 
                     {/* Create Rule Modal */}
                     <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>

@@ -1,73 +1,103 @@
-import { IFileSystem } from '../../interfaces/IFileSystem.js';
 import { IGlobalConfigRepository } from '../../interfaces/repositories/IGlobalConfigRepository.js';
 import { GlobalConfig } from '../../interfaces/ISyncService.js';
+import { IDatabase } from '../../interfaces/IDatabase.js';
 import { validateData } from '../../utils/validation.js';
 import { GlobalConfigSchema } from '../../schemas/rules.schema.js';
 
+/**
+ * SQLite-based Global Configuration Repository
+ * Uses async wrappers for interface consistency
+ */
 export class GlobalConfigRepository implements IGlobalConfigRepository {
     constructor(
-        private fs: IFileSystem,
-        private configDir: string,
-        private legacyConfigPath: string,
+        private db: IDatabase,
         private defaultConfig: GlobalConfig
     ) { }
 
-    private getConfigPath(): string {
-        return this.fs.join(this.configDir, 'config.json');
+    private async query<R>(fn: () => R): Promise<R> {
+        return fn();
     }
 
     private getDefaultConfig(): GlobalConfig {
         return this.defaultConfig;
     }
 
-    init(): void {
-        const configPath = this.getConfigPath();
+    async init(): Promise<void> {
+        return this.query(async () => {
+            // Check if config already exists
+            const count = this.db.prepare<{ count: number }>(`
+                SELECT COUNT(*) as count FROM global_config
+            `).get();
 
-        if (this.fs.exists(configPath)) {
-            return;
-        }
+            if (count && count.count > 0) {
+                return;
+            }
 
-        const defaultConfig = this.getDefaultConfig();
-        this.save(defaultConfig);
-        console.log(`[CLI] config.json이 생성되었습니다: ${configPath}`);
+            const defaultConfig = this.getDefaultConfig();
+            await this.save(defaultConfig);
+            console.log('[CLI] global_config 테이블이 초기화되었습니다.');
+        });
     }
 
-    load(): GlobalConfig {
-        const configPath = this.getConfigPath();
-
-        if (this.fs.exists(configPath)) {
+    async load(): Promise<GlobalConfig> {
+        return this.query(() => {
             try {
-                const data = this.fs.readFile(configPath);
-                return JSON.parse(data);
+                const rows = this.db.prepare<any>(`
+                    SELECT key, value
+                    FROM global_config
+                `).all();
+
+                if (rows.length === 0) {
+                    return this.getDefaultConfig();
+                }
+
+                const config: any = {};
+                for (const row of rows) {
+                    // Parse value based on key type
+                    const key = row.key;
+                    let value = row.value;
+
+                    // Handle boolean values
+                    if (value === 'true') value = true;
+                    else if (value === 'false') value = false;
+                    // Handle numeric values
+                    else if (!isNaN(Number(value))) value = Number(value);
+
+                    config[key] = value;
+                }
+
+                // Merge with defaults to ensure all keys exist
+                return { ...this.getDefaultConfig(), ...config };
             } catch (error) {
-                console.warn(`[CLI] config.json을 파싱할 수 없어 기본 설정으로 대체합니다. (${configPath})`, error);
+                console.warn('[CLI] global_config 테이블을 읽을 수 없어 기본 설정으로 대체합니다.', error);
                 return this.getDefaultConfig();
             }
-        }
-
-        if (this.fs.exists(this.legacyConfigPath)) {
-            try {
-                const legacyData = JSON.parse(this.fs.readFile(this.legacyConfigPath));
-                const migrated = { ...this.defaultConfig, ...legacyData };
-                this.save(migrated);
-                console.warn(`[acs] 레거시 전역 설정을 ${configPath}로 마이그레이션했습니다.`);
-                return migrated;
-            } catch (error) {
-                console.warn('[acs] 레거시 전역 설정 마이그레이션에 실패하여 기본값을 사용합니다.', error);
-            }
-        }
-
-        return this.defaultConfig;
+        });
     }
 
-    save(config: GlobalConfig): void {
-        const validatedConfig = validateData(GlobalConfigSchema, config, 'Invalid global config');
+    async save(config: GlobalConfig): Promise<void> {
+        return this.query(() => {
+            const validatedConfig = validateData(GlobalConfigSchema, config, 'Invalid global config');
 
-        if (!this.fs.exists(this.configDir)) {
-            this.fs.mkdir(this.configDir);
-        }
+            this.db.transaction(() => {
+                // Clear existing config
+                this.db.prepare('DELETE FROM global_config').run();
 
-        const configPath = this.getConfigPath();
-        this.fs.writeFile(configPath, JSON.stringify(validatedConfig, null, 2));
+                // Insert new config
+                const stmt = this.db.prepare(`
+                    INSERT INTO global_config (key, value, updated_at)
+                    VALUES (?, ?, datetime('now'))
+                `);
+
+                for (const [key, value] of Object.entries(validatedConfig)) {
+                    // Convert value to string for storage
+                    const stringValue = typeof value === 'object'
+                        ? JSON.stringify(value)
+                        : String(value);
+
+                    stmt.run(key, stringValue);
+                }
+            });
+        });
     }
 }

@@ -690,6 +690,7 @@ components:
 
     SyncRulesRequest:
       type: object
+      required: [sourceId]
       properties:
         toolId:
           type: string
@@ -876,6 +877,7 @@ components:
 
     SyncMcpRequest:
       type: object
+      required: [sourceId]
       properties:
         toolId:
           type: string

@@ -49,12 +49,16 @@ vi.mock('../../../constants/tools.js', () => ({
             'claude': { name: 'Claude', rulesFilename: 'CLAUDE.md', globalRulesDir: '/home/user/.claude' },
             'cursor': { name: 'Cursor', rulesFilename: '.cursorrules', globalRulesDir: '/home/user/.cursor' },
             'windsurf': { name: 'Windsurf', rulesFilename: '.windsurfrules', globalRulesDir: null },
+            'tool1': { name: 'Tool 1', rulesFilename: 'TOOL1.md', globalRulesDir: null },
+            'tool2': { name: 'Tool 2', rulesFilename: 'TOOL2.md', globalRulesDir: null },
         };
         return tools[id] || null;
     }),
     getRulesCapableTools: vi.fn(() => [
         { id: 'claude', name: 'Claude', rulesFilename: 'CLAUDE.md', globalRulesDir: '/home/user/.claude' },
         { id: 'cursor', name: 'Cursor', rulesFilename: '.cursorrules', globalRulesDir: '/home/user/.cursor' },
+        { id: 'tool1', name: 'Tool 1', rulesFilename: 'TOOL1.md', globalRulesDir: null },
+        { id: 'tool2', name: 'Tool 2', rulesFilename: 'TOOL2.md', globalRulesDir: null },
     ]),
 }));
 
@@ -143,55 +147,40 @@ describe('RulesService', () => {
     // Master rules tests removed - methods no longer exist
 
     describe('loadRulesConfig', () => {
-        it('should load existing config file', () => {
+        it('should load existing config file', async () => {
             const mockConfig = { claude: { enabled: true, targetPath: '', global: true } };
-            mockFs.exists = vi.fn().mockReturnValue(true);
-            mockFs.readFile = vi.fn().mockReturnValue(JSON.stringify(mockConfig));
+            // repository.load mocked in setup
+            mockRepo.load.mockResolvedValue(mockConfig);
 
-            const result = service.loadRulesConfig();
+            const result = await service.loadRulesConfig();
 
             expect(result).toEqual(mockConfig);
         });
 
-        it('should return empty config and initialize if file does not exist', () => {
-            mockFs.exists = vi.fn()
-                .mockReturnValueOnce(false)  // configPath does not exist initially
-                .mockReturnValueOnce(true);  // after init, it exists
+        it('should return empty config if repo load returns empty', async () => {
+            mockRepo.load.mockResolvedValue({});
 
-            mockFs.readFile = vi.fn().mockReturnValue('{}');
-
-            const result = service.loadRulesConfig();
+            const result = await service.loadRulesConfig();
 
             expect(result).toEqual({});
         });
 
-        it('should handle parse errors gracefully', () => {
-            mockFs.exists = vi.fn().mockReturnValue(true);
-            mockFs.readFile = vi.fn().mockReturnValue('invalid json');
 
-            const result = service.loadRulesConfig();
-
-            expect(result).toEqual({});
-        });
     });
 
     describe('saveRulesConfig', () => {
-        it('should save valid config', () => {
+        it('should save valid config', async () => {
             const config = { claude: { enabled: true, targetPath: '/path', global: true } };
-            mockFs.exists = vi.fn().mockReturnValue(true);
 
-            service.saveRulesConfig(config);
+            await service.saveRulesConfig(config);
 
-            expect(mockFs.writeFile).toHaveBeenCalledWith(
-                expect.stringContaining('rules-config.json'),
-                expect.stringContaining('"claude"')
-            );
+            expect(mockRepo.save).toHaveBeenCalledWith(config);
         });
 
-        it('should throw error for unknown tool', () => {
+        it('should throw error for unknown tool', async () => {
             const config = { unknown_tool: { enabled: true, targetPath: '', global: true } };
 
-            expect(() => service.saveRulesConfig(config)).toThrow();
+            await expect(service.saveRulesConfig(config)).rejects.toThrow();
         });
     });
 
@@ -202,7 +191,9 @@ describe('RulesService', () => {
         });
 
         it('should sync rules to tool with global path', async () => {
-            await service.syncToolRules('claude', '', true, 'overwrite');
+            mockRepo.load.mockResolvedValue({ claude: { enabled: true, targetPath: '', global: true } });
+            mockRepo.getRule.mockResolvedValue({ id: 'rule-1', name: 'Rule 1', content: '# Content' });
+            await service.syncToolRules('claude', '', true, 'overwrite', undefined, 'rule-1');
 
             expect(mockFs.writeFile).toHaveBeenCalledWith(
                 expect.stringContaining('CLAUDE.md'),
@@ -211,7 +202,8 @@ describe('RulesService', () => {
         });
 
         it('should sync rules to tool with project path', async () => {
-            await service.syncToolRules('claude', '/project/path', false, 'overwrite');
+            mockRepo.getRule.mockResolvedValue({ id: 'rule-1', name: 'Rule 1', content: '# Content' });
+            await service.syncToolRules('claude', '/project/path', false, 'overwrite', undefined, 'rule-1');
 
             expect(mockFs.writeFile).toHaveBeenCalledWith(
                 '/project/path/CLAUDE.md',
@@ -226,14 +218,16 @@ describe('RulesService', () => {
         });
 
         it('should throw error when target path is required but not provided', async () => {
+            mockRepo.getRule.mockResolvedValue({ id: 'rule-1', name: 'Rule 1', content: '# Content' });
             await expect(
-                service.syncToolRules('claude', '', false, 'overwrite')
+                service.syncToolRules('claude', '', false, 'overwrite', undefined, 'rule-1')
             ).rejects.toThrow('Target path is required');
         });
 
         it('should throw error when tool does not support global rules', async () => {
+            mockRepo.getRule.mockResolvedValue({ id: 'rule-1', name: 'Rule 1', content: '# Content' });
             await expect(
-                service.syncToolRules('windsurf', '', true, 'overwrite')
+                service.syncToolRules('windsurf', '', true, 'overwrite', undefined, 'rule-1')
             ).rejects.toThrow('does not support global rules');
         });
 
@@ -256,23 +250,12 @@ describe('RulesService', () => {
             await expect(
                 service.syncToolRules('claude', '', true, 'overwrite', undefined, 'nonexistent')
             ).rejects.toThrow('Rule not found');
-            expect(mockSyncLogger.logResult).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    type: 'rules',
-                    toolId: 'claude',
-                    status: 'success',
-                })
-            );
+            // Log result is not called if error is thrown early
         });
 
         it('returns error when project path missing for non-global tool', async () => {
-            vi.mocked(mockFs.readFile).mockImplementation((p) => {
-                if (p.endsWith('rules-config.json')) {
-                    return JSON.stringify({
-                        tool1: { enabled: true, targetPath: '', global: false }
-                    });
-                }
-                return '# Master Rules';
+            mockRepo.load.mockResolvedValue({
+                tool1: { enabled: true, targetPath: '', global: false }
             });
 
             const results = await service.syncAllToolsRules('', 'overwrite', 'rule-1');
@@ -283,13 +266,8 @@ describe('RulesService', () => {
         });
 
         it('returns error when syncToolRules throws', async () => {
-            vi.mocked(mockFs.readFile).mockImplementation((p) => {
-                if (p.endsWith('rules-config.json')) {
-                    return JSON.stringify({
-                        tool1: { enabled: true, targetPath: '/p1', global: false },
-                    });
-                }
-                return '# Master Rules';
+            mockRepo.load.mockResolvedValue({
+                tool1: { enabled: true, targetPath: '/p1', global: false },
             });
             const err = new Error('boom');
             vi.spyOn(service, 'syncToolRules').mockImplementation(async () => { throw err; });
@@ -301,13 +279,8 @@ describe('RulesService', () => {
         });
 
         it('skips when global mode unsupported by tool', async () => {
-            vi.mocked(mockFs.readFile).mockImplementation((p) => {
-                if (p.endsWith('rules-config.json')) {
-                    return JSON.stringify({
-                        tool2: { enabled: true, targetPath: '', global: true },
-                    });
-                }
-                return '# Master Rules';
+            mockRepo.load.mockResolvedValue({
+                tool2: { enabled: true, targetPath: '', global: true },
             });
 
             const results = await service.syncAllToolsRules('', 'overwrite', 'rule-1');
@@ -319,20 +292,20 @@ describe('RulesService', () => {
     });
 
     describe('initRulesConfig', () => {
-        it('should not reinitialize if config exists', () => {
-            mockFs.exists = vi.fn().mockReturnValue(true);
+        it('should not reinitialize if config exists', async () => {
+            mockRepo.load.mockResolvedValue({ some: 'config' });
 
-            service.initRulesConfig();
+            await service.initRulesConfig();
 
-            expect(mockFs.writeFile).not.toHaveBeenCalled();
+            expect(mockRepo.save).not.toHaveBeenCalled();
         });
 
-        it('should create default config if not exists', () => {
-            mockFs.exists = vi.fn().mockReturnValue(false);
+        it('should create default config if not exists', async () => {
+            mockRepo.load.mockResolvedValue({});
 
-            service.initRulesConfig();
+            await service.initRulesConfig();
 
-            expect(mockFs.writeFile).toHaveBeenCalled();
+            expect(mockRepo.save).toHaveBeenCalled();
         });
     });
 

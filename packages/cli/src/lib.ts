@@ -1,14 +1,19 @@
 // Interfaces
-export * from './interfaces/IFileSystem.js';
+export * from './interfaces/IFileSystem.js'; // Still used by RulesService, HistoryService, SyncService
+export * from './interfaces/IDatabase.js'; // New database interface
 export * from './interfaces/IRulesService.js';
 export * from './interfaces/ISyncService.js';
 export * from './interfaces/IHistoryService.js';
+export * from './interfaces/IMcpService.js'; // Export MCP service interface
 export * from './interfaces/repositories/IRulesConfigRepository.js';
 export * from './interfaces/repositories/ISyncConfigRepository.js';
 export * from './interfaces/repositories/IGlobalConfigRepository.js';
 
 // Infrastructure
-export * from './infrastructure/NodeFileSystem.js';
+export * from './infrastructure/NodeFileSystem.js'; // Still used by other services
+export * from './infrastructure/database.js'; // New database factory
+export * from './infrastructure/SqliteDatabase.js'; // New SQLite implementation
+export * from './infrastructure/repositories/McpRepository.js'; // Now DB-based
 export * from './infrastructure/repositories/RulesConfigRepository.js';
 export * from './infrastructure/repositories/SyncConfigRepository.js';
 export * from './infrastructure/repositories/GlobalConfigRepository.js';

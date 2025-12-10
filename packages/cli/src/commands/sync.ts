@@ -3,7 +3,10 @@ import chalk from 'chalk';
 import path from 'path';
 import os from 'os';
 import { getRegistryPath } from '../constants/paths.js';
-import { syncToolMcp, syncAllTools, loadSyncConfig, type SyncResultStatus } from '../services/sync.js';
+import { type SyncResultStatus } from '../interfaces/ISyncService.js';
+import { McpService } from '../services/impl/McpService.js';
+import { SyncService } from '../services/impl/SyncService.js';
+import { NodeFileSystem } from '../infrastructure/NodeFileSystem.js';
 import { scanForTools } from '../services/scanner.js';
 import { getToolMetadata } from '../constants/tools.js';
 
@@ -23,9 +26,12 @@ export const syncCommand = new Command('sync')
 
         // 레지스트리 및 MCP Set 목록 로드
         const registryPath = getRegistryPath();
+        const fileSystem = new NodeFileSystem();
+        const syncService = new SyncService(fileSystem);
+        const mcpService = new McpService();
+
         const tools = await scanForTools();
-        const { fetchMcpSets } = await import('../services/mcp-multi.js');
-        const mcpSets = fetchMcpSets();
+        const mcpSets = await mcpService.getMcpSets();
 
         let sourceId = options.source;
 
@@ -55,7 +61,7 @@ export const syncCommand = new Command('sync')
 
         if (options.all) {
             console.log(chalk.bold('\n🔄 전체 동기화 시작...\n'));
-            const results = await syncAllTools(sourceId);
+            const results = await syncService.syncAllTools(sourceId);
 
             results.forEach(r => printResult(r.status, r.name, r.path, r.message, r.servers, options.verbose));
 
@@ -78,7 +84,7 @@ export const syncCommand = new Command('sync')
                 return;
             }
 
-            const syncConfig = loadSyncConfig();
+            const syncConfig = await syncService.loadSyncConfig();
             const toolSyncConfig = syncConfig[tool.id];
 
             if (!toolSyncConfig || !toolSyncConfig.enabled) {
@@ -92,7 +98,7 @@ export const syncCommand = new Command('sync')
             console.log(chalk.gray(`소스: ${mcpSets.find(s => s.id === sourceId)?.name || sourceId}\n`));
 
             try {
-                const applied = await syncToolMcp(tool.id, tool.configPath, toolSyncConfig.servers, strategy, undefined, sourceId);
+                const applied = await syncService.syncToolMcp(tool.id, tool.configPath, toolSyncConfig.servers, strategy, undefined, sourceId);
                 printResult('success', tool.name, tool.configPath, undefined, applied, options.verbose);
             } catch (error: any) {
                 printResult('error', tool.name, tool.configPath, error.message);

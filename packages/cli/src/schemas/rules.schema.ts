@@ -6,6 +6,7 @@ export const RulesConfigSchema = z.record(
         enabled: z.boolean(),
         targetPath: z.string(),
         global: z.boolean(),
+        ruleId: z.string().optional(),
     })
 );
 

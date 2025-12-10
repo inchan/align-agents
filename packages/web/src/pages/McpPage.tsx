@@ -1,26 +1,27 @@
+
+// ... (Previous imports)
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-    fetchMcpSets, createMcpSet, updateMcpSet,
+    fetchMcpSets, createMcpSet, updateMcpSet, reorderMcpSets,
     fetchMcpPool, createMcpDef, updateMcpDef, deleteMcpDef,
     type McpSet, type McpDef
 } from '../lib/api'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingState } from '@/components/shared/loading-state'
-import { getErrorMessage, cn } from '../lib/utils'
+import { getErrorMessage, cn, getCommonSortableStyle } from '../lib/utils'
 import {
-    Plus, Trash2, Server, GripVertical, Library, Layers, MoreVertical, Edit,
-    Box, X, Database, Folder, Search, MessageSquare, GitBranch, Globe,
-    Check, Import, AlertTriangle
+    Plus, Trash2, Server, GripVertical, Layers,
+    Box, Database, Folder, Search, MessageSquare, GitBranch, Globe,
+    AlertTriangle, Import, Library, MoreVertical, Power, Edit, MinusCircle, Check, X,
+    Eye, EyeOff
 } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog'
-// Card components removed as unused
-import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -32,9 +33,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { TruncateTooltip } from "@/components/ui/truncate-tooltip"
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { DndContext, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+
+import { SortMenu } from '../components/common/SortMenu'
+import { useSortableList } from '../hooks/useSortableList'
 
 // --- Components ---
 
@@ -43,16 +46,16 @@ interface SortableMcpSetItemProps {
     viewedSetId: string | null
     setViewedSetId: (id: string) => void
     handleDeleteClick: (id: string, name: string) => void
+    isDragEnabled?: boolean
 }
 
-function SortableMcpSetItem({ set, viewedSetId, setViewedSetId, handleDeleteClick }: SortableMcpSetItemProps) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: set.id })
+function SortableMcpSetItem({ set, viewedSetId, setViewedSetId, handleDeleteClick, isDragEnabled }: SortableMcpSetItemProps) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id: set.id,
+        disabled: !isDragEnabled
+    })
 
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-    }
+    const style = getCommonSortableStyle(transform, transition, isDragging)
 
     return (
         <div
@@ -67,7 +70,14 @@ function SortableMcpSetItem({ set, viewedSetId, setViewedSetId, handleDeleteClic
             )}>
             <div className="flex items-center gap-2 overflow-hidden">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        className={cn(
+                            "current-color shrink-0 text-muted-foreground transition-colors",
+                            isDragEnabled ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-default opacity-50"
+                        )}
+                    >
                         <GripVertical className="w-4 h-4" />
                     </div>
 
@@ -105,6 +115,210 @@ function SortableMcpSetItem({ set, viewedSetId, setViewedSetId, handleDeleteClic
     )
 }
 
+// New Sortable Item for Inside Set
+interface SortableSetItemProps {
+    item: { serverId: string; disabled?: boolean }
+    def: McpDef
+    isDragEnabled: boolean
+    onToggle: () => void
+    onRemove: () => void
+    onEdit: () => void
+}
+
+function SortableSetItem({ item, def, isDragEnabled, onToggle, onRemove, onEdit }: SortableSetItemProps) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id: item.serverId,
+        disabled: !isDragEnabled
+    })
+
+    const style = getCommonSortableStyle(transform, transition, isDragging)
+
+    const isEnabled = !item.disabled
+
+    return (
+        <div ref={setNodeRef} style={style} className={cn(
+            "group flex flex-col gap-2 p-3 rounded-lg border transition-all",
+            item.disabled
+                ? "bg-muted/20 border-border/50 opacity-60 grayscale-[0.8]"
+                : "bg-card hover:bg-muted/50 border-border hover:shadow-sm"
+        )}>
+            <div className="flex items-start gap-2">
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className={cn(
+                        "mt-1 mr-1 shrink-0 transition-colors",
+                        isDragEnabled
+                            ? "cursor-grab active:cursor-grabbing hover:text-foreground"
+                            : "cursor-default opacity-20",
+                        item.disabled ? "text-muted-foreground/50" : "text-muted-foreground"
+                    )}
+                >
+                    <GripVertical className="w-4 h-4" />
+                </div>
+                <div className={cn(
+                    "mt-0.5 shrink-0 w-8 h-8 rounded flex items-center justify-center transition-colors",
+                    item.disabled ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+                )}>
+                    <McpIcon def={def} className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <TruncateTooltip className={cn("font-medium text-sm", item.disabled && "text-muted-foreground line-through decoration-muted-foreground/50")}>
+                                {def.name}
+                            </TruncateTooltip>
+                            {item.disabled && (
+                                <Badge variant="outline" className="h-5 px-1.5 text-[10px] text-muted-foreground bg-muted/50 border-muted-foreground/20 font-normal shrink-0">
+                                    Disabled
+                                </Badge>
+                            )}
+                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2">
+                                    <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={onToggle}>
+                                    {isEnabled ? (
+                                        <>
+                                            <Power className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                                            <span>Disable</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Power className="w-3.5 h-3.5 mr-2 text-emerald-500" />
+                                            <span>Enable</span>
+                                        </>
+                                    )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={onEdit}>
+                                    <Edit className="w-3.5 h-3.5 mr-2" />
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={onRemove}
+                                >
+                                    <MinusCircle className="w-3.5 h-3.5 mr-2" />
+                                    Remove
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                    <TruncateTooltip
+                        className={cn("text-xs font-mono mt-1 px-1 py-0.5 rounded w-fit max-w-full", item.disabled ? "text-muted-foreground/70 bg-transparent p-0" : "text-muted-foreground bg-muted/50")}
+                        contentClassName="font-mono text-xs"
+                    >
+                        {def.command} {def.args?.join(' ')}
+                    </TruncateTooltip>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// New Sortable Item for Library
+interface SortableLibraryItemProps {
+    def: McpDef & { isAssigned?: boolean }
+    isDragEnabled: boolean
+    selectedSetId: string | null
+    onAddToSet: () => void
+    onEdit: () => void
+    onDelete: () => void
+}
+
+function SortableLibraryItem({ def, isDragEnabled, selectedSetId, onAddToSet, onEdit, onDelete }: SortableLibraryItemProps) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id: def.id,
+        disabled: !isDragEnabled
+    })
+
+    const style = getCommonSortableStyle(transform, transition, isDragging)
+
+    return (
+        <div ref={setNodeRef} style={style} className={cn(
+            "group flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors",
+            def.isAssigned ? "opacity-50" : ""
+        )}>
+            <div className="flex items-start gap-2">
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className={cn(
+                        "mt-1 mr-1 shrink-0 text-muted-foreground transition-colors",
+                        isDragEnabled ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-default opacity-20"
+                    )}
+                >
+                    <GripVertical className="w-4 h-4" />
+                </div>
+                {selectedSetId && (
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 -ml-1"
+                        onClick={onAddToSet}
+                        disabled={def.isAssigned}
+                        title={def.isAssigned ? "Already in set" : "Add to Set"}
+                    >
+                        {def.isAssigned ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4" />}
+                    </Button>
+                )}
+                <div className="mt-0.5 shrink-0 w-8 h-8 rounded bg-muted flex items-center justify-center text-primary">
+                    <McpIcon def={def} className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                        <TruncateTooltip
+                            className="font-medium text-sm"
+                            side="top"
+                        >
+                            {def.name}
+                        </TruncateTooltip>
+                    </div>
+                    <TruncateTooltip
+                        className="text-xs text-muted-foreground font-mono mt-1"
+                        contentClassName="font-mono text-xs"
+                        side="bottom"
+                    >
+                        {def.command} {def.args?.join(' ')}
+                    </TruncateTooltip>
+                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <MoreVertical className="w-3 h-3" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {selectedSetId && !def.isAssigned && (
+                            <>
+                                <DropdownMenuItem onClick={onAddToSet}>
+                                    <Plus className="w-3.5 h-3.5 mr-2" /> Add to Set
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                            </>
+                        )}
+                        <DropdownMenuItem onClick={onEdit}>
+                            <Edit className="w-3.5 h-3.5 mr-2" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={onDelete}
+                        >
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        </div>
+    )
+}
+
 function getMcpIcon(name: string, command: string) {
     const lowerName = name.toLowerCase()
     const lowerCmd = command.toLowerCase()
@@ -122,11 +336,9 @@ function getMcpIcon(name: string, command: string) {
 function McpIcon({ def, className }: { def: McpDef, className?: string }) {
     const { name, command, args } = def
 
-    // 1. Try to find GitHub URL in args to get the owner's avatar
     let githubOwner = ''
     if (args) {
         for (const arg of args) {
-            // Match github.com/OWNER or ghcr.io/OWNER
             const match = arg.match(/(?:github\.com|ghcr\.io)[/:]([^/]+)/)
             if (match && match[1]) {
                 githubOwner = match[1]
@@ -141,7 +353,6 @@ function McpIcon({ def, className }: { def: McpDef, className?: string }) {
         return icon
     }
 
-    // Pass styling to Avatar
     return (
         <Avatar className={cn("w-full h-full rounded-md", className)}>
             <AvatarImage
@@ -197,6 +408,107 @@ export function McpPage() {
     const [editedSetName, setEditedSetName] = useState('')
     const [editedSetDescription, setEditedSetDescription] = useState('')
 
+    // Toggle for Library assigned items
+    const [showAssigned, setShowAssigned] = useState(false);
+
+    // --- Sorting & Drag-Drop: Sets (Left) ---
+    const {
+        sortMode: setsSortMode,
+        setSortMode: setSetsSortMode,
+        sortedItems: sortedMcpSets,
+        handleDragEnd: handleSetsDragEnd,
+        sensors: setsSensors,
+        isDragEnabled: isSetsDragEnabled
+    } = useSortableList<McpSet>({
+        items: mcpSets,
+        onReorder: async (ids) => {
+            await reorderMcpSets(ids)
+            queryClient.invalidateQueries({ queryKey: ['mcpSets'] })
+        },
+        getName: (item) => item.name,
+        getCreatedAt: (item) => item.createdAt,
+        getUpdatedAt: (item) => item.updatedAt,
+        getOrderIndex: (item) => item.orderIndex,
+        storageKey: 'mcp-sets-sort'
+    })
+
+    // --- Sorting & Drag-Drop: Set Items (Center) ---
+    const setItemsEnriched = useMemo(() => {
+        if (!selectedSet) return []
+        return selectedSet.items.map(item => {
+            const def = mcpPool.find(d => d.id === item.serverId)
+            return {
+                id: item.serverId,
+                ...item,
+                name: def?.name || '?',
+                createdAt: (def as any)?.createdAt || new Date().toISOString(),
+                updatedAt: (def as any)?.updatedAt || new Date().toISOString(),
+            }
+        })
+    }, [selectedSet, mcpPool])
+
+    const {
+        sortMode: itemsSortMode,
+        setSortMode: setItemsSortMode,
+        sortedItems: sortedSetItems,
+        handleDragEnd: handleItemsDragEnd,
+        sensors: itemsSensors,
+        isDragEnabled: isItemsDragEnabled
+    } = useSortableList({
+        items: setItemsEnriched,
+        onReorder: async (ids) => {
+            if (!selectedSet) return;
+            const newItems = ids.map(serverId => {
+                const original = selectedSet.items.find(i => i.serverId === serverId)
+                return original || { serverId, disabled: false }
+            })
+            await updateMcpSet(selectedSet.id, { items: newItems })
+            queryClient.invalidateQueries({ queryKey: ['mcpSets'] })
+        },
+        initialSort: 'custom',
+        getName: (item) => item.name,
+        getCreatedAt: (item) => item.createdAt,
+        getUpdatedAt: (item) => item.updatedAt,
+        storageKey: 'mcp-set-items-sort'
+    })
+
+    // --- Sorting & Drag-Drop: Library (Right) ---
+    const libraryItemsEnriched = useMemo(() => {
+        let items = mcpPool;
+        if (selectedSet && !showAssigned) {
+            // Optimization: Use Set for O(1) lookup
+            const assignedIds = new Set(selectedSet.items.map(i => i.serverId));
+            items = mcpPool.filter(def => !assignedIds.has(def.id));
+        }
+
+        return items.map(def => {
+            const isAssigned = selectedSet?.items.some(item => item.serverId === def.id);
+            return {
+                ...def,
+                isAssigned,
+                // Ensure sorting fields exist (fallback to current time for stability if meaningful, but 0 might be better?)
+                // User asked for current time fallback.
+                createdAt: (def as any)?.createdAt || new Date().toISOString(),
+                updatedAt: (def as any)?.updatedAt || new Date().toISOString(),
+            }
+        })
+    }, [selectedSet, mcpPool, showAssigned]);
+
+    const {
+        sortMode: librarySortMode,
+        setSortMode: setLibrarySortMode,
+        sortedItems: sortedLibraryItems,
+        handleDragEnd: handleLibraryDragEnd,
+        sensors: librarySensors,
+        isDragEnabled: isLibraryDragEnabled
+    } = useSortableList({
+        items: libraryItemsEnriched,
+        initialSort: 'a-z',
+        getName: (item) => item.name,
+        getCreatedAt: (item) => item.createdAt,
+        getUpdatedAt: (item) => item.updatedAt,
+    })
+
 
     useEffect(() => {
         if (mcpSets.length > 0 && !selectedSetId) {
@@ -208,13 +520,7 @@ export function McpPage() {
         setDefForm({ name: '', command: '', args: [], cwd: '', env: {} })
     }
 
-    // --- Computed ---
-    // Library items are those in mcpPool that are NOT in the selected set
-    const libraryItems = selectedSet
-        ? mcpPool.filter(def => !selectedSet.items.some(item => item.serverId === def.id))
-        : mcpPool
-
-    // --- Mutations ---
+    // --- Mutation Wrappers ---
     const createSetMutation = useMutation({
         mutationFn: ({ name, description }: { name: string; description?: string }) => createMcpSet(name, [], description),
         onSuccess: () => {
@@ -233,7 +539,6 @@ export function McpPage() {
             queryClient.invalidateQueries({ queryKey: ['mcpSets'] })
             setSetToDelete(null)
             if (selectedSet?.id === setToDelete?.id) setSelectedSetId(null)
-            // toast.success('MCP Set archived') // Removed immediate toast or make it subtle if needed, user asked for "no popup" which usually means confirmation dialog.
         },
         onError: (error) => toast.error(`Failed: ${getErrorMessage(error)}`)
     })
@@ -309,7 +614,6 @@ export function McpPage() {
         onError: (error) => toast.error(`Failed: ${getErrorMessage(error)}`)
     })
 
-
     // --- Handlers ---
     const handleCreateSet = () => {
         if (!newSetName.trim()) return
@@ -366,14 +670,10 @@ export function McpPage() {
 
     const handleImportJson = () => {
         try {
-            // Try to parse directly first
             let jsonToParse = importJson.trim()
-
-            // If starts with "mcpServers" (without outer braces), wrap it
             if (jsonToParse.startsWith('"mcpServers"') || jsonToParse.startsWith("'mcpServers'")) {
                 jsonToParse = `{${jsonToParse}}`
             }
-            // If starts with a quoted key followed by colon and object (single server definition like "name": {...}), wrap it
             else if (/^["'][^"']+["']\s*:\s*\{/.test(jsonToParse) && !jsonToParse.startsWith('{')) {
                 jsonToParse = `{${jsonToParse}}`
             }
@@ -499,7 +799,6 @@ export function McpPage() {
                                 }
                             }
 
-                            // Extract all JSON code blocks from README
                             const jsonBlocks: { name: string; json: string }[] = []
                             const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)```/gi
                             let match
@@ -508,13 +807,11 @@ export function McpPage() {
                                     const jsonStr = match[1].trim()
                                     const parsed = JSON.parse(jsonStr)
                                     if (parsed.mcpServers) {
-                                        // Get first server name as label
                                         const serverNames = Object.keys(parsed.mcpServers)
                                         const label = serverNames.length > 0 ? serverNames[0] : 'config'
                                         jsonBlocks.push({ name: label, json: jsonStr })
                                     }
                                 } catch {
-                                    // Not valid JSON, skip
                                 }
                             }
 
@@ -524,7 +821,6 @@ export function McpPage() {
                                 toast.success(`Found ${jsonBlocks.length} configuration(s) in README`)
                                 configFound = true
                             } else {
-                                // Fallback: generate from package.json
                                 let packageName = ''
                                 const packageJsonPaths = ['/main/package.json', '/master/package.json']
                                 for (const path of packageJsonPaths) {
@@ -544,7 +840,6 @@ export function McpPage() {
                                 }
 
                                 if (!packageName) {
-                                    // Try npx pattern from README
                                     const npxMatch = readmeContent.match(/npx\s+(?:-y\s+)?(@[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+|[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+|[a-zA-Z0-9@_-]+)/)
                                     if (npxMatch && npxMatch[1] && !npxMatch[1].includes('⭐') && npxMatch[1].length > 2) {
                                         packageName = npxMatch[1]
@@ -589,19 +884,11 @@ export function McpPage() {
         }
     }
 
-    // Drag & Drop (Sets)
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-    )
-    const handleDragEnd = (event: DragEndEvent) => {
-        console.log('Drag end', event)
-    }
-
     if (isSetsLoading || isPoolLoading) return <LoadingState text="Loading MCP configuration..." />
 
     return (
         <div className="h-full flex flex-col overflow-hidden bg-background">
-            {/* Dialogs */}
+            {/* ... Dialogs same as before ... */}
             <Dialog open={isCreateSetOpen} onOpenChange={setIsCreateSetOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -658,7 +945,7 @@ export function McpPage() {
                                     onChange={e => {
                                         try {
                                             setDefForm({ ...defForm, env: JSON.parse(e.target.value) })
-                                        } catch { } // Ignore parse errors while typing
+                                        } catch { }
                                     }}
                                     className="font-mono text-sm"
                                     placeholder="{}"
@@ -738,8 +1025,6 @@ export function McpPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Set Deletion Confirmation Dialog Removed for immediate archive action */}
-
             <Dialog open={!!mcpToDelete} onOpenChange={() => setMcpToDelete(null)}>
                 <DialogContent>
                     <DialogHeader>
@@ -760,37 +1045,40 @@ export function McpPage() {
                 </DialogContent>
             </Dialog>
 
-
             <div className="flex-1 min-h-0 overflow-hidden p-6 grid grid-cols-3 gap-6">
-                {/* 1. MCP Sets */}
+                {/* 1. MCP Sets List */}
                 <div className="flex flex-col min-h-0 border rounded-xl overflow-hidden bg-card/50">
                     <div className="p-4 border-b bg-muted/40 flex items-center justify-between shrink-0">
                         <h3 className="font-semibold text-sm flex items-center gap-2">
                             <Layers className="w-4 h-4 text-muted-foreground" />
                             MCP Sets
                         </h3>
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsCreateSetOpen(true)}>
-                            <Plus className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center">
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsCreateSetOpen(true)}>
+                                <Plus className="w-4 h-4" />
+                            </Button>
+                            <SortMenu currentSort={setsSortMode} onSortChange={setSetsSortMode} />
+                        </div>
                     </div>
                     <ScrollArea className="flex-1">
                         <div className="p-3 space-y-2">
                             <DndContext
-                                sensors={sensors}
+                                sensors={setsSensors}
                                 collisionDetection={closestCenter}
-                                onDragEnd={handleDragEnd}
+                                onDragEnd={handleSetsDragEnd}
                             >
                                 <SortableContext
-                                    items={mcpSets.map(s => s.id)}
+                                    items={sortedMcpSets.map(s => s.id)}
                                     strategy={verticalListSortingStrategy}
                                 >
-                                    {mcpSets.map((set) => (
+                                    {sortedMcpSets.map((set) => (
                                         <SortableMcpSetItem
                                             key={set.id}
                                             set={set}
                                             viewedSetId={selectedSetId}
                                             setViewedSetId={setSelectedSetId}
                                             handleDeleteClick={(id) => archiveSetMutation.mutate(id)}
+                                            isDragEnabled={isSetsDragEnabled}
                                         />
                                     ))}
                                 </SortableContext>
@@ -840,6 +1128,9 @@ export function McpPage() {
                                 </p>
                             )}
                         </div>
+                        {selectedSet && (
+                            <SortMenu currentSort={itemsSortMode} onSortChange={setItemsSortMode} />
+                        )}
                     </div>
                     <ScrollArea className="flex-1">
                         <div className="p-3 space-y-2">
@@ -852,52 +1143,38 @@ export function McpPage() {
                                         </p>
                                     </div>
                                 ) : (
-                                    selectedSet.items.map((item) => {
-                                        const def = mcpPool.find(p => p.id === item.serverId)
-                                        if (!def) return null
-                                        return (
-                                            <div key={item.serverId} className={cn(
-                                                "group flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors",
-                                                item.disabled ? "opacity-60" : ""
-                                            )}>
-                                                <div className="flex items-start gap-3">
-                                                    <div className="mt-0.5 shrink-0 w-8 h-8 rounded bg-muted flex items-center justify-center text-primary">
-                                                        <McpIcon def={def} className="w-5 h-5" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center justify-between gap-2">
-                                                            <TruncateTooltip className="font-medium text-sm">{def.name}</TruncateTooltip>
-                                                            <div className="flex items-center gap-1 transition-opacity">
-                                                                <Switch
-                                                                    checked={!item.disabled}
-                                                                    onCheckedChange={(checked) => toggleMcpInSetMutation.mutate({
-                                                                        setId: selectedSet.id,
-                                                                        serverId: item.serverId,
-                                                                        disabled: !checked
-                                                                    })}
-                                                                />
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                                    onClick={() => removeMcpFromSetMutation.mutate({ setId: selectedSet.id, serverId: item.serverId })}
-                                                                    title="Remove from Set"
-                                                                >
-                                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                        <TruncateTooltip
-                                                            className="text-xs text-muted-foreground font-mono mt-1 bg-muted/50 px-1 py-0.5 rounded w-fit max-w-full"
-                                                            contentClassName="font-mono text-xs"
-                                                        >
-                                                            {def.command} {def.args?.join(' ')}
-                                                        </TruncateTooltip>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    })
+                                    <DndContext
+                                        sensors={itemsSensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={handleItemsDragEnd}
+                                    >
+                                        <SortableContext
+                                            items={sortedSetItems.map(i => i.id)}
+                                            strategy={verticalListSortingStrategy}
+                                        >
+                                            {sortedSetItems.map((item) => {
+                                                const def = mcpPool.find(p => p.id === item.serverId)
+                                                if (!def) return null
+                                                const isEnabled = !item.disabled
+
+                                                return (
+                                                    <SortableSetItem
+                                                        key={item.serverId}
+                                                        item={item}
+                                                        def={def}
+                                                        isDragEnabled={isItemsDragEnabled}
+                                                        onToggle={() => toggleMcpInSetMutation.mutate({
+                                                            setId: selectedSet.id,
+                                                            serverId: item.serverId,
+                                                            disabled: isEnabled
+                                                        })}
+                                                        onRemove={() => removeMcpFromSetMutation.mutate({ setId: selectedSet.id, serverId: item.serverId })}
+                                                        onEdit={() => handleOpenDefModal(def)}
+                                                    />
+                                                )
+                                            })}
+                                        </SortableContext>
+                                    </DndContext>
                                 )
                             ) : (
                                 <div className="h-full flex items-center justify-center p-8">
@@ -908,7 +1185,7 @@ export function McpPage() {
                     </ScrollArea>
                 </div>
 
-                {/* 3. Library */}
+                {/* 3. Library List */}
                 <div className="flex flex-col min-h-0 border rounded-xl overflow-hidden bg-card/50">
                     <div className="p-4 border-b bg-muted/40 flex items-center justify-between shrink-0 h-[65px]">
                         <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -916,6 +1193,18 @@ export function McpPage() {
                             Library
                         </h3>
                         <div className="flex items-center gap-1">
+                            {/* Toggle Show Assigned */}
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className={cn("h-8 w-8 p-0", showAssigned ? "text-primary" : "text-muted-foreground")}
+                                onClick={() => setShowAssigned(!showAssigned)}
+                                title={showAssigned ? "Hide assigned items" : "Show assigned items"}
+                            >
+                                {showAssigned ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                            </Button>
+
+                            <SortMenu currentSort={librarySortMode} onSortChange={setLibrarySortMode} className="mr-1" />
                             <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsImportOpen(true)} title="Import">
                                 <Import className="w-4 h-4" />
                             </Button>
@@ -926,78 +1215,38 @@ export function McpPage() {
                     </div>
                     <ScrollArea className="flex-1">
                         <div className="p-3 space-y-2">
-                            {libraryItems.length === 0 ? (
-                                <EmptyState
-                                    icon={Box}
-                                    title="Library Empty"
-                                    description={selectedSet ? "All items are in this set." : "No MCP definitions found."}
-                                />
-                            ) : (
-                                libraryItems.map(def => (
-                                    <div key={def.id} className="group flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-                                        <div className="flex items-start gap-2">
-                                            {selectedSet && (
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 -ml-1"
-                                                    onClick={() => addMcpToSetMutation.mutate({ setId: selectedSet.id, serverId: def.id })}
-                                                    title="Add to Set"
-                                                >
-                                                    <Plus className="w-4 h-4" />
-                                                </Button>
-                                            )}
-                                            <div className="mt-0.5 shrink-0 w-8 h-8 rounded bg-muted flex items-center justify-center text-primary">
-                                                <McpIcon def={def} className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <TruncateTooltip
-                                                        className="font-medium text-sm"
-                                                        side="top"
-                                                    >
-                                                        {def.name}
-                                                    </TruncateTooltip>
-                                                </div>
-                                                <TruncateTooltip
-                                                    className="text-xs text-muted-foreground font-mono mt-1"
-                                                    contentClassName="font-mono text-xs"
-                                                    side="bottom"
-                                                >
-                                                    {def.command} {def.args?.join(' ')}
-                                                </TruncateTooltip>
-                                            </div>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6">
-                                                        <MoreVertical className="w-3 h-3" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    {selectedSet && (
-                                                        <>
-                                                            <DropdownMenuItem onClick={() => addMcpToSetMutation.mutate({ setId: selectedSet.id, serverId: def.id })}>
-                                                                <Plus className="w-3.5 h-3.5 mr-2" /> Add to Set
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                        </>
-                                                    )}
-                                                    <DropdownMenuItem onClick={() => handleOpenDefModal(def)}>
-                                                        <Edit className="w-3.5 h-3.5 mr-2" /> Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className="text-destructive focus:text-destructive"
-                                                        onClick={() => setMcpToDelete(def)}
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                            <DndContext
+                                sensors={librarySensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleLibraryDragEnd}
+                            >
+                                <SortableContext
+                                    items={sortedLibraryItems.map(i => i.id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {sortedLibraryItems.length === 0 ? (
+                                        <EmptyState
+                                            icon={Box}
+                                            title="Library Empty"
+                                            description={selectedSet ? "All items are in this set." : "No MCP definitions found."}
+                                        />
+                                    ) : (
+                                        sortedLibraryItems.map(def => (
+                                            <SortableLibraryItem
+                                                key={def.id}
+                                                def={def}
+                                                isDragEnabled={isLibraryDragEnabled}
+                                                selectedSetId={selectedSetId}
+                                                onAddToSet={() => {
+                                                    if (selectedSetId) addMcpToSetMutation.mutate({ setId: selectedSetId, serverId: def.id })
+                                                }}
+                                                onEdit={() => handleOpenDefModal(def)}
+                                                onDelete={() => setMcpToDelete(def)}
+                                            />
+                                        ))
+                                    )}
+                                </SortableContext>
+                            </DndContext>
                         </div>
                     </ScrollArea>
                 </div>

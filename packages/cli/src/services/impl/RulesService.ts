@@ -12,6 +12,8 @@ import { RulesConfigRepository } from '../../infrastructure/repositories/RulesCo
 import { SyncLogger } from '../../utils/logger.js';
 import { ChecksumService } from './ChecksumService.js';
 import { StateService } from './StateService.js';
+import { getDatabase } from '../../infrastructure/database.js';
+
 
 export class RulesService implements IRulesService {
     private repository: RulesConfigRepository;
@@ -21,7 +23,8 @@ export class RulesService implements IRulesService {
 
     constructor(private fs: IFileSystem, masterDir?: string) {
         this.masterDir = masterDir || this.getDefaultMasterDir();
-        this.repository = new RulesConfigRepository(fs, this.masterDir);
+        const db = getDatabase();
+        this.repository = new RulesConfigRepository(db);
         this.checksumService = new ChecksumService();
         this.stateService = new StateService();
     }
@@ -32,6 +35,10 @@ export class RulesService implements IRulesService {
 
     private getMasterDir(): string {
         return this.masterDir;
+    }
+
+    public setMasterDir(dir: string): void {
+        this.masterDir = dir;
     }
 
     // Multi-rules management
@@ -59,37 +66,17 @@ export class RulesService implements IRulesService {
         return this.repository.setActiveRule(id);
     }
 
-    // Master rules methods removed
-
-    loadRulesConfig(): RulesConfig {
-        const masterDir = this.getMasterDir();
-        const configPath = this.fs.join(masterDir, 'rules-config.json');
-
-        if (this.fs.exists(configPath)) {
-            try {
-                const data = this.fs.readFile(configPath);
-                return JSON.parse(data);
-            } catch (error) {
-                console.warn(`[CLI] rules-config.json을 파싱할 수 없어 빈 설정으로 대체합니다. (${configPath})`, error);
-                return {};
-            }
-        }
-
-        // Auto-initialize with default config if not exists
-        console.log('[CLI] rules-config.json이 없어 기본 설정으로 초기화합니다.');
-        this.initRulesConfig();
-
-        // Load the newly created config
-        try {
-            const data = this.fs.readFile(configPath);
-            return JSON.parse(data);
-        } catch (error) {
-            console.warn('[CLI] 초기화된 설정을 로드할 수 없습니다. 빈 설정 반환.', error);
-            return {};
-        }
+    async reorderRules(ids: string[]): Promise<void> {
+        return this.repository.reorderRules(ids);
     }
 
-    saveRulesConfig(config: RulesConfig): void {
+    // Master rules methods removed
+
+    async loadRulesConfig(): Promise<RulesConfig> {
+        return this.repository.load();
+    }
+
+    async saveRulesConfig(config: RulesConfig): Promise<void> {
         const validatedConfig = validateData(RulesConfigSchema, config, 'Invalid rules config');
 
         Object.keys(validatedConfig).forEach(toolId => {
@@ -98,13 +85,7 @@ export class RulesService implements IRulesService {
             }
         });
 
-        const masterDir = this.getMasterDir();
-        if (!this.fs.exists(masterDir)) {
-            this.fs.mkdir(masterDir);
-        }
-
-        const configPath = this.fs.join(masterDir, 'rules-config.json');
-        this.fs.writeFile(configPath, JSON.stringify(validatedConfig, null, 2));
+        return this.repository.save(validatedConfig);
     }
 
     private getToolRulesFilename(toolId: string): string | null {
@@ -162,7 +143,7 @@ export class RulesService implements IRulesService {
             console.log(`[CLI] 동기화 경로 결정됨: 도구 ID=${toolId}, 전역 룰=false, 최종 경로=${fullPath}`);
         }
 
-        // 백업 (backup.ts는 아직 fs를 직접 사용하므로 그대로 둠, 추후 리팩토링 대상)
+        // 백업
         console.log(`[CLI] DEBUG: ${toolId}: 백업 시작 - fullPath=${fullPath}`);
         createTimestampedBackup(fullPath, backupOptions);
 
@@ -210,16 +191,28 @@ export class RulesService implements IRulesService {
             targetPath: fullPath,
             strategy,
         });
+
+        // Save ruleId to config
+        if (sourceId) {
+            try {
+                const currentConfig = await this.loadRulesConfig();
+                if (currentConfig[toolId]) {
+                    currentConfig[toolId].ruleId = sourceId;
+                    await this.saveRulesConfig(currentConfig);
+                }
+            } catch (e) {
+                console.warn(`[CLI] Failed to save ruleId to config for ${toolId}:`, e);
+            }
+        }
     }
 
     async syncAllToolsRules(targetPath: string, strategy: SyncStrategy = 'overwrite', sourceId?: string): Promise<RulesSyncResult[]> {
-        const config = this.loadRulesConfig();
+        const config = await this.loadRulesConfig();
         const results: RulesSyncResult[] = [];
         const allTools = getRulesCapableTools();
 
         // sourceId가 없으면 에러 처리 (Stateless)
         if (!sourceId) {
-            console.warn('[CLI] sourceId가 제공되지 않았습니다. 동기화를 위해서는 구체적인 Rule ID가 필요합니다.');
             console.warn('[CLI] sourceId가 제공되지 않았습니다. 동기화를 위해서는 구체적인 Rule ID가 필요합니다.');
             return [{
                 toolId: 'global',
@@ -239,11 +232,8 @@ export class RulesService implements IRulesService {
 
         for (const tool of allTools) {
             const toolConfig = config[tool.id];
-            // console.log(`[CLI] DEBUG: ${tool.id}: toolConfig=${JSON.stringify(toolConfig)}, targetPath=${targetPath}`);
             const toolName = tool.name;
             const rulesFilename = tool.rulesFilename!;
-
-            const enabled = toolConfig ? toolConfig.enabled : true;
 
             if (toolConfig && toolConfig.enabled === false) {
                 results.push({
@@ -262,7 +252,6 @@ export class RulesService implements IRulesService {
                 const isGlobal = toolConfig?.global !== undefined
                     ? toolConfig.global
                     : (actualPath ? false : true);
-                // console.log(`[CLI] ${tool.id}: actualPath=${actualPath}, isGlobal=${isGlobal}`);
 
                 if (!isGlobal && !actualPath) {
                     results.push({
@@ -291,7 +280,7 @@ export class RulesService implements IRulesService {
                     fullPath = this.fs.join(actualPath, rulesFilename);
                 }
 
-                // sourceId 전달
+                // sourceId 전달 - DO NOT pass empty string for sourceId, it's checked inside syncToolRules
                 await this.syncToolRules(tool.id, actualPath, isGlobal, strategy, undefined, sourceId);
 
                 let displayPath = fullPath;
@@ -342,13 +331,9 @@ export class RulesService implements IRulesService {
         return results;
     }
 
-    initRulesConfig(): void {
-        const masterDir = this.getMasterDir();
-        const configPath = this.fs.join(masterDir, 'rules-config.json');
-
-        if (this.fs.exists(configPath)) {
-            return;
-        }
+    async initRulesConfig(): Promise<void> {
+        const current = await this.loadRulesConfig();
+        if (Object.keys(current).length > 0) return;
 
         const defaultConfig: RulesConfig = {};
         const rulesTools = getRulesCapableTools();
@@ -361,13 +346,14 @@ export class RulesService implements IRulesService {
             };
         }
 
-        this.saveRulesConfig(defaultConfig);
-        console.log(`[CLI] rules-config.json이 생성되었습니다: ${configPath}`);
+        await this.saveRulesConfig(defaultConfig);
     }
 
     async getRulesConfig(): Promise<RulesConfig> {
         return this.repository.load();
     }
+
+
 
     listSupportedTools(): string[] {
         return getRulesCapableTools().map(t => t.id);

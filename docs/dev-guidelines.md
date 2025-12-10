@@ -67,6 +67,7 @@
 - 인터페이스를 사용하여 타입을 정의합니다.
 - `null`과 `undefined`를 명확히 구분하여 처리합니다.
 - `async/await`를 사용하여 비동기 로직을 처리합니다.
+- **Data Persistence**: 모든 삭제 작업은 `is_archived` 플래그를 사용하는 **Soft Delete**로 구현해야 합니다. `DELETE` SQL 문 사용을 지양합니다.
 
 ### 3.3 Error Handling
 

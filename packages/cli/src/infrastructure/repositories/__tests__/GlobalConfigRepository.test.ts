@@ -1,142 +1,177 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
 import { GlobalConfigRepository } from '../GlobalConfigRepository.js';
-import { IFileSystem } from '../../../interfaces/IFileSystem.js';
+import { IDatabase, IRunResult } from '../../../interfaces/IDatabase.js';
 import { GlobalConfig } from '../../../interfaces/ISyncService.js';
+
+type MockStatement<T = any> = {
+    get: Mock<(...params: any[]) => T | undefined>;
+    all: Mock<(...params: any[]) => T[]>;
+    run: Mock<(...params: any[]) => IRunResult>;
+};
+
+type MockDatabase = {
+    prepare: Mock<(sql: string) => MockStatement>;
+    transaction: Mock<(fn: () => any) => any>;
+    exec: Mock<(sql: string) => void>;
+    close: Mock<() => void>;
+    open: boolean;
+};
 
 describe('GlobalConfigRepository', () => {
     let repository: GlobalConfigRepository;
-    let mockFs: IFileSystem;
+    let mockDb: MockDatabase;
+    let mockStatement: MockStatement;
     const defaultConfig: GlobalConfig = { masterDir: '/default/master', autoBackup: true };
 
     beforeEach(() => {
         vi.clearAllMocks();
 
-        mockFs = {
-            join: vi.fn((...parts) => parts.join('/')),
-            exists: vi.fn().mockReturnValue(true),
-            mkdir: vi.fn(),
-            readFile: vi.fn().mockReturnValue('{}'),
-            writeFile: vi.fn(),
-            unlink: vi.fn(),
-            relative: vi.fn((from, to) => to),
-            dirname: vi.fn((p) => p.split('/').slice(0, -1).join('/')),
-            basename: vi.fn((p) => p.split('/').pop() || ''),
+        mockStatement = {
+            get: vi.fn(),
+            all: vi.fn().mockReturnValue([]),
+            run: vi.fn().mockReturnValue({ changes: 1, lastInsertRowid: 1 }),
+        };
+
+        mockDb = {
+            prepare: vi.fn().mockReturnValue(mockStatement),
+            transaction: vi.fn((fn) => fn()),
+            exec: vi.fn(),
+            close: vi.fn(),
+            open: true,
         };
 
         repository = new GlobalConfigRepository(
-            mockFs,
-            '/config/dir',
-            '/legacy/config.json',
+            mockDb as unknown as IDatabase,
             defaultConfig
         );
     });
 
     describe('init', () => {
-        it('should not reinitialize if config exists', () => {
-            mockFs.exists = vi.fn().mockReturnValue(true);
+        it('should not reinitialize if config exists', async () => {
+            mockStatement.get = vi.fn().mockReturnValue({ count: 1 });
 
-            repository.init();
+            await repository.init();
 
-            expect(mockFs.writeFile).not.toHaveBeenCalled();
+            // prepare called for SELECT COUNT, but no INSERT
+            expect(mockDb.prepare).toHaveBeenCalledTimes(1);
+            expect(mockDb.transaction).not.toHaveBeenCalled();
         });
 
-        it('should create default config if not exists', () => {
-            mockFs.exists = vi.fn().mockReturnValue(false);
+        it('should create default config if not exists', async () => {
+            mockStatement.get = vi.fn().mockReturnValue({ count: 0 });
 
-            repository.init();
+            await repository.init();
 
-            expect(mockFs.writeFile).toHaveBeenCalledWith(
-                '/config/dir/config.json',
-                expect.stringContaining('/default/master')
-            );
+            // Should call transaction for saving default config
+            expect(mockDb.transaction).toHaveBeenCalled();
         });
     });
 
     describe('load', () => {
-        it('should load existing config file', () => {
-            const mockConfig = { masterDir: '/custom/path', autoBackup: false };
-            mockFs.exists = vi.fn().mockReturnValue(true);
-            mockFs.readFile = vi.fn().mockReturnValue(JSON.stringify(mockConfig));
+        it('should load existing config from database', async () => {
+            mockStatement.all = vi.fn().mockReturnValue([
+                { key: 'masterDir', value: '/custom/path' },
+                { key: 'autoBackup', value: 'false' },
+            ]);
 
-            const result = repository.load();
+            const result = await repository.load();
 
             expect(result.masterDir).toBe('/custom/path');
             expect(result.autoBackup).toBe(false);
         });
 
-        it('should return default config if file does not exist and no legacy', () => {
-            mockFs.exists = vi.fn().mockReturnValue(false);
+        it('should return default config if table is empty', async () => {
+            mockStatement.all = vi.fn().mockReturnValue([]);
 
-            const result = repository.load();
-
-            expect(result).toEqual(defaultConfig);
-        });
-
-        it('should migrate legacy config if exists', () => {
-            mockFs.exists = vi.fn()
-                .mockReturnValueOnce(false)  // new config
-                .mockReturnValueOnce(true);  // legacy config
-
-            const legacyConfig = { masterDir: '/legacy/path', autoBackup: false };
-            mockFs.readFile = vi.fn().mockReturnValue(JSON.stringify(legacyConfig));
-
-            const result = repository.load();
-
-            expect(result.masterDir).toBe('/legacy/path');
-            expect(mockFs.writeFile).toHaveBeenCalled(); // Migration
-        });
-
-        it('should return default on parse error', () => {
-            mockFs.exists = vi.fn().mockReturnValue(true);
-            mockFs.readFile = vi.fn().mockReturnValue('invalid json');
-
-            const result = repository.load();
+            const result = await repository.load();
 
             expect(result).toEqual(defaultConfig);
         });
 
-        it('should return default on legacy migration failure', () => {
-            mockFs.exists = vi.fn()
-                .mockReturnValueOnce(false)
-                .mockReturnValueOnce(true);
+        it('should parse boolean values correctly', async () => {
+            mockStatement.all = vi.fn().mockReturnValue([
+                { key: 'masterDir', value: '/path' },
+                { key: 'autoBackup', value: 'true' },
+            ]);
 
-            mockFs.readFile = vi.fn().mockReturnValue('invalid');
+            const result = await repository.load();
 
-            const result = repository.load();
+            expect(result.autoBackup).toBe(true);
+        });
+
+        it('should parse numeric values correctly', async () => {
+            mockStatement.all = vi.fn().mockReturnValue([
+                { key: 'masterDir', value: '/path' },
+                { key: 'autoBackup', value: 'false' },
+                { key: 'someNumber', value: '42' },
+            ]);
+
+            const result = await repository.load();
+
+            expect((result as any).someNumber).toBe(42);
+        });
+
+        it('should merge with defaults to ensure all keys exist', async () => {
+            mockStatement.all = vi.fn().mockReturnValue([
+                { key: 'masterDir', value: '/custom' },
+            ]);
+
+            const result = await repository.load();
+
+            expect(result.masterDir).toBe('/custom');
+            expect(result.autoBackup).toBe(true); // From default
+        });
+
+        it('should return default config on database error', async () => {
+            mockStatement.all = vi.fn().mockImplementation(() => {
+                throw new Error('DB Error');
+            });
+
+            const result = await repository.load();
 
             expect(result).toEqual(defaultConfig);
         });
     });
 
     describe('save', () => {
-        it('should save valid config', () => {
+        it('should save valid config to database', async () => {
             const config = { masterDir: '/new/path', autoBackup: true };
 
-            repository.save(config);
+            await repository.save(config);
 
-            expect(mockFs.writeFile).toHaveBeenCalledWith(
-                '/config/dir/config.json',
-                expect.stringContaining('/new/path')
-            );
+            expect(mockDb.transaction).toHaveBeenCalled();
+            // DELETE + INSERT for each key
+            expect(mockStatement.run).toHaveBeenCalled();
         });
 
-        it('should create directory if not exists', () => {
-            mockFs.exists = vi.fn().mockReturnValue(false);
+        it('should clear existing config before saving', async () => {
+            const config = { masterDir: '/path', autoBackup: true };
 
-            repository.save({ masterDir: '/path', autoBackup: true });
+            await repository.save(config);
 
-            expect(mockFs.mkdir).toHaveBeenCalledWith('/config/dir');
+            // Verify DELETE was called
+            const prepareCalls = mockDb.prepare.mock.calls.map(c => c[0]);
+            expect(prepareCalls.some(sql => sql.includes('DELETE'))).toBe(true);
         });
 
-        it('should throw error for invalid config (empty masterDir)', () => {
-            expect(() => repository.save({ masterDir: '', autoBackup: true }))
-                .toThrow();
+        it('should save each config key as separate row', async () => {
+            const config = { masterDir: '/path', autoBackup: false };
+
+            await repository.save(config);
+
+            // INSERT should be called for each key
+            expect(mockStatement.run.mock.calls.length).toBeGreaterThanOrEqual(2);
         });
 
-        it('should validate config with Zod schema', () => {
+        it('should throw error for invalid config (empty masterDir)', async () => {
+            await expect(repository.save({ masterDir: '', autoBackup: true }))
+                .rejects.toThrow();
+        });
+
+        it('should validate config with Zod schema', async () => {
             // Valid config should not throw
-            expect(() => repository.save({ masterDir: '/valid/path', autoBackup: false }))
-                .not.toThrow();
+            await expect(repository.save({ masterDir: '/valid/path', autoBackup: false }))
+                .resolves.not.toThrow();
         });
     });
 });

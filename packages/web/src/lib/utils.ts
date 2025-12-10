@@ -11,3 +11,17 @@ export function getErrorMessage(error: unknown): string {
     if (typeof error === 'object' && error !== null && 'message' in error) return (error as Error).message
     return '알 수 없는 오류가 발생했습니다.'
 }
+
+import { CSS } from '@dnd-kit/utilities'
+import type { Transform } from '@dnd-kit/utilities'
+
+export function getCommonSortableStyle(transform: Transform | null, transition: string | undefined, isDragging: boolean) {
+    return {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 999 : 'auto',
+        position: 'relative' as const,
+        touchAction: 'none'
+    }
+}

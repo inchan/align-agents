@@ -57,9 +57,30 @@ export class ProjectService {
     }
 
     public getProjects(): UserProject[] {
-        return this.loadProjects().sort((a, b) =>
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        );
+        return this.loadProjects();
+    }
+
+    public async reorderProjects(ids: string[]): Promise<void> {
+        const projects = this.loadProjects();
+        const projectMap = new Map(projects.map(p => [p.id, p]));
+
+        const newProjects: UserProject[] = [];
+
+        // Add projects in the order of ids
+        ids.forEach(id => {
+            const project = projectMap.get(id);
+            if (project) {
+                newProjects.push(project);
+                projectMap.delete(id);
+            }
+        });
+
+        // Append any remaining projects
+        for (const project of projectMap.values()) {
+            newProjects.push(project);
+        }
+
+        this.saveProjects(newProjects);
     }
 
     public getProject(id: string): UserProject | undefined {

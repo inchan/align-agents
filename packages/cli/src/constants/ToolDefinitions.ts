@@ -14,6 +14,7 @@ export interface ToolMetadata {
     cliCommand?: string;
     mcpConfigPath?: string;
     projectMcpConfigFilename?: string; // Relative path for project-level MCP config
+    mcpConfigKey?: string; // Optional: Key to use for MCP servers in config (default: mcpServers)
 }
 
 export const TOOL_METADATA: ToolMetadata[] = [
@@ -64,6 +65,7 @@ export const TOOL_METADATA: ToolMetadata[] = [
         rulesFilename: 'AGENTS.md',
         globalRulesDir: path.join(os.homedir(), '.codex'),
         cliCommand: 'codex',
+        mcpConfigKey: 'mcp_servers',
     },
     {
         id: 'gemini-cli',
@@ -87,7 +89,6 @@ export const TOOL_METADATA: ToolMetadata[] = [
         category: 'cli',
         configPaths: [
             path.join(os.homedir(), '.claude.json'),
-            path.join(os.homedir(), '.claude/settings.json'),
         ],
         mcpConfigPath: path.join(os.homedir(), '.claude.json'),
         projectMcpConfigFilename: '.claude.json',

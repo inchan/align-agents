@@ -239,35 +239,24 @@ export function SyncPage() {
     useEffect(() => {
         if (!syncStatus || !activeSet || !rules.length || !mcpSets.length || isMcpSetsLoading) return;
 
-        // 1. Validation: specific checks for active selections
-        // Ensure selectedMcpSetId exists in loaded sets
-        if (store.selectedMcpSetId) {
-            const exists = mcpSets.find(s => s.id === store.selectedMcpSetId);
-            if (!exists) {
-                console.warn(`[SyncPage] Selected McpSet ${store.selectedMcpSetId} not found. Clearing.`);
-                store.setSelectedMcpSetId(null);
-                // Trigger auto-selection in next render cycle by returning early?
-                // No, we can fall through to auto-selection below if we reset it to null here.
-                // However, state updates are batched. Better to calc new ID and set once.
+        const targetTools = activeSet.toolIds;
+        if (targetTools.length === 0) return;
+
+        // --- MCP Set Selection Logic ---
+        // Priority 1: Check for explicit mcpSetId in the first tool's config
+        const firstToolMcp = syncStatus.mcp[targetTools[0]];
+        let activeMcpSetId: string | null = null;
+
+        if (firstToolMcp?.mcpSetId) {
+            // If ID is persisted, verify it exists in loaded sets
+            if (mcpSets.some(s => s.id === firstToolMcp.mcpSetId)) {
+                activeMcpSetId = firstToolMcp.mcpSetId;
             }
         }
 
-        // 2. Auto-Selection Logic (Run if no valid selection exists OR explicitly re-evaluating)
-        // We only run auto-selection if we don't have a valid selection (i.e. it was null or just cleared)
-        // OR if the active tool set changes (dependency array).
-
-        const currentSelectionValid = store.selectedMcpSetId && mcpSets.find(s => s.id === store.selectedMcpSetId);
-
-        if (!currentSelectionValid) {
-            const targetTools = activeSet.toolIds;
-            if (targetTools.length === 0) return;
-
-            // MCP Auto-Selection based on common servers
-            const firstToolMcp = syncStatus.mcp[targetTools[0]];
-            const commonServers = firstToolMcp?.servers;
-
-            let resolvedMcpSetId: string | null = null;
-
+        // Priority 2: Fallback to auto-detection (Legacy) if no explicit ID
+        if (!activeMcpSetId && firstToolMcp?.servers) {
+            const commonServers = firstToolMcp.servers;
             if (commonServers) {
                 const allMatch = targetTools.every(tid => {
                     const conf = syncStatus.mcp[tid];
@@ -282,38 +271,30 @@ export function SyncPage() {
                         const setItems = getNames(set.items);
                         return setItems.length === commonServers.length && setItems.every(s => commonServers.includes(s));
                     });
-                    if (matchingSet) resolvedMcpSetId = matchingSet.id;
+                    if (matchingSet) activeMcpSetId = matchingSet.id;
                 }
             }
+        }
 
-            if (resolvedMcpSetId) {
-                store.setSelectedMcpSetId(resolvedMcpSetId);
-            } else {
-                // If auto-detection fails, fallback to clearing (already null in this branch)
-                store.setSelectedMcpSetId(null);
+        // Apply MCP Set Selection
+        store.setSelectedMcpSetId(activeMcpSetId);
+
+
+        // --- Rule Selection Logic ---
+        // Priority 1: Check for explicit ruleId in the first tool's config
+        // Note: Rules are usually 1:1, but here we pick for the "Set" based on the first tool
+        // Assumption: User syncs the same rule to the whole set usually.
+        const firstToolRule = syncStatus.rules[targetTools[0]];
+        let activeRuleId: string | null = null;
+
+        if (firstToolRule?.ruleId) {
+            if (rules.some(r => r.id === firstToolRule.ruleId)) {
+                activeRuleId = firstToolRule.ruleId;
             }
         }
 
-        // Rule Auto-Selection (Legacy/Fallback)
-        // Keeping this separate or integrated?
-        // Let's integrate for rules too: Validation > Persistence
-        // Since we don't fully auto-detect rules from backend yet (no Rule ID in sync status), 
-        // we just validate if selectedRuleId exists.
-        if (store.selectedRuleId) {
-            const ruleExists = rules.find(r => r.id === store.selectedRuleId);
-            if (!ruleExists) {
-                console.warn(`[SyncPage] Rule ${store.selectedRuleId} not found. Clearing.`);
-                store.setSelectedRuleId(null);
-            }
-        } else {
-            // Try to load legacy preference if store is empty
-            const savedItem = window.localStorage.getItem('sync-selections')
-            const savedSelections = savedItem ? JSON.parse(savedItem) : {}
-            const saved = savedSelections[store.activeToolSetId]
-            if (saved && saved.ruleId && rules.find(r => r.id === saved.ruleId)) {
-                store.setSelectedRuleId(saved.ruleId)
-            }
-        }
+        // Apply Rule Selection (or None if not found)
+        store.setSelectedRuleId(activeRuleId);
 
     }, [store.activeToolSetId, syncStatus, rules, mcpSets, isMcpSetsLoading, activeSet]);
 

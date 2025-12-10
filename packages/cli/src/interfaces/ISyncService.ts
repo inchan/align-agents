@@ -18,6 +18,7 @@ export interface SyncConfig {
     [toolId: string]: {
         enabled: boolean;
         servers: string[] | null;
+        mcpSetId?: string | null;
     };
 }
 
@@ -38,16 +39,20 @@ export interface SyncResult {
 }
 
 export interface ISyncService {
-    getGlobalConfig(): GlobalConfig;
-    saveGlobalConfig(config: GlobalConfig): void;
-    getMasterDir(): string;
-    setMasterDir(dir: string): void;
-    // Master MCP methods removed
-    loadSyncConfig(): SyncConfig;
-    saveSyncConfig(config: SyncConfig): void;
-    syncToolMcp(toolId: string, toolConfigPath: string, serverNames: string[] | null, strategy?: SyncStrategy, backupOptions?: { maxBackups?: number; skipBackup?: boolean }, sourceId?: string): Promise<string[]>;
-    syncAllTools(sourceId?: string, tools?: ToolConfig[]): Promise<SyncResult[]>;
+    getGlobalConfig(): Promise<GlobalConfig>;
+    saveGlobalConfig(config: GlobalConfig): Promise<void>;
+    getMasterDir(): Promise<string>;
+    setMasterDir(dir: string): Promise<void>;
+
+    // Sync Config
+    loadSyncConfig(): Promise<SyncConfig>;
+    saveSyncConfig(config: SyncConfig): Promise<void>;
+    getSyncConfig(): Promise<SyncConfig>;
+
+    // Execution
     syncTool(toolId: string, options?: SyncOptions): Promise<void>;
+    syncToolMcp(toolId: string, toolConfigPath: string, serverNames: string[] | null, strategy: SyncStrategy, backupOptions?: { maxBackups?: number; skipBackup?: boolean }, sourceId?: string): Promise<string[]>;
+    syncAllTools(sourceId?: string, tools?: any[]): Promise<SyncResult[]>;
 }
 
 export interface SyncOptions {
@@ -57,4 +62,5 @@ export interface SyncOptions {
         maxBackups?: number;
         skipBackup?: boolean;
     };
+    sourceId?: string;
 }

@@ -38,6 +38,7 @@ export interface SyncConfig {
     [toolId: string]: {
         enabled: boolean;
         servers: string[] | null;
+        mcpSetId?: string | null;
     };
 }
 
@@ -51,6 +52,7 @@ export interface RulesConfig {
         enabled: boolean;
         targetPath: string;
         global: boolean;
+        ruleId?: string;
     };
 }
 
@@ -313,6 +315,7 @@ export interface Rule {
     name: string;
     content: string;
     isActive: boolean;
+    orderIndex?: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -359,6 +362,15 @@ export async function setActiveRule(id: string): Promise<void> {
     if (!response.ok) throw new Error('Failed to set active rule');
     const text = await response.text();
     return text ? JSON.parse(text) : undefined;
+}
+
+export async function reorderRules(ids: string[]): Promise<void> {
+    const response = await fetch(`${API_BASE}/rules/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+    });
+    if (!response.ok) throw new Error('Failed to reorder rules');
 }
 export interface StatsSummary {
     totalSyncs: number;
@@ -445,6 +457,7 @@ export interface McpSet {
     items: McpSetItem[];
     isActive: boolean;
     isArchived?: boolean;
+    orderIndex?: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -491,6 +504,15 @@ export async function setActiveMcpSet(id: string): Promise<void> {
     if (!response.ok) throw new Error('Failed to set active MCP set');
     const text = await response.text();
     return text ? JSON.parse(text) : undefined;
+}
+
+export async function reorderMcpSets(ids: string[]): Promise<void> {
+    const response = await fetch(`${API_BASE}/mcp-sets/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+    });
+    if (!response.ok) throw new Error('Failed to reorder MCP sets');
 }
 
 // Projects API
@@ -542,6 +564,15 @@ export async function scanProjects(): Promise<UserProject[]> {
     });
     if (!response.ok) throw new Error('Failed to scan projects');
     return response.json();
+}
+
+export async function reorderProjects(ids: string[]): Promise<void> {
+    const response = await fetch(`${API_BASE}/projects/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+    });
+    if (!response.ok) throw new Error('Failed to reorder projects');
 }
 
 // Tools Enhancement API

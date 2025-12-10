@@ -77,7 +77,7 @@ cat ~/.claude.json
 |------|------|
 | Qwen MCP 지원 | 공식 문서에 없으나 `qwen mcp --help`로 확인됨 |
 | Codex 키 이름 | `mcp_servers` (underscore) - 틀리면 설정 무시됨 |
-| Claude Code 경로 | `~/.claude.json` (공식), `~/.claude/settings.json` (레거시) |
+| Claude Code 경로 | `~/.claude.json` (공식) |
 | Gemini 프로젝트 설정 | `.gemini/settings.json` 지원 |
 | 스코프 우선순위 | 대부분 Local > Project > User 순서 |
 

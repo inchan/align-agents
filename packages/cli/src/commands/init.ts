@@ -4,7 +4,9 @@ import inquirer from 'inquirer';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { getMasterDir, saveGlobalConfig } from '../services/sync.js';
+import { SyncService } from '../services/impl/SyncService.js';
+import { RulesService } from '../services/impl/RulesService.js';
+import { NodeFileSystem } from '../infrastructure/NodeFileSystem.js';
 import { initBackupRepo, createBackup } from '../services/backup.js';
 import { scanForTools, type ToolConfig } from '../services/scanner.js';
 import { getConfigDir } from '../constants/paths.js';
@@ -14,7 +16,11 @@ export const initCommand = new Command('init')
     .action(async () => {
         console.log(chalk.bold.cyan('\n🚀 AI CLI Syncer 초기 설정을 시작합니다!\n'));
 
-        const masterDir = getMasterDir();
+        const fsSystem = new NodeFileSystem();
+        const syncService = new SyncService(fsSystem);
+        const rulesService = new RulesService(fsSystem);
+
+        const masterDir = await syncService.getMasterDir();
 
         // 1. 이미 초기화되었는지 확인
         if (fs.existsSync(masterDir)) {
@@ -57,7 +63,7 @@ export const initCommand = new Command('init')
         if (!fs.existsSync(configDir)) {
             fs.mkdirSync(configDir, { recursive: true });
         }
-        saveGlobalConfig({
+        await syncService.saveGlobalConfig({
             masterDir,
             autoBackup: true,
         });
@@ -66,19 +72,15 @@ export const initCommand = new Command('init')
         // Master MCP and Rules creation removed
 
 
-        // 동기화 설정
-        const syncConfigPath = path.join(masterDir, 'sync-config.json');
-        const defaultSyncConfig = {
-            tools: {},
-        };
-        fs.writeFileSync(syncConfigPath, JSON.stringify(defaultSyncConfig, null, 2));
-        console.log(chalk.green('✓ sync-config.json'));
+        // 동기화 설정 (DB 기반이므로 파일 생성 대신 초기값 저장)
+        const defaultSyncConfig: any = {};
+        await syncService.saveSyncConfig(defaultSyncConfig);
+        console.log(chalk.green('✓ sync-config.json (Database Initialized)'));
 
-        // Rules 설정
-        const rulesConfigPath = path.join(masterDir, 'rules-config.json');
+        // Rules 설정 (DB 기반이므로 파일 생성 대신 초기값 저장)
         const defaultRulesConfig = {};
-        fs.writeFileSync(rulesConfigPath, JSON.stringify(defaultRulesConfig, null, 2));
-        console.log(chalk.green('✓ rules-config.json'));
+        await rulesService.saveRulesConfig(defaultRulesConfig);
+        console.log(chalk.green('✓ rules-config.json (Database Initialized)'));
 
         // 5. 도구 스캔
         console.log(chalk.blue('\n🔍 설치된 AI 도구 스캔 중...'));

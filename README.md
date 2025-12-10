@@ -13,6 +13,7 @@ AI CLI Syncer는 여러 AI 도구(Claude Desktop, Cursor, Gemini CLI 등)의 설
 - ✅ **8개 AI 도구 지원**: Claude Desktop, Cursor, Gemini CLI, Codex 등
 - ✅ **명시적 동기화**: sourceId(Rule ID 또는 MCP Set ID)를 지정하여 명시적으로 동기화
 - ✅ **Multi-Rules 관리**: 여러 버전의 Rules를 저장하고 필요에 따라 선택하여 배포
+- ✅ **SQLite 데이터베이스**: 안정적이고 빠른 데이터 관리 (트랜잭션 지원)
 - ✅ **동기화 전략**: Overwrite, Merge, Smart Update (마커 기반)
 - ✅ **타임스탬프 백업**: `.backup` 디렉토리에 자동 백업 (최대 5개 유지)
 - ✅ **히스토리 관리**: 버전 관리 및 롤백 기능
@@ -230,16 +231,15 @@ npm run dev -w packages/web         # 웹 UI (포트 5173)
 
 ## 📁 디렉토리 구조
 
-- **설정 파일**: `~/.ai-cli-syncer/`
+- **설정 파일**: `~/.acs/`
 ```text
-├── mcp/
-│   └── index.json        # MCP Definitions (pool) + Sets
-├── rules/
-│   └── index.json        # Rules 목록
-├── sync-config.json      # MCP 동기화 설정
-├── rules-config.json     # Rules 동기화 설정
-├── config.json           # 전역 설정
+├── data.db               # SQLite 데이터베이스 (MCP Definitions, Sets, Rules)
+├── sync-config.json      # MCP 동기화 설정 (레거시, 마이그레이션 예정)
+├── rules-config.json     # Rules 동기화 설정 (레거시, 마이그레이션 예정)
+├── config.json           # 전역 설정 (레거시, 마이그레이션 예정)
 ```
+
+> **Note**: MCP Definitions, MCP Sets, Rules는 이제 `data.db` SQLite 데이터베이스에 저장됩니다. 기존 JSON 파일은 레거시 지원을 위해 유지되며, 향후 자동 마이그레이션 도구가 제공될 예정입니다.
 
 ## 🔧 지원하는 AI 도구
 
@@ -249,7 +249,7 @@ npm run dev -w packages/web         # 웹 UI (포트 5173)
 | GitHub Copilot CLI | `~/.config/github-copilot/` | - | - |
 | Codex | `~/.codex/config.toml` | ✅ | ✅ (AGENTS.md) |
 | Gemini CLI | `~/.gemini/settings.json` | - | ✅ (GEMINI.md) |
-| Claude Code CLI | `~/.claude/settings.json` | - | ✅ (CLAUDE.md) |
+| Claude Code CLI | `~/.claude.json` | - | ✅ (CLAUDE.md) |
 | Qwen CLI | `~/.qwen/settings.json` | - | - |
 | Cursor IDE | `~/.cursor/cli-config.json` | - | ✅ (.cursorrules) |
 | Windsurf IDE | `~/.codeium/windsurf/settings.json` | - | - |
@@ -373,7 +373,7 @@ npm test -w @ai-cli-syncer/cli
 
 ```bash
 # Registry를 삭제하고 다시 스캔
-rm ~/.ai-cli-syncer/registry.json
+rm ~/.acs/registry.json
 acs scan
 ```
 

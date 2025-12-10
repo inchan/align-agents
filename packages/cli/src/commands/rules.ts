@@ -2,8 +2,9 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { execSync } from 'child_process';
-import { syncToolRules, syncAllToolsRules, getToolRulesFilename, listSupportedTools } from '../services/rules.js';
-import { getMasterDir } from '../services/sync.js';
+import { getToolMetadata } from '../constants/tools.js';
+import { RulesService } from '../services/impl/RulesService.js';
+import { NodeFileSystem } from '../infrastructure/NodeFileSystem.js';
 
 
 export const rulesCommand = new Command('rules')
@@ -35,9 +36,12 @@ rulesCommand
             return;
         }
 
+        // Initialize Service
+        const fileSystem = new NodeFileSystem();
+        const rulesService = new RulesService(fileSystem);
+
         // Rules 리스트 로드
-        const { fetchRulesList } = await import('../services/rules-multi.js');
-        const rulesList = fetchRulesList();
+        const rulesList = await rulesService.getRulesList();
 
         let sourceId = options.source;
 
@@ -82,12 +86,13 @@ rulesCommand
             console.log(chalk.gray(`   모드: ${useGlobal ? '전역 동기화' : '프로젝트 동기화'}\n`));
 
             // 동기화 실행 (SyncLogger가 자동으로 로그 출력)
-            const results = await syncAllToolsRules(targetPath, strategy, sourceId);
+            const results = await rulesService.syncAllToolsRules(targetPath, strategy, sourceId);
 
             // 성공 메시지
             console.log(chalk.green('✓ 전체 동기화 완료\n'));
         } else if (options.tool) {
-            const filename = getToolRulesFilename(options.tool);
+            const meta = getToolMetadata(options.tool);
+            const filename = meta?.rulesFilename;
             if (!filename) {
                 console.log(chalk.red(`✖ 알 수 없는 도구: ${options.tool}`));
                 console.log(chalk.yellow('\n지원하는 도구: claude-code-cli, codex, gemini-cli, cursor-ide'));
@@ -111,7 +116,7 @@ rulesCommand
                     ? options.global
                     : (options.project ? false : true);
 
-                await syncToolRules(options.tool, options.project || '', useGlobal, strategy, undefined, sourceId);
+                await rulesService.syncToolRules(options.tool, options.project || '', useGlobal, strategy, undefined, sourceId);
                 const targetPath = useGlobal ? '전역' : options.project;
                 console.log(chalk.green(`\n✓ ${filename} → ${targetPath} 동기화 완료\n`));
             } catch (error: any) {

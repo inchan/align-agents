@@ -19,6 +19,7 @@
 ```mermaid
 graph TD
     subgraph "Infrastructure Layer (External)"
+        DB[(SQLite Database)]
         FS[File System]
         Git[Git]
         CLI[CLI Interface]
@@ -50,6 +51,7 @@ graph TD
     SyncUC --> Rules
     SyncUC --> MCP
     SyncUC --> Gateways
+    Gateways --> DB
     Gateways --> FS
     Gateways --> Git
 ```
@@ -129,18 +131,25 @@ packages/cli/src/
 │       └── LoadMasterMcpUseCase.ts
 ├── interfaces/          # 인터페이스 정의 (DIP 적용)
 │   ├── IFileSystem.ts   # 파일 시스템 추상화
+│   ├── IDatabase.ts     # 데이터베이스 추상화 (NEW)
 │   ├── IRulesService.ts # Rules 서비스 인터페이스
 │   ├── ISyncService.ts  # Sync 서비스 인터페이스
+│   ├── IMcpService.ts   # MCP 서비스 인터페이스 (NEW)
 │   └── repositories/    # Repository 인터페이스
 │       ├── IRulesConfigRepository.ts
 │       ├── ISyncConfigRepository.ts
 │       └── IGlobalConfigRepository.ts
 ├── infrastructure/      # 인프라 구현체
-│   ├── NodeFileSystem.ts # Node.js fs/path 구현
-│   └── repositories/     # Repository 구현체
-│       ├── RulesConfigRepository.ts
-│       ├── SyncConfigRepository.ts
-│       └── GlobalConfigRepository.ts
+│   ├── NodeFileSystem.ts     # Node.js fs/path 구현
+│   ├── SqliteDatabase.ts     # SQLite 데이터베이스 구현 (NEW)
+│   ├── database.ts           # 데이터베이스 팩토리 (NEW)
+│   ├── database-init.ts      # 스키마 초기화 (NEW)
+│   ├── schema.ts             # 데이터베이스 스키마 (NEW)
+│   └── repositories/         # Repository 구현체
+│       ├── McpRepository.ts          # DB 기반 (MIGRATED)
+│       ├── RulesConfigRepository.ts  # 파일 기반 (마이그레이션 예정)
+│       ├── SyncConfigRepository.ts   # 파일 기반 (마이그레이션 예정)
+│       └── GlobalConfigRepository.ts # 파일 기반 (마이그레이션 예정)
 ├── services/
 │   ├── impl/            # 서비스 구현체
 │   │   ├── RulesService.ts # IRulesService 구현
@@ -222,16 +231,19 @@ packages/cli/src/
 │     Services (도메인 로직)           │
 │  - RulesService                     │
 │  - SyncService                      │
+│  - McpService (DB 기반)             │
 └──────────────┬──────────────────────┘
                │ depends on
 ┌──────────────▼──────────────────────┐
 │   Repositories (데이터 접근)         │
-│  - RulesConfigRepository            │
-│  - SyncConfigRepository             │
+│  - McpRepository (SQLite)           │
+│  - RulesConfigRepository (파일)     │
+│  - SyncConfigRepository (파일)      │
 └──────────────┬──────────────────────┘
                │ depends on
 ┌──────────────▼──────────────────────┐
-│  Infrastructure (파일 시스템)        │
+│  Infrastructure (저장소)             │
+│  - SqliteDatabase (WAL 모드)        │
 │  - NodeFileSystem                   │
 │  - fs, path modules                 │
 └─────────────────────────────────────┘
@@ -245,16 +257,61 @@ packages/cli/src/
 - ✅ **ISP**: 역할별 인터페이스 분리 (IFileSystem, IRulesService, ISyncService 등)
 - ✅ **DIP**: 의존성 역전 (Use Case → Service → Repository → Infrastructure)
 
-## 8. 다음 단계
+## 8. 데이터베이스 레이어 (2024-12 추가)
 
-1. **웹 UI 통합**
+### 8.1 SQLite 도입 배경
+
+파일 기반 저장소의 문제점:
+- 파일 경로 처리 오류 반복
+- 동시성 문제 (race condition)
+- 데이터 무결성 보장 어려움
+- 관계형 데이터 관리 복잡성
+
+### 8.2 구현 현황
+
+- ✅ **McpRepository**: SQLite 기반으로 마이그레이션 완료
+  - 트랜잭션 지원으로 데이터 무결성 보장
+  - WAL 모드로 동시성 향상
+  - 다대다 관계 (`mcp_set_items`) 관리 개선
+
+- 🔄 **마이그레이션 예정**:
+  - RulesConfigRepository
+  - SyncConfigRepository
+  - GlobalConfigRepository
+
+### 8.3 데이터베이스 스키마
+
+주요 테이블:
+- `mcp_definitions`: MCP 서버 정의 (`is_archived` 포함)
+- `mcp_sets`: MCP 서버 그룹 (`is_archived` 포함)
+- `mcp_set_items`: Set과 Definition 간 다대다 관계
+- `rules`: Rules 목록 (`is_archived` 포함)
+- `schema_version`: 마이그레이션 버전 관리
+
+자세한 내용은 `packages/cli/src/infrastructure/schema.ts` 참조
+
+### 8.4 데이터 보관 정책 (Soft Delete)
+
+**"모든 삭제는 실제로는 보관 상태입니다."**
+- 시스템의 모든 데이터 삭제 작업은 **Soft Delete**로 처리됩니다.
+- 레코드의 `is_archived` 컬럼을 `1`로 설정하여 삭제됨을 표시합니다.
+- 조회 시에는 `is_archived = 0` 필터를 적용하여 활성 데이터만 반환합니다.
+- 물리적 삭제(Hard Delete)는 특수한 경우(예: 개인정보 파기 요청, 시스템 정리 스크립트)를 제외하고는 수행하지 않습니다.
+
+## 9. 다음 단계
+
+1. **데이터베이스 마이그레이션 완료**
+   - 나머지 Repository를 SQLite로 전환
+   - JSON → SQLite 자동 마이그레이션 도구 제공
+
+2. **웹 UI 통합**
    - React 기반 웹 UI와 백엔드 API 연결
    - system.css 레트로 디자인 적용 완료
 
-2. **문서화**
+3. **문서화**
    - 사용자 가이드 작성
    - API 문서 작성
 
-3. **배포 준비**
+4. **배포 준비**
    - CI/CD 파이프라인 구축
    - 패키지 배포 준비

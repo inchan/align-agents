@@ -21,9 +21,9 @@ acs init
 
 **동작:**
 
-- `~/.ai-cli-syncer` 디렉토리 생성
-- 기본 설정 파일 생성 (`config.json`, `sync-config.json`, `rules-config.json`)
-- MCP 및 Rules 디렉토리 생성
+- `~/.acs` 디렉토리 생성
+- SQLite 데이터베이스 (`data.db`) 초기화
+- 기본 설정 파일 생성 (레거시 지원용)
 - Git 저장소 초기화 (백업용)
 
 ---
@@ -296,7 +296,7 @@ acs config edit
 ## 환경 변수
 
 - `EDITOR`: 기본 텍스트 에디터 (기본값: `vi`)
-- `AI_CLI_SYNCER_CONFIG_DIR`: 설정 디렉토리 경로 (기본값: `~/.ai-cli-syncer`)
+- `AI_CLI_SYNCER_CONFIG_DIR`: 설정 디렉토리 경로 (기본값: `~/.acs`)
 
 ---
 
@@ -311,36 +311,36 @@ acs config edit
 
 ## 예제 워크플로우
 
-### 1. 초기 설정 및 MCP 서버 추가
+### 1. 초기 설정 및 동기화
 
 ```bash
 # 초기화
 acs init
 
-# MCP 서버 추가
-acs mcp add filesystem --command npx --args "-y @modelcontextprotocol/server-filesystem /Users/username/Documents"
+# Web UI에서 MCP Set 생성 및 서버 추가
+# http://localhost:5173 접속
 
-# Claude Desktop에 동기화
+# Claude Desktop에 동기화 (대화형 선택)
 acs sync --tool claude-desktop
 
 # 백업 생성
 acs backup create "Initial MCP setup"
 ```
 
-### 2. Rules 템플릿 적용 및 동기화
+### 2. Rules 동기화
 
 ```bash
-# React 템플릿 적용
-acs rules template apply react
+# Web UI에서 Rule 생성 및 편집
+# http://localhost:5173 접속 → Rules 페이지
 
-# Rules 편집
-acs rules edit
+# 모든 도구에 전역 Rules 동기화 (대화형 선택)
+acs rules sync --all --global
 
-# 모든 도구에 동기화
-acs rules sync --all --project /path/to/my-project
+# 또는 Rule ID 지정
+acs rules sync --all --global --source <rule-id>
 
 # 백업 생성
-acs backup create "Applied React rules"
+acs backup create "Applied custom rules"
 ```
 
 ### 3. 백업 및 복원
@@ -349,8 +349,7 @@ acs backup create "Applied React rules"
 # 현재 상태 백업
 acs backup create "Before major changes"
 
-# 설정 변경...
-acs mcp add new-server --command node --args server.js
+# Web UI에서 설정 변경...
 
 # 백업 목록 확인
 acs backup list

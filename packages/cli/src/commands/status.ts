@@ -4,22 +4,28 @@ import fs from 'fs';
 import { getRegistryPath } from '../constants/paths.js';
 import path from 'path';
 import os from 'os';
-import { loadSyncConfig } from '../services/sync.js';
-import { loadRulesConfig } from '../services/rules.js';
+import { SyncService } from '../services/impl/SyncService.js';
+import { RulesService } from '../services/impl/RulesService.js';
+import { NodeFileSystem } from '../infrastructure/NodeFileSystem.js';
 
 export const statusCommand = new Command('status')
     .description('동기화 상태 확인')
-    .action(() => {
+    .action(async () => {
         console.log(chalk.bold('\n📊 AI CLI Syncer 상태\n'));
+
+        // Initialize Services
+        const fsSystem = new NodeFileSystem();
+        const syncService = new SyncService(fsSystem);
+        const rulesService = new RulesService(fsSystem);
 
         // 1. 도구 스캔 상태
         showToolsStatus();
 
         // 2. MCP 동기화 상태
-        showMcpStatus();
+        await showMcpStatus(syncService);
 
         // 3. Rules 동기화 상태
-        showRulesStatus();
+        await showRulesStatus(rulesService);
 
         // 4. 백업 상태
         showBackupStatus();
@@ -50,9 +56,9 @@ function showToolsStatus() {
     console.log('');
 }
 
-function showMcpStatus() {
+async function showMcpStatus(syncService: SyncService) {
     try {
-        const syncConfig = loadSyncConfig();
+        const syncConfig = await syncService.loadSyncConfig();
         const enabledTools = Object.entries(syncConfig).filter(([_, config]) => config.enabled).length;
 
         console.log(chalk.bold('🔌 MCP 동기화 상태'));
@@ -71,9 +77,9 @@ function showMcpStatus() {
     console.log('');
 }
 
-function showRulesStatus() {
+async function showRulesStatus(rulesService: RulesService) {
     try {
-        const rulesConfig = loadRulesConfig();
+        const rulesConfig = await rulesService.loadRulesConfig();
         const enabledTools = Object.entries(rulesConfig).filter(([_, config]) => config.enabled).length;
 
         console.log(chalk.bold('📝 Rules 동기화 상태'));

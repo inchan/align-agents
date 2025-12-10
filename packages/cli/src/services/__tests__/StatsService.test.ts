@@ -20,7 +20,7 @@ import { StatsService } from '../StatsService.js';
 
 describe('StatsService', () => {
     let statsService: StatsService;
-    const mockConfigDir = path.join(mockHomeDir, '.config', 'ai-cli-syncer');
+    const mockConfigDir = path.join(mockHomeDir, '.ai-cli-syncer');
     const mockStatsFile = path.join(mockConfigDir, 'stats.json');
     const mockActivityFile = path.join(mockConfigDir, 'activity.json');
 

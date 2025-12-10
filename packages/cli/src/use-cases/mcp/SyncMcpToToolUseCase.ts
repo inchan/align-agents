@@ -11,7 +11,7 @@ export class SyncMcpToToolUseCase implements IUseCase<SyncMcpToToolRequest, Sync
                 request.toolId,
                 request.configPath,
                 request.serverIds || null, // Convert undefined/empty to null if allowed by service, or just pass as is if service handles it. Service takes string[] | null.
-                request.strategy,
+                request.strategy || 'overwrite',
                 undefined,
                 request.sourceId
             );

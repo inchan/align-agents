@@ -3,9 +3,18 @@ import path from 'path';
 import os from 'os';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initBackupRepo, createBackup, getBackups, restoreBackup } from '../backup.js';
+import { SyncService } from '../impl/SyncService.js';
 
-vi.mock('../sync.js', () => ({
-    getMasterDir: vi.fn(() => mockedMasterDir),
+const mocks = vi.hoisted(() => ({
+    getMasterDir: vi.fn()
+}));
+
+vi.mock('../impl/SyncService.js', () => ({
+    SyncService: vi.fn(function() {
+        return {
+            getMasterDir: mocks.getMasterDir
+        };
+    })
 }));
 
 let mockedMasterDir: string;
@@ -30,6 +39,7 @@ describe('backup service adapter', () => {
     beforeEach(() => {
         mockedMasterDir = fs.mkdtempSync(path.join(os.tmpdir(), 'acs-backup-'));
         Object.values(gitMocks).forEach(fn => fn.mockReset());
+        mocks.getMasterDir.mockResolvedValue(mockedMasterDir);
     });
 
     afterEach(() => {
@@ -89,6 +99,7 @@ describe('backup service adapter', () => {
 
     it('creates master dir when missing during init/create', async () => {
         mockedMasterDir = path.join(os.tmpdir(), `acs-missing-${Date.now()}`);
+        mocks.getMasterDir.mockResolvedValue(mockedMasterDir);
         gitMocks.checkIsRepo.mockResolvedValue(true);
         gitMocks.status.mockResolvedValue({ files: ['x'] });
         gitMocks.commit.mockResolvedValue({ commit: 'hash' });

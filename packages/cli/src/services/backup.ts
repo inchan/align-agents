@@ -1,5 +1,6 @@
 import { simpleGit } from 'simple-git';
-import { getMasterDir } from './sync.js';
+import { SyncService } from './impl/SyncService.js';
+import { NodeFileSystem } from '../infrastructure/NodeFileSystem.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -7,7 +8,9 @@ import path from 'path';
  * 백업 저장소 초기화
  */
 export async function initBackupRepo(): Promise<void> {
-    const masterDir = getMasterDir();
+    const fsSystem = new NodeFileSystem();
+    const syncService = new SyncService(fsSystem);
+    const masterDir = await syncService.getMasterDir();
 
     // 마스터 디렉토리가 없으면 생성
     if (!fs.existsSync(masterDir)) {
@@ -33,7 +36,9 @@ export async function initBackupRepo(): Promise<void> {
  * 백업 생성 (커밋)
  */
 export async function createBackup(message?: string): Promise<string> {
-    const masterDir = getMasterDir();
+    const fsSystem = new NodeFileSystem();
+    const syncService = new SyncService(fsSystem);
+    const masterDir = await syncService.getMasterDir();
 
     if (!fs.existsSync(masterDir)) {
         fs.mkdirSync(masterDir, { recursive: true });
@@ -57,7 +62,9 @@ export async function createBackup(message?: string): Promise<string> {
  * 백업 목록 조회
  */
 export async function getBackups(): Promise<Array<{ hash: string; date: string; message: string }>> {
-    const masterDir = getMasterDir();
+    const fsSystem = new NodeFileSystem();
+    const syncService = new SyncService(fsSystem);
+    const masterDir = await syncService.getMasterDir();
 
     if (!fs.existsSync(masterDir)) {
         return [];
@@ -84,7 +91,9 @@ export async function getBackups(): Promise<Array<{ hash: string; date: string; 
  * 백업 복원
  */
 export async function restoreBackup(hash: string): Promise<void> {
-    const masterDir = getMasterDir();
+    const fsSystem = new NodeFileSystem();
+    const syncService = new SyncService(fsSystem);
+    const masterDir = await syncService.getMasterDir();
 
     if (!fs.existsSync(masterDir)) {
         throw new Error('백업 저장소가 존재하지 않습니다.');

@@ -5,6 +5,7 @@ export interface RulesConfig {
         enabled: boolean;
         targetPath: string;
         global: boolean;
+        ruleId?: string;
     };
 }
 
@@ -22,17 +23,19 @@ export interface Rule {
     name: string;
     content: string;
     isActive: boolean;
+    orderIndex?: number;
     createdAt: string;
     updatedAt: string;
 }
 
 export interface IRulesService {
-    // Master rules methods removed
-    loadRulesConfig(): RulesConfig;
-    saveRulesConfig(config: RulesConfig): void;
+    // Configuration
+    loadRulesConfig(): Promise<RulesConfig>;
+    saveRulesConfig(config: RulesConfig): Promise<void>;
+    getRulesConfig(): Promise<RulesConfig>;
+    initRulesConfig(): Promise<void>;
     syncToolRules(toolId: string, targetPath: string, global: boolean, strategy: SyncStrategy, backupOptions?: { maxBackups?: number; skipBackup?: boolean }, sourceId?: string): Promise<void>;
     syncAllToolsRules(targetPath: string, strategy: SyncStrategy, sourceId?: string): Promise<RulesSyncResult[]>;
-    initRulesConfig(): void;
     listSupportedTools(): string[];
 
     // Multi-rules management
@@ -42,4 +45,5 @@ export interface IRulesService {
     updateRule(id: string, content: string, name?: string): Promise<Rule>;
     deleteRule(id: string): Promise<void>;
     setActiveRule(id: string): Promise<void>;
+    reorderRules(ids: string[]): Promise<void>;
 }

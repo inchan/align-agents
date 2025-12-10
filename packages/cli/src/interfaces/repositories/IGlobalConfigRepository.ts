@@ -1,6 +1,7 @@
 import { GlobalConfig } from '../ISyncService.js';
 
 export interface IGlobalConfigRepository {
-    load(): GlobalConfig;
-    save(config: GlobalConfig): void;
+    load(): Promise<GlobalConfig>;
+    save(config: GlobalConfig): Promise<void>;
+    init(): Promise<void>;
 }
