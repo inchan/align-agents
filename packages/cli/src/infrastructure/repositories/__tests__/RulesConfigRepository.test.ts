@@ -183,7 +183,7 @@ describe('RulesConfigRepository', () => {
             expect(result).toHaveLength(1);
             expect(result[0].name).toBe('Rule 1');
             expect(result[0].isActive).toBe(true);
-            expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('ORDER BY created_at DESC'));
+            expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('ORDER BY order_index ASC, created_at DESC'));
         });
 
         it('should return empty array if DB returns no rules', async () => {
@@ -223,8 +223,16 @@ describe('RulesConfigRepository', () => {
     describe('createRule', () => {
         it('should create new rule', async () => {
             const mockRun = vi.fn();
-            mockDb.prepare.mockReturnValueOnce({
-                run: mockRun,
+            // First call for MAX(order_index) (get), Second for INSERT (run)
+            mockDb.prepare.mockImplementation((sql: string) => {
+                if (sql.includes('SELECT MAX(order_index)')) {
+                    return {
+                        get: vi.fn().mockReturnValue({ maxIndex: 0 })
+                    } as any;
+                }
+                return {
+                    run: mockRun,
+                } as any;
             });
 
             const result = await repository.createRule('New Rule', 'new content');

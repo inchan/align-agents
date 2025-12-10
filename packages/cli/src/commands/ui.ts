@@ -89,6 +89,12 @@ export const uiCommand = new Command('ui')
         await server.register(async (instance) => mcpRoutes(instance, mcpService));
         await server.register(systemRoutes);
 
+        if (process.env.NODE_ENV === 'test' || process.env.E2E_TEST_MODE === 'true') {
+            const { testRoutes } = await import('../api/routes/test.js');
+            await server.register(testRoutes);
+            console.log(chalk.yellow('⚠️  Test routes registered (E2E_TEST_MODE Active)'));
+        }
+
         // Serve static files from the web package's dist directory
         // Assuming the CLI is run from packages/cli and web is built to packages/web/dist
         // We need to resolve the path correctly relative to the built CLI code

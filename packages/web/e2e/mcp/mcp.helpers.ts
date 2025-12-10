@@ -7,7 +7,7 @@
  * - 우측: 선택된 Set의 상세 및 MCP 항목들
  * - Sheet: MCP Library (전역 MCP Definition Pool)
  */
-import { Page, expect } from '@playwright/test'
+import { Page, expect, APIRequestContext } from '@playwright/test'
 
 // ============================================================================
 // 상수 정의
@@ -19,9 +19,9 @@ import { Page, expect } from '@playwright/test'
  */
 export const SELECTORS = {
     // Sets 목록 (좌측 패널)
-    setsPanel: '.w-80',
-    setsHeader: 'h3:has-text("Sets")',
-    addSetButton: '.w-80 button:has(svg.lucide-plus)',
+    setsPanel: 'div.rounded-xl:has(h3:has-text("MCP Sets"))',
+    setsHeader: 'h3:has-text("MCP Sets")',
+    addSetButton: 'h3:has-text("MCP Sets") + div button:has(svg.lucide-plus)',
     setItem: (name: string) => `div.group:has-text("${name}")`,
     setDeleteButton: 'button:has(svg.lucide-trash-2)',
 
@@ -38,7 +38,7 @@ export const SELECTORS = {
     mcpItemSwitch: 'button[role="switch"]',
 
     // Create Set 모달
-    createSetModal: 'div[role="dialog"]:has-text("Create New MCP Set")',
+    createSetModal: 'div[role="dialog"]:has-text("Create MCP Set")',
     setNameInput: 'div[role="dialog"] input',
     setDescInput: 'div[role="dialog"] input:nth-of-type(2)',
     createSetButton: 'div[role="dialog"] button:has-text("Create")',
@@ -57,7 +57,7 @@ export const SELECTORS = {
     addToSetButton: 'button:has-text("Add to Set")',
 
     // Add/Edit MCP 모달 (Library Sheet가 아닌 center dialog)
-    mcpModal: 'div[role="dialog"]:has-text("Add New MCP"), div[role="dialog"]:has-text("Edit MCP")',
+    mcpModal: 'div[role="dialog"]:has-text("Add MCP Definition"), div[role="dialog"]:has-text("Edit MCP Definition")',
     mcpNameInput: 'div[role="dialog"]:not([aria-label="MCP Library"]) input >> nth=0',
     mcpCommandInput: 'div[role="dialog"]:not([aria-label="MCP Library"]) input >> nth=1',
     mcpArgsInput: 'div[role="dialog"]:not([aria-label="MCP Library"]) input >> nth=2',
@@ -66,10 +66,10 @@ export const SELECTORS = {
     saveMcpButton: 'div[role="dialog"]:not([aria-label="MCP Library"]) button:has-text("Save")',
 
     // Delete MCP 확인 다이얼로그
-    deleteMcpDialog: 'div[role="dialog"]:has-text("Delete MCP")',
+    deleteMcpDialog: 'div[role="dialog"]:has-text("Delete MCP Definition")',
 
     // Import 모달
-    importModal: 'div[role="dialog"]:has-text("Import MCP")',
+    importModal: 'div[role="dialog"]:has-text("Import MCP Servers")',
     githubUrlInput: 'input[placeholder*="github"]',
     loadButton: 'button:has-text("Load")',
     jsonTextarea: 'textarea',
@@ -247,7 +247,7 @@ export async function createMcpDef(
     await page.locator(SELECTORS.newMcpButton).click()
 
     // Add New MCP 모달이 열릴 때까지 대기
-    const addMcpModal = page.getByRole('dialog', { name: 'Add New MCP' })
+    const addMcpModal = page.getByRole('dialog', { name: 'Add MCP Definition' })
     await expect(addMcpModal).toBeVisible({ timeout: TIMEOUTS.short })
 
     // 입력 (모달 내부의 input들)
@@ -340,6 +340,9 @@ export async function cleanupSet(page: Page, name: string): Promise<void> {
 /**
  * Library에서 MCP Definition 삭제
  */
+/**
+ * Library에서 MCP Definition 삭제
+ */
 export async function deleteMcpDef(page: Page, name: string): Promise<void> {
     // Library가 열려있지 않으면 열기
     await openLibrary(page)
@@ -358,3 +361,31 @@ export async function deleteMcpDef(page: Page, name: string): Promise<void> {
     // 삭제 확인
     await expect(page.locator(SELECTORS.deleteMcpDialog)).not.toBeVisible({ timeout: TIMEOUTS.short })
 }
+
+// ============================================================================
+// API Helpers (Data Isolation)
+// ============================================================================
+
+const API_BASE_URL = 'http://localhost:3001';
+
+/**
+ * Reset Database via API
+ */
+export async function resetDatabase(request: APIRequestContext): Promise<void> {
+    const response = await request.post(`${API_BASE_URL}/api/__test__/reset`);
+    expect(response.ok(), 'Failed to reset database').toBeTruthy();
+}
+
+/**
+ * Seed MCP Data via API
+ */
+export async function seedMcpData(request: APIRequestContext, data: {
+    tools?: Array<{ id: string, name: string, command: string, args: string[], env?: Record<string, string> }>,
+    sets?: Array<{ id: string, name: string, isActive?: boolean, items?: Array<{ id: string, serverId: string }> }>
+}): Promise<void> {
+    const response = await request.post(`${API_BASE_URL}/api/__test__/seed/mcp`, {
+        data: data
+    });
+    expect(response.ok(), 'Failed to seed MCP data').toBeTruthy();
+}
+

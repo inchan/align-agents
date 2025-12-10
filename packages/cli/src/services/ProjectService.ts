@@ -57,7 +57,9 @@ export class ProjectService {
     }
 
     public getProjects(): UserProject[] {
-        return this.loadProjects();
+        return this.loadProjects().sort((a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
     }
 
     public async reorderProjects(ids: string[]): Promise<void> {
