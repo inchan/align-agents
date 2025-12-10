@@ -5,12 +5,12 @@ export {
     McpServerSchema,
     MasterMcpConfigSchema,
     SyncConfigSchema,
-} from '@ai-cli-syncer/cli';
+} from '@align-agents/cli';
 
 export {
     RulesConfigSchema,
     GlobalConfigSchema,
-} from '@ai-cli-syncer/cli';
+} from '@align-agents/cli';
 
 // ==========================================
 // Config API Schemas

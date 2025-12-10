@@ -11,7 +11,7 @@ let dbInstance: IDatabase | null = null;
  */
 export function getDefaultDatabasePath(): string {
     const homeDir = os.homedir();
-    return path.join(homeDir, '.acs', 'data.db');
+    return path.join(homeDir, '.align-agents', 'data.db');
 }
 
 /**

@@ -21,7 +21,7 @@ export async function initBackupRepo(): Promise<void> {
 
     if (!await git.checkIsRepo()) {
         await git.init();
-        await git.addConfig('user.name', 'AI CLI Syncer');
+        await git.addConfig('user.name', 'align-agents');
         await git.addConfig('user.email', 'acs@local');
 
         // .gitignore 생성

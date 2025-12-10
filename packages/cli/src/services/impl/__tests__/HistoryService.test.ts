@@ -36,7 +36,7 @@ describe('HistoryService', () => {
 
         const id = service.saveVersion('rules', 'content', 'desc');
 
-        expect(mockFs.mkdir).toHaveBeenCalledWith(`${mockHomeDir}/.ai-cli-syncer/history`);
+        expect(mockFs.mkdir).toHaveBeenCalledWith(`${mockHomeDir}/.align-agents/history`);
         expect(mockFs.writeFile).toHaveBeenCalledTimes(2); // content file + index file
         expect(id).toContain('rules-');
     });

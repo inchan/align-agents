@@ -13,7 +13,7 @@ import { ToolConfig } from '../repositories/ToolRepository.js';
 async function migrate() {
     console.log('🔄 Starting migration to SQLite...');
 
-    const defaultMaster = path.join(process.env.HOME || '', '.acs-master');
+    const defaultMaster = path.join(process.env.HOME || '', '.align-agents');
     const altMaster = path.join(process.env.HOME || '', '.ai-cli-syncer');
 
     let masterDir = process.env.ACS_MASTER_DIR;

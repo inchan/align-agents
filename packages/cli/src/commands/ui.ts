@@ -122,7 +122,7 @@ export const uiCommand = new Command('ui')
         try {
             await server.listen({ port });
             const url = `http://localhost:${port}`;
-            console.log(chalk.green(`\n🚀 AI CLI Syncer UI running at: ${chalk.bold(url)}\n`));
+            console.log(chalk.green(`\n🚀 align-agents UI running at: ${chalk.bold(url)}\n`));
             if (options.open) {
                 await open(url);
             }

@@ -37,7 +37,7 @@ describe('Init E2E', () => {
     }
 
     function getDbPath(homeDir: string): string {
-        return path.join(homeDir, '.acs', 'data.db');
+        return path.join(homeDir, '.align-agents', 'data.db');
     }
 
     beforeEach(() => {

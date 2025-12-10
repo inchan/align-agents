@@ -459,9 +459,9 @@ interface McpConfig {
 
 ---
 
-## 11. ai-cli-syncer 동기화 대상
+## 11. align-agents 동기화 대상
 
-현재 ai-cli-syncer가 동기화하는 경로:
+현재 align-agents가 동기화하는 경로:
 
 | 도구 | 동기화 경로 | 비고 |
 |------|------------|------|

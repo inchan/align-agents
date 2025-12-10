@@ -2,10 +2,18 @@
  * Test Factories for E2E Tests
  * Centralizes data seeding logic for database setup
  */
-import { IDatabase } from '../interfaces/IDatabase.js';
+
+/**
+ * Minimal DB interface for test factories
+ * Uses only the methods actually needed, avoiding transaction type complexity
+ */
+interface TestDb {
+    exec(sql: string): void;
+    prepare<T = any>(sql: string): { run(...params: any[]): any; get(...params: any[]): T | undefined; all(...params: any[]): T[] };
+}
 
 export const factories = {
-    seedMcpData: (db: IDatabase, mcpSetId: string, defId: string) => {
+    seedMcpData: (db: TestDb, mcpSetId: string, defId: string) => {
         db.exec(`
             CREATE TABLE IF NOT EXISTS mcp_definitions (
                 id TEXT PRIMARY KEY,
@@ -58,7 +66,7 @@ export const factories = {
         `).run('item-1', mcpSetId, defId, 0, 0);
     },
 
-    seedRulesData: (db: IDatabase, ruleId: string, content: string = '# E2E Rules\n- keep me') => {
+    seedRulesData: (db: TestDb, ruleId: string, content: string = '# E2E Rules\n- keep me') => {
         db.exec(`
             CREATE TABLE IF NOT EXISTS rules (
                 id TEXT PRIMARY KEY,
@@ -78,7 +86,7 @@ export const factories = {
         `).run(ruleId, 'E2E Test Rule', content, 1);
     },
 
-    seedSyncConfig: (db: IDatabase, config: Record<string, { enabled: boolean; servers: any | null }>) => {
+    seedSyncConfig: (db: TestDb, config: Record<string, { enabled: boolean; servers: any | null }>) => {
         db.exec(`
             CREATE TABLE IF NOT EXISTS sync_config (
                 tool_id TEXT PRIMARY KEY,
@@ -98,7 +106,7 @@ export const factories = {
         }
     },
 
-    seedGlobalConfig: (db: IDatabase, config: Record<string, string>) => {
+    seedGlobalConfig: (db: TestDb, config: Record<string, string>) => {
         db.exec(`CREATE TABLE IF NOT EXISTS global_config (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)`);
         const stmt = db.prepare(`INSERT OR REPLACE INTO global_config (key, value) VALUES (?, ?)`);
         for (const [key, value] of Object.entries(config)) {

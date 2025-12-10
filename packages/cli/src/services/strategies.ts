@@ -32,8 +32,8 @@ export function deepMergeMcpServers(
     return result;
 }
 
-export const MARKER_START = '<!-- ai-cli-syncer-start -->';
-export const MARKER_END = '<!-- ai-cli-syncer-end -->';
+export const MARKER_START = '<!-- align-agents-start -->';
+export const MARKER_END = '<!-- align-agents-end -->';
 
 /**
  * Applies the selected synchronization strategy to content.

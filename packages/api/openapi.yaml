@@ -1,12 +1,12 @@
 openapi: 3.0.3
 info:
-  title: AI CLI Syncer API
+  title: align-agents API
   description: |
     API for managing AI CLI tools (Claude, Cursor, Codex, Gemini, etc.) MCP configurations and Rules.
     This API enables synchronization of Model Context Protocol (MCP) servers and coding rules across multiple AI development tools.
   version: 0.1.0
   contact:
-    name: AI CLI Syncer
+    name: align-agents
   license:
     name: MIT
 

@@ -1,6 +1,6 @@
 # Development Guidelines & Methodology
 
-이 문서는 AI CLI Syncer 프로젝트의 개발 방법론, 테스트 전략, 그리고 코딩 표준을 정의합니다. 우리는 **TDD(Test-Driven Development)**를 기본 개발 프로세스로 채택하여 코드의 품질과 신뢰성을 보장합니다.
+이 문서는 align-agents 프로젝트의 개발 방법론, 테스트 전략, 그리고 코딩 표준을 정의합니다. 우리는 **TDD(Test-Driven Development)**를 기본 개발 프로세스로 채택하여 코드의 품질과 신뢰성을 보장합니다.
 
 ## 1. TDD Workflow
 

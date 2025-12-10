@@ -42,7 +42,7 @@
 
 ## 개요
 
-이 문서는 AI CLI Syncer의 **Projects 관리 페이지** UI 시나리오 테스트를 정의합니다.
+이 문서는 align-agents의 **Projects 관리 페이지** UI 시나리오 테스트를 정의합니다.
 `ProjectsPage.tsx` 컴포넌트의 모든 기능을 커버합니다.
 
 **주요 기능:**

@@ -1,8 +1,8 @@
-<!-- ai-cli-syncer-start -->
+<!-- align-agents-start -->
 # Production Guidelines
 
 ## Core Principles
 - Write clean code
 - Test thoroughly
 - Document everything
-<!-- ai-cli-syncer-end -->
+<!-- align-agents-end -->

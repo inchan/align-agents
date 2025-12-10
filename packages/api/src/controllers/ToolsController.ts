@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { scanForTools, ProjectScanner, TOOL_METADATA } from '@ai-cli-syncer/cli';
+import { scanForTools, ProjectScanner, TOOL_METADATA } from '@align-agents/cli';
 
 export class ToolsController {
     async getMetadata(req: Request, res: Response) {

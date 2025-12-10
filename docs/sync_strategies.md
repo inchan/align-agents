@@ -1,6 +1,6 @@
 # 동기화 전략 (Synchronization Strategies)
 
-AI CLI Syncer는 세 가지 동기화 전략을 지원합니다.
+align-agents는 세 가지 동기화 전략을 지원합니다.
 
 ## 1. 완전 교체 (Overwrite)
 
@@ -18,9 +18,9 @@ AI CLI Syncer는 세 가지 동기화 전략을 지원합니다.
 
 ## 3. 스마트 업데이트 (Smart Update) - 기본값
 
-- **동작**: 주석 마커를 사용하여 AI CLI Syncer가 관리하는 영역만 업데이트합니다.
-- **마커**: `<!-- ai-cli-syncer-start -->` ~ `<!-- ai-cli-syncer-end -->`
-- **사용 시나리오**: 사용자 커스터마이징과 AI CLI Syncer 관리 영역을 분리할 때
+- **동작**: 주석 마커를 사용하여 align-agents가 관리하는 영역만 업데이트합니다.
+- **마커**: `<!-- align-agents-start -->` ~ `<!-- align-agents-end -->`
+- **사용 시나리오**: 사용자 커스터마이징과 align-agents 관리 영역을 분리할 때
 - **장점**:
   - 사용자 커스터마이징 보존
   - 마스터 Rules의 추가/삭제가 모두 반영됨

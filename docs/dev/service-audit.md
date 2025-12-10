@@ -1,4 +1,4 @@
-# AI CLI Syncer - 기능 점검 결과
+# align-agents - 기능 점검 결과
 
 ## 📋 점검 일시
 

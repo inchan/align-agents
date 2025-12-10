@@ -1,7 +1,7 @@
 {
-    "name": "@ai-cli-syncer/cli",
+    "name": "@align-agents/cli",
     "version": "0.1.0",
-    "description": "CLI for AI CLI Syncer",
+    "description": "CLI for align-agents",
     "type": "module",
     "main": "dist/lib.js",
     "types": "dist/lib.d.ts",

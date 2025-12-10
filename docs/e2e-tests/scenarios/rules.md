@@ -41,7 +41,7 @@
 
 ## 개요
 
-이 문서는 AI CLI Syncer의 **Rules 관리 페이지** UI 시나리오 테스트를 정의합니다.
+이 문서는 align-agents의 **Rules 관리 페이지** UI 시나리오 테스트를 정의합니다.
 `RulesPage.tsx` 컴포넌트의 모든 기능을 커버합니다.
 
 ---

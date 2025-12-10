@@ -47,7 +47,7 @@ describe('MCP E2E', () => {
     }
 
     function initTestDb(homeDir: string) {
-        const dbPath = path.join(homeDir, '.acs', 'data.db');
+        const dbPath = path.join(homeDir, '.align-agents', 'data.db');
         fs.mkdirSync(path.dirname(dbPath), { recursive: true });
         return new Database(dbPath);
     }
@@ -88,7 +88,7 @@ describe('MCP E2E', () => {
             'claude-desktop': { enabled: true, servers: null }
         });
         factories.seedGlobalConfig(db, {
-            masterDir: path.join(tempHome, '.config', 'ai-cli-syncer'),
+            masterDir: path.join(tempHome, '.config', 'align-agents'),
             autoBackup: 'false'
         });
 
@@ -119,7 +119,7 @@ describe('MCP E2E', () => {
     });
 
     it('status 명령이 스캔/MCP/Rules 상태를 요약한다', async () => {
-        const configDir = path.join(tempHome, '.ai-cli-syncer');
+        const configDir = path.join(tempHome, '.align-agents');
         const registryPath = path.join(configDir, 'registry.json');
         const toolConfigPath = path.join(configDir, 'claude.json');
 

@@ -90,7 +90,7 @@ describe('scanForTools', () => {
 
         const registryPath = saveRegistry(tools);
 
-        expect(registryPath).toBe(path.join(homedir, '.ai-cli-syncer', 'registry.json'));
+        expect(registryPath).toBe(path.join(homedir, '.align-agents', 'registry.json'));
         expect(writeSpy).toHaveBeenCalled();
     });
 

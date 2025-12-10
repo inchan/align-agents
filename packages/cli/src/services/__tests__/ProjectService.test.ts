@@ -22,7 +22,7 @@ vi.mock('../ProjectScanner.js', () => ({
 
 describe('ProjectService', () => {
     const mockHomeDir = '/mock/home';
-    const configPath = path.join(mockHomeDir, '.ai-cli-syncer', 'projects.json');
+    const configPath = path.join(mockHomeDir, '.align-agents', 'projects.json');
 
     let mockFsContent = '[]';
 

@@ -126,7 +126,7 @@ POST   /api/history/restore    # 히스토리 복원
 
 ```typescript
 // 예시: RulesController
-import { SyncRulesToAllToolsUseCase } from '@ai-cli-syncer/cli/use-cases/rules';
+import { SyncRulesToAllToolsUseCase } from '@align-agents/cli/use-cases/rules';
 
 class RulesController {
   async syncRules(req, res) {

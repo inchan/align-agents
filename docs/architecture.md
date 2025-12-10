@@ -1,4 +1,4 @@
-# AI CLI Syncer Architecture
+# align-agents Architecture
 
 ## 1. Architectural Principles
 

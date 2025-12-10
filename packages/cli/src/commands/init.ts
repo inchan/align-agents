@@ -12,9 +12,9 @@ import { scanForTools, type ToolConfig } from '../services/scanner.js';
 import { getConfigDir } from '../constants/paths.js';
 
 export const initCommand = new Command('init')
-    .description('AI CLI Syncer 초기 설정')
+    .description('align-agents 초기 설정')
     .action(async () => {
-        console.log(chalk.bold.cyan('\n🚀 AI CLI Syncer 초기 설정을 시작합니다!\n'));
+        console.log(chalk.bold.cyan('\n🚀 align-agents 초기 설정을 시작합니다!\n'));
 
         const fsSystem = new NodeFileSystem();
         const syncService = new SyncService(fsSystem);

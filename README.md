@@ -1,4 +1,4 @@
-# AI CLI Syncer
+# align-agents
 
 > AI 도구 설정을 중앙에서 관리하고 동기화하는 CLI 도구
 
@@ -6,7 +6,7 @@
 
 ## 🎯 개요
 
-AI CLI Syncer는 여러 AI 도구(Claude Desktop, Cursor, Gemini CLI 등)의 설정을 중앙에서 관리하고 동기화할 수 있는 CLI 도구입니다. MCP 서버 설정, Rules, 전역 설정을 한 곳에서 관리하고 각 도구에 자동으로 배포할 수 있습니다.
+align-agents는 여러 AI 도구(Claude Desktop, Cursor, Gemini CLI 등)의 설정을 중앙에서 관리하고 동기화할 수 있는 CLI 도구입니다. MCP 서버 설정, Rules, 전역 설정을 한 곳에서 관리하고 각 도구에 자동으로 배포할 수 있습니다.
 
 ### 주요 기능
 
@@ -37,8 +37,8 @@ AI CLI Syncer는 여러 AI 도구(Claude Desktop, Cursor, Gemini CLI 등)의 설
 
 ```bash
 # 저장소 클론
-git clone https://github.com/your-username/ai-cli-syncer.git
-cd ai-cli-syncer
+git clone https://github.com/your-username/align-agents.git
+cd align-agents
 
 # 의존성 설치
 npm install
@@ -49,7 +49,7 @@ npm run build
 
 ### 초기 설정
 
-AI CLI Syncer는 첫 실행 시 자동으로 초기화됩니다!
+align-agents는 첫 실행 시 자동으로 초기화됩니다!
 
 ```bash
 # 전역 Rules 동기화 (대화형으로 Rule 선택)
@@ -215,7 +215,7 @@ Web UI를 통해 브라우저에서 설정을 관리할 수 있습니다.
 npm run dev
 
 # 또는 개별 실행
-npm run dev -w @ai-cli-syncer/api  # API 서버 (포트 3001)
+npm run dev -w @align-agents/api  # API 서버 (포트 3001)
 npm run dev -w packages/web         # 웹 UI (포트 5173)
 ```
 
@@ -303,7 +303,7 @@ acs backup restore abc1234
 ### 프로젝트 구조
 
 ```text
-ai-cli-syncer/
+align-agents/
 ├── packages/
 │   ├── cli/                    # CLI 패키지
 │   │   ├── src/
@@ -342,12 +342,12 @@ npm run build
 npm run dev
 
 # 개별 패키지 빌드
-npm run build -w @ai-cli-syncer/cli
-npm run build -w @ai-cli-syncer/api
+npm run build -w @align-agents/cli
+npm run build -w @align-agents/api
 npm run build -w packages/web
 
 # 테스트 실행
-npm test -w @ai-cli-syncer/cli
+npm test -w @align-agents/cli
 ```
 
 ### 아키텍처

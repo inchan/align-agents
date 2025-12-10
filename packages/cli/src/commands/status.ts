@@ -11,7 +11,7 @@ import { NodeFileSystem } from '../infrastructure/NodeFileSystem.js';
 export const statusCommand = new Command('status')
     .description('동기화 상태 확인')
     .action(async () => {
-        console.log(chalk.bold('\n📊 AI CLI Syncer 상태\n'));
+        console.log(chalk.bold('\n📊 align-agents 상태\n'));
 
         // Initialize Services
         const fsSystem = new NodeFileSystem();

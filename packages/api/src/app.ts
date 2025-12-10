@@ -9,7 +9,7 @@ import configRoutes from './routes/config.routes.js';
 import logsRoutes from './routes/logs.routes.js';
 import statsRoutes from './routes/stats.routes.js';
 import projectsRoutes from './routes/projects.routes.js';
-import { LogInterceptor } from '@ai-cli-syncer/cli';
+import { LogInterceptor } from '@align-agents/cli';
 
 export function createApp() {
     const app = express();
@@ -47,7 +47,7 @@ export function createApp() {
     // Tools metadata endpoint (must be before /api/tools to avoid route conflict)
     app.get('/api/tools-metadata', async (req, res) => {
         try {
-            const { TOOL_METADATA } = await import('@ai-cli-syncer/cli');
+            const { TOOL_METADATA } = await import('@align-agents/cli');
             res.json(TOOL_METADATA);
         } catch (error) {
             console.error('Error getting tool metadata:', error);

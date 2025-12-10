@@ -1,6 +1,6 @@
 # CLI Command Reference
 
-AI CLI Syncer의 모든 CLI 명령어에 대한 상세 레퍼런스입니다.
+align-agents의 모든 CLI 명령어에 대한 상세 레퍼런스입니다.
 
 ## 전역 옵션
 

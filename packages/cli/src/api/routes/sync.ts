@@ -89,7 +89,7 @@ export async function syncRoutes(server: FastifyInstance, syncService: SyncServi
         const path = await import('path');
         const os = await import('os');
 
-        const configDir = path.join(os.homedir(), '.ai-cli-syncer');
+        const configDir = path.join(os.homedir(), '.align-agents');
         const masterDir = configDir;
 
         const rulesConfigPath = path.join(masterDir, 'rules-config.json');

@@ -3,7 +3,7 @@ import { McpController } from '../McpController.js';
 import path from 'path';
 
 // Mock dependencies
-vi.mock('@ai-cli-syncer/cli', () => ({
+vi.mock('@align-agents/cli', () => ({
     getToolMetadata: (id: string) => {
         if (id === 'gemini-cli') {
             return {

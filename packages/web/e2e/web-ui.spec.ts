@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const BASE_URL = 'http://localhost:5173';
 const API_URL = 'http://localhost:3001';
 
-test.describe('AI CLI Syncer - E2E Tests', () => {
+test.describe('align-agents - E2E Tests', () => {
     test.beforeEach(async ({ page }) => {
         // API 서버가 실행 중인지 확인
         const response = await page.request.get(`${API_URL}/api/tools`);
@@ -15,7 +15,7 @@ test.describe('AI CLI Syncer - E2E Tests', () => {
             await page.goto(BASE_URL);
 
             // 페이지 제목 확인
-            await expect(page).toHaveTitle(/AI CLI Syncer/);
+            await expect(page).toHaveTitle(/align-agents/);
 
             // 도구 목록 섹션 확인
             const toolCards = page.locator('.window');

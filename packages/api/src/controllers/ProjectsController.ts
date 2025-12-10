@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { ProjectService } from '@ai-cli-syncer/cli';
+import { ProjectService } from '@align-agents/cli';
 
 export class ProjectsController {
     private projectService = ProjectService.getInstance();

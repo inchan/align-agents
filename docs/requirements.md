@@ -1,8 +1,8 @@
-# AI CLI Syncer - 요구사항 명세서
+# align-agents - 요구사항 명세서
 
 ## 1. 개요 (Overview)
 
-**AI CLI Syncer**는 macOS 환경에서 다양한 AI 개발 도구(CLI, IDE)의 설정을 중앙에서 통합 관리하고 동기화하는 솔루션입니다. 파편화된 AI 도구들의 설정(MCP, Rules 등)을 일원화하여 개발 환경의 일관성을 보장합니다.
+**align-agents**는 macOS 환경에서 다양한 AI 개발 도구(CLI, IDE)의 설정을 중앙에서 통합 관리하고 동기화하는 솔루션입니다. 파편화된 AI 도구들의 설정(MCP, Rules 등)을 일원화하여 개발 환경의 일관성을 보장합니다.
 
 ## 2. 용어 정의 (Terminology)
 
@@ -11,7 +11,7 @@
 | **Tools** | AI 기능을 제공하는 모든 애플리케이션 (Claude Desktop, Cursor, GitHub Copilot 등) |
 | **Master Rules** | 모든 Tools에 공통 적용되는 전역 지침(System Instructions). **최우선 순위**로 관리됩니다. |
 | **Master MCP** | 중앙에서 관리하는 Model Context Protocol (MCP) 서버 설정 집합. |
-| **Master Folder** | 설정과 Rules가 저장되는 루트 경로 (`~/.ai-cli-syncer/`). |
+| **Master Folder** | 설정과 Rules가 저장되는 루트 경로 (`~/.align-agents/`). |
 
 ## 3. 지원 대상 (Supported Tools)
 

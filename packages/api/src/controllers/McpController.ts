@@ -4,7 +4,7 @@ import {
     SyncMcpToToolUseCase,
     SyncMcpToAllToolsUseCase,
     scanForTools
-} from '@ai-cli-syncer/cli';
+} from '@align-agents/cli';
 
 export class McpController {
     // Master MCP methods removed
@@ -88,7 +88,7 @@ export class McpController {
     private async resolveConfigPath(toolId: string, global?: boolean, targetPath?: string, providedPath?: string): Promise<string | null> {
         if (providedPath) return providedPath;
 
-        const { getToolMetadata } = await import('@ai-cli-syncer/cli');
+        const { getToolMetadata } = await import('@align-agents/cli');
         const meta = getToolMetadata(toolId);
         if (!meta) return null;
 

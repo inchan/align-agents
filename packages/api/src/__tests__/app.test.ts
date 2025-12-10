@@ -21,7 +21,7 @@ vi.mock('../container.js', () => ({
     syncService: mocks.mockSyncService,
 }));
 
-vi.mock('@ai-cli-syncer/cli', () => ({
+vi.mock('@align-agents/cli', () => ({
     // Master use cases removed
     SyncRulesToToolUseCase: class {
         execute() { return { success: true, message: 'synced tool' }; }
@@ -68,7 +68,7 @@ describe('API controllers', () => {
 
     describe('RulesController', () => {
         // Master rules tests removed - methods no longer exist
-        it.skip('placeholder', () => {});
+        it.skip('placeholder', () => { });
     });
 
     describe('ToolsController', () => {

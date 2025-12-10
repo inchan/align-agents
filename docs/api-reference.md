@@ -2,7 +2,7 @@
 
 ## Web API Endpoints
 
-AI CLI Syncer는 REST API를 제공하여 웹 UI 또는 외부 도구에서 설정을 관리할 수 있습니다.
+align-agents는 REST API를 제공하여 웹 UI 또는 외부 도구에서 설정을 관리할 수 있습니다.
 
 ### Base URL
 

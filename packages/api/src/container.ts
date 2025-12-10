@@ -1,4 +1,4 @@
-import { NodeFileSystem, RulesService, SyncService, HistoryService, McpService } from '@ai-cli-syncer/cli';
+import { NodeFileSystem, RulesService, SyncService, HistoryService, McpService } from '@align-agents/cli';
 
 const fs = new NodeFileSystem();
 

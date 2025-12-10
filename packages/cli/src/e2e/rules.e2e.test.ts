@@ -48,7 +48,7 @@ describe('Rules E2E', () => {
     }
 
     function initTestDb(homeDir: string) {
-        const dbPath = path.join(homeDir, '.acs', 'data.db');
+        const dbPath = path.join(homeDir, '.align-agents', 'data.db');
         fs.mkdirSync(path.dirname(dbPath), { recursive: true });
         return new Database(dbPath);
     }
@@ -79,7 +79,7 @@ describe('Rules E2E', () => {
         factories.seedRulesData(db, ruleId);
         factories.seedSyncConfig(db, {});
         factories.seedGlobalConfig(db, {
-            masterDir: path.join(tempHome, '.config', 'ai-cli-syncer'),
+            masterDir: path.join(tempHome, '.config', 'align-agents'),
             autoBackup: 'false'
         });
 
@@ -118,7 +118,7 @@ describe('Rules E2E', () => {
         const ruleId = 'tool-sync-rule';
         factories.seedRulesData(db, ruleId, '# Specific Tool Rules');
         factories.seedGlobalConfig(db, {
-            masterDir: path.join(tempHome, '.config', 'ai-cli-syncer')
+            masterDir: path.join(tempHome, '.config', 'align-agents')
         });
 
         const { rulesCommand } = await import('../commands/rules.js');
@@ -143,7 +143,7 @@ describe('Rules E2E', () => {
         const ruleId = 'global-sync-rule';
         factories.seedRulesData(db, ruleId, '# Global Tool Rules');
         factories.seedGlobalConfig(db, {
-            masterDir: path.join(tempHome, '.config', 'ai-cli-syncer')
+            masterDir: path.join(tempHome, '.config', 'align-agents')
         });
 
         const { rulesCommand } = await import('../commands/rules.js');
@@ -187,7 +187,7 @@ describe('Rules E2E', () => {
         const ruleId = 'all-global-rule';
         factories.seedRulesData(db, ruleId, '# All Global Rules');
         factories.seedGlobalConfig(db, {
-            masterDir: path.join(tempHome, '.config', 'ai-cli-syncer')
+            masterDir: path.join(tempHome, '.config', 'align-agents')
         });
 
         const { rulesCommand } = await import('../commands/rules.js');

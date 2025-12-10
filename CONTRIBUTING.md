@@ -1,6 +1,6 @@
-# Contributing to AI CLI Syncer
+# Contributing to align-agents
 
-Thank you for your interest in contributing to AI CLI Syncer! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to align-agents! This document provides guidelines and information for contributors.
 
 ## Table of Contents
 
@@ -23,8 +23,8 @@ Thank you for your interest in contributing to AI CLI Syncer! This document prov
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/ai-cli-syncer.git
-cd ai-cli-syncer
+git clone https://github.com/your-org/align-agents.git
+cd align-agents
 
 # Install dependencies
 npm install
@@ -40,10 +40,10 @@ npm test
 
 ```bash
 # Start API server (port 3001)
-npm run dev -w @ai-cli-syncer/api
+npm run dev -w @align-agents/api
 
 # Start Web UI (port 5173)
-npm run dev -w @ai-cli-syncer/web
+npm run dev -w @align-agents/web
 
 # Or run both with turbo
 npm run dev
@@ -52,7 +52,7 @@ npm run dev
 ## Project Structure
 
 ```
-ai-cli-syncer/
+align-agents/
 ├── packages/
 │   ├── cli/              # Core CLI package
 │   │   ├── src/
@@ -182,13 +182,13 @@ async function syncRules(): Promise<SyncResult[]> {
 npm test
 
 # Run tests for specific package
-npm test -w @ai-cli-syncer/cli
+npm test -w @align-agents/cli
 
 # Run tests with coverage
 npm test -- --coverage
 
 # Run E2E tests
-npm run test:e2e -w @ai-cli-syncer/web
+npm run test:e2e -w @align-agents/web
 ```
 
 ### Writing Tests

@@ -51,7 +51,7 @@ vi.mock('../../constants/ToolDefinitions.js', () => ({
 
 describe('ToolRepository', () => {
     const mockHomeDir = '/mock/home';
-    const registryPath = path.join(mockHomeDir, '.ai-cli-syncer', 'registry.json');
+    const registryPath = path.join(mockHomeDir, '.align-agents', 'registry.json');
     let mockFsContent: string | null = null;
     let mockFsMap: Record<string, string> = {};
 

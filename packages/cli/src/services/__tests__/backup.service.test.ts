@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../impl/SyncService.js', () => ({
-    SyncService: vi.fn(function() {
+    SyncService: vi.fn(function () {
         return {
             getMasterDir: mocks.getMasterDir
         };
@@ -51,7 +51,7 @@ describe('backup service adapter', () => {
         await initBackupRepo();
 
         expect(gitMocks.init).toHaveBeenCalled();
-        expect(gitMocks.addConfig).toHaveBeenCalledWith('user.name', 'AI CLI Syncer');
+        expect(gitMocks.addConfig).toHaveBeenCalledWith('user.name', 'align-agents');
         const gitignorePath = path.join(mockedMasterDir, '.gitignore');
         expect(fs.existsSync(gitignorePath)).toBe(true);
     });

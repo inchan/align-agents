@@ -2,7 +2,7 @@
 
 ## 개요
 
-이 문서는 AI CLI Syncer 웹 UI의 E2E (End-to-End) 테스트 시나리오를 정의합니다.
+이 문서는 align-agents 웹 UI의 E2E (End-to-End) 테스트 시나리오를 정의합니다.
 
 ---
 
@@ -29,7 +29,7 @@ Dashboard 페이지가 올바르게 로드되고 도구 정보를 표시하는�
 ### 테스트 단계
 
 1. Dashboard 페이지 접속 (`/`)
-2. 페이지 제목 확인: "AI CLI Syncer"
+2. 페이지 제목 확인: "align-agents"
 3. 도구 목록 섹션 확인
 4. 최소 1개 이상의 도구 카드 표시 확인
 5. 통계 정보 표시 확인

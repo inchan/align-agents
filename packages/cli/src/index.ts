@@ -37,7 +37,7 @@ const program = new Command();
 
 program
     .name('acs')
-    .description('AI CLI Syncer - AI 도구 설정 관리')
+    .description('align-agents - AI 도구 설정 관리')
     .version('0.1.0');
 
 program.addCommand(initCommand);

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { historyService, syncService } from '../container.js';
-import { LoggerService } from '@ai-cli-syncer/cli';
+import { LoggerService } from '@align-agents/cli';
 
 export class StatsController {
     async getSummary(req: Request, res: Response) {

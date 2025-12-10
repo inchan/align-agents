@@ -4,7 +4,7 @@ test('navigation works correctly', async ({ page }) => {
     await page.goto('/');
 
     // Check initial load (should redirect to /rules or show rules)
-    await expect(page).toHaveTitle(/AI CLI Syncer/);
+    await expect(page).toHaveTitle(/align-agents/);
 
     // Navigate to Rules
     await page.getByRole('link', { name: 'Rules' }).click();

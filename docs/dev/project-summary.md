@@ -1,8 +1,8 @@
-# AI CLI Syncer - 프로젝트 완료 요약
+# align-agents - 프로젝트 완료 요약
 
 ## 🎉 프로젝트 완성
 
-AI CLI Syncer 프로젝트가 성공적으로 완료되었습니다!
+align-agents 프로젝트가 성공적으로 완료되었습니다!
 
 ### ✅ 완료된 주요 기능
 
@@ -100,8 +100,8 @@ packages/
 npm run dev
 
 # 개별 실행
-npm run dev -w @ai-cli-syncer/cli  # CLI
-npm run dev -w @ai-cli-syncer/api  # API 서버 (포트 3001)
+npm run dev -w @align-agents/cli  # CLI
+npm run dev -w @align-agents/api  # API 서버 (포트 3001)
 npm run dev -w packages/web         # 웹 UI (포트 5173)
 ```
 

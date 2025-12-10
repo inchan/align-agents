@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { LoggerService } from '@ai-cli-syncer/cli';
+import { LoggerService } from '@align-agents/cli';
 
 const router = express.Router();
 

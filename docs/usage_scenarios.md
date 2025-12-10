@@ -1,6 +1,6 @@
 # 주요 사용 시나리오 (Usage Scenarios)
 
-AI CLI Syncer를 활용하여 개발 환경을 효율적으로 관리하는 주요 시나리오입니다.
+align-agents를 활용하여 개발 환경을 효율적으로 관리하는 주요 시나리오입니다.
 
 ## 1. 전체 동기화 (Full Sync)
 

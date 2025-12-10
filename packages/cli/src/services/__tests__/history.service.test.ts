@@ -42,11 +42,11 @@ describe('history service', () => {
         expect(getVersionContent('missing')).toBeNull();
 
         const id = saveVersion('rules', 'ok');
-        const indexFile = path.join(tempHome, '.ai-cli-syncer', 'history', 'index.json');
+        const indexFile = path.join(tempHome, '.align-agents', 'history', 'index.json');
         fs.writeFileSync(indexFile, '{not json}');
         expect(listVersions()).toEqual([]);
 
-        const badPath = path.join(tempHome, '.ai-cli-syncer', 'history', `${id}.json`);
+        const badPath = path.join(tempHome, '.align-agents', 'history', `${id}.json`);
         fs.unlinkSync(badPath);
         expect(getVersionContent(id)).toBeNull();
     });
@@ -69,7 +69,7 @@ describe('history service', () => {
     });
 
     it('cleans up missing files gracefully when trimming history', () => {
-        const historyDir = path.join(tempHome, '.ai-cli-syncer', 'history');
+        const historyDir = path.join(tempHome, '.align-agents', 'history');
         fs.mkdirSync(historyDir, { recursive: true });
         const indexFile = path.join(historyDir, 'index.json');
         const fakeEntries = Array.from({ length: 51 }).map((_, i) => ({

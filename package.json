@@ -1,5 +1,5 @@
 {
-  "name": "ai-cli-syncer",
+  "name": "align-agents",
   "version": "1.0.0",
   "private": true,
   "packageManager": "npm@10.0.0",
@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev --filter=!@ai-cli-syncer/api",
+    "dev": "turbo run dev --filter=!@align-agents/api",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "test": "vitest"
@@ -16,7 +16,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "AI CLI Syncer - Manage and Sync AI CLI Configurations",
+  "description": "align-agents - Manage and Sync AI CLI Configurations",
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.14",
     "turbo": "^2.6.1",

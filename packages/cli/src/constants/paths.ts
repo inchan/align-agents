@@ -1,7 +1,7 @@
 import path from 'path';
 import os from 'os';
 
-export const CONFIG_DIR_NAME = '.ai-cli-syncer';
+export const CONFIG_DIR_NAME = '.align-agents';
 
 export function getConfigDir(): string {
     return path.join(os.homedir(), CONFIG_DIR_NAME);

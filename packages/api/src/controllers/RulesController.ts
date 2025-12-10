@@ -5,7 +5,7 @@ import { rulesService } from '../container.js';
 import {
     SyncRulesToToolUseCase,
     SyncRulesToAllToolsUseCase
-} from '@ai-cli-syncer/cli';
+} from '@align-agents/cli';
 
 export class RulesController {
     // Master rules methods removed
