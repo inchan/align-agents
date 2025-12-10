@@ -6,7 +6,7 @@ import {
     fetchMcpPool, createMcpDef, updateMcpDef, deleteMcpDef,
     type McpSet, type McpDef
 } from '../lib/api'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingState } from '@/components/shared/loading-state'
@@ -668,15 +668,80 @@ export function McpPage() {
         setIsAddMcpOpen(true)
     }
 
+    const normalizeMcpJson = (jsonString: string): string => {
+        let jsonToParse = jsonString.trim()
+        if (!jsonToParse) return ''
+
+        // Simple heuristic to fix common copy-paste issues
+        if (jsonToParse.startsWith('"mcpServers"') || jsonToParse.startsWith("'mcpServers'")) {
+            jsonToParse = `{${jsonToParse}}`
+        }
+        else if (/^["'][^"']+["']\s*:\s*\{/.test(jsonToParse) && !jsonToParse.startsWith('{')) {
+            jsonToParse = `{${jsonToParse}}`
+        }
+        return jsonToParse
+    }
+
+    const isValidMcpConfig = (jsonString: string): boolean => {
+        try {
+            const jsonToParse = normalizeMcpJson(jsonString)
+            if (!jsonToParse) return false
+
+            const parsed = JSON.parse(jsonToParse)
+
+            // Check for specific MCP structure
+            if (parsed.mcpServers) return true
+            if (parsed.command || parsed.args) return true // Single server config
+
+            // Check if it's a map of servers
+            if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+                // Check if any value looks like a server config
+                return Object.values(parsed).some((val: any) =>
+                    val && typeof val === 'object' && (val.command || val.args)
+                )
+            }
+
+            return false
+        } catch {
+            return false
+        }
+    }
+
+    // Auto-paste from clipboard
+    // Use a ref to track if we've already attempted to paste for the current "open session"
+    // This prevents the "infinite paste" loop when user clears the input
+    const hasAutoPasted = useRef(false)
+
+    useEffect(() => {
+        if (isImportOpen) {
+            // Only attempt to paste if we haven't already done so for this session
+            // and the input is currently empty
+            if (!hasAutoPasted.current && !importJson && navigator.clipboard) {
+                navigator.clipboard.readText().then(text => {
+                    if (text && isValidMcpConfig(text)) {
+                        const normalized = normalizeMcpJson(text)
+
+                        setImportJson(normalized)
+                        hasAutoPasted.current = true
+                        toast.success('Detected valid MCP config from clipboard')
+                    }
+                }).catch(() => {
+                    // Ignore clipboard errors
+                })
+            }
+        } else {
+            // Reset the flag when the dialog closes
+            hasAutoPasted.current = false
+        }
+        // IMPORTANT: We intentionally omit importJson from the dependency array 
+        // because we only want to check/paste *when the dialog opens* or *when the open state changes*.
+        // We do NOT want to re-run this logic when the user edits or clears the text area (changing importJson).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isImportOpen])
+
     const handleImportJson = () => {
         try {
-            let jsonToParse = importJson.trim()
-            if (jsonToParse.startsWith('"mcpServers"') || jsonToParse.startsWith("'mcpServers'")) {
-                jsonToParse = `{${jsonToParse}}`
-            }
-            else if (/^["'][^"']+["']\s*:\s*\{/.test(jsonToParse) && !jsonToParse.startsWith('{')) {
-                jsonToParse = `{${jsonToParse}}`
-            }
+            const jsonToParse = normalizeMcpJson(importJson) || importJson // fallback to original if empty
 
             const parsed = JSON.parse(jsonToParse)
             let servers: Record<string, any> = {}
