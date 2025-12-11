@@ -12,12 +12,14 @@ export default defineConfig({
         coverage: {
             provider: 'v8',
             reporter: ['text', 'html'],
+            reportsDirectory: './coverage',
             include: [
                 'packages/**/src/services/**/*.ts',
                 'packages/**/src/use-cases/**/*.ts',
                 'packages/**/src/utils/**/*.ts',
                 'packages/**/src/constants/**/*.ts',
                 'packages/**/src/schemas/**/*.ts',
+                'packages/**/src/controllers/**/*.ts',
             ],
             exclude: [
                 '**/__tests__/**',

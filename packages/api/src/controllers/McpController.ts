@@ -3,7 +3,6 @@ import { syncService, mcpService } from '../container.js';
 import {
     SyncMcpToToolUseCase,
     SyncMcpToAllToolsUseCase,
-    scanForTools
 } from '@align-agents/cli';
 
 /**
@@ -63,46 +62,6 @@ export class McpController {
         } catch (error) {
             console.error('Error syncing MCP:', error);
             res.status(500).json({ error: 'Failed to sync MCP' });
-        }
-    }
-
-    /**
-     * 특정 도구에 MCP 설정을 동기화한다. (내부용)
-     * @param req - Express Request
-     * @param res - Express Response
-     */
-    private async syncMcpToTool(req: Request, res: Response): Promise<void> {
-        try {
-            console.log(`[API] MCP sync requested:`, req.body);
-            const { toolId, strategy, serverNames, sourceId, global, targetPath } = req.body;
-
-            if (!toolId) {
-                res.status(400).json({ success: false, message: 'Tool ID is required' });
-                return;
-            }
-
-            const configPath = await this.resolveConfigPath(toolId, global, targetPath);
-            if (!configPath) {
-                res.status(400).json({ success: false, message: `Could not resolve config path for tool: ${toolId}` });
-                return;
-            }
-
-            const result = await new SyncMcpToToolUseCase(syncService).execute({
-                toolId,
-                strategy,
-                configPath,
-                serverIds: serverNames || [],
-                sourceId
-            });
-
-            if (result.success) {
-                res.json(result);
-            } else {
-                res.status(500).json(result);
-            }
-        } catch (error: any) {
-            console.error(`[API] Failed to sync MCP:`, error);
-            res.status(500).json({ success: false, message: error.message });
         }
     }
 
