@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchRulesList, createRule, updateRule, deleteRule, reorderRules, type Rule } from '../lib/api'
 import { useState, useEffect } from 'react'
+import Editor from '@monaco-editor/react'
 
 import { toast } from 'sonner'
 import { Spinner } from '../components/ui/Spinner'
@@ -9,7 +10,6 @@ import { Plus, Trash2, Save, FileText, X, GripVertical } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import { Textarea } from '../components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DndContext, closestCenter } from '@dnd-kit/core'
@@ -360,11 +360,27 @@ export function RulesPage() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Textarea
+                                            <Editor
+                                                height="100%"
+                                                language="markdown"
+                                                theme="vs-dark"
                                                 value={editedContent}
-                                                onChange={(e) => setEditedContent(e.target.value)}
-                                                className="flex-1 font-mono text-sm resize-none border-0 focus-visible:ring-0 rounded-none p-6 leading-relaxed"
-                                                placeholder="Enter rule content..."
+                                                onChange={(value) => setEditedContent(value || '')}
+                                                options={{
+                                                    minimap: { enabled: true },
+                                                    lineNumbers: 'on',
+                                                    wordWrap: 'on',
+                                                    scrollBeyondLastLine: false,
+                                                    fontSize: 14,
+                                                    tabSize: 2,
+                                                    formatOnPaste: true,
+                                                    formatOnType: true,
+                                                    padding: { top: 16, bottom: 16 },
+                                                    scrollbar: {
+                                                        verticalScrollbarSize: 10,
+                                                        horizontalScrollbarSize: 10,
+                                                    },
+                                                }}
                                             />
                                         </div>
                                     )
@@ -403,13 +419,30 @@ export function RulesPage() {
                                     <div className="flex justify-between items-center">
                                         <Label htmlFor="ruleContent">Content</Label>
                                     </div>
-                                    <Textarea
-                                        id="ruleContent"
-                                        value={newRuleContent}
-                                        onChange={(e) => setNewRuleContent(e.target.value)}
-                                        placeholder="Enter rule content..."
-                                        className="min-h-[180px] font-mono text-sm"
-                                    />
+                                    <div className="border rounded-md overflow-hidden" style={{ height: '300px' }}>
+                                        <Editor
+                                            height="100%"
+                                            language="markdown"
+                                            theme="vs-dark"
+                                            value={newRuleContent}
+                                            onChange={(value) => setNewRuleContent(value || '')}
+                                            options={{
+                                                minimap: { enabled: false },
+                                                lineNumbers: 'on',
+                                                wordWrap: 'on',
+                                                scrollBeyondLastLine: false,
+                                                fontSize: 14,
+                                                tabSize: 2,
+                                                formatOnPaste: true,
+                                                formatOnType: true,
+                                                padding: { top: 12, bottom: 12 },
+                                                scrollbar: {
+                                                    verticalScrollbarSize: 10,
+                                                    horizontalScrollbarSize: 10,
+                                                },
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                             <DialogFooter>
