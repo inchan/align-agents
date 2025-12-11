@@ -11,6 +11,10 @@ export interface SyncRulesToToolRequest {
         maxBackups?: number;
         skipBackup?: boolean;
     };
+    // Sync History tracking
+    ruleName?: string;
+    toolName?: string;
+    triggeredBy?: 'manual' | 'auto' | 'watch';
 }
 
 export interface SyncRulesToAllToolsRequest {
@@ -29,6 +33,7 @@ export interface SyncRulesToToolResponse {
     toolId: string;
     targetPath: string;
     message?: string;
+    historyId?: string; // Sync history entry ID
 }
 
 export interface SyncRulesToAllToolsResponse {

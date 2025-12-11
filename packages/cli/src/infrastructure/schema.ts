@@ -103,6 +103,43 @@ CREATE TABLE IF NOT EXISTS global_config (
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+-- Sync History
+CREATE TABLE IF NOT EXISTS sync_history (
+    id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+
+    -- 동기화 대상
+    target_type TEXT NOT NULL CHECK(target_type IN ('rule', 'mcp_set', 'all_rules', 'all_mcp')),
+    target_id TEXT,
+    target_name TEXT,
+
+    -- 동기화 도구
+    tool_id TEXT,
+    tool_name TEXT,
+    tool_set_id TEXT,
+
+    -- 결과
+    status TEXT NOT NULL CHECK(status IN ('success', 'partial', 'failed')),
+    success_count INTEGER DEFAULT 0,
+    failed_count INTEGER DEFAULT 0,
+    skipped_count INTEGER DEFAULT 0,
+
+    -- 상세 정보
+    strategy TEXT CHECK(strategy IN ('overwrite', 'smart_update', 'merge')),
+    error_message TEXT,
+    details TEXT,
+
+    -- 메타데이터
+    duration_ms INTEGER,
+    user_agent TEXT,
+    triggered_by TEXT CHECK(triggered_by IN ('manual', 'auto', 'watch'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_history_created ON sync_history(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sync_history_target ON sync_history(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_sync_history_tool ON sync_history(tool_id);
+CREATE INDEX IF NOT EXISTS idx_sync_history_status ON sync_history(status);
 `;
 
 /**

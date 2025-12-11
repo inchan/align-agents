@@ -15,6 +15,7 @@ import configRoutes from './routes/config.routes.js';
 import logsRoutes from './routes/logs.routes.js';
 import statsRoutes from './routes/stats.routes.js';
 import projectsRoutes from './routes/projects.routes.js';
+import syncHistoryRoutes from './routes/sync-history.routes.js';
 import { LogInterceptor } from '@align-agents/cli';
 
 // Initialize structured logger for API
@@ -65,6 +66,7 @@ export function createApp() {
     app.use('/api/logs', logsRoutes);
     app.use('/api/stats', statsRoutes);
     app.use('/api/projects', projectsRoutes);
+    app.use('/api/sync-history', syncHistoryRoutes);
 
     // Error logging middleware - must be after routes (루트 로거 공유)
     app.use(expressErrorLogger({ name: 'api', useRootLogger: true }));
