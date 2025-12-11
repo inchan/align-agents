@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingState } from '@/components/shared/loading-state'
 import { getErrorMessage, cn, getCommonSortableStyle } from '../lib/utils'
+import { EnvEditor } from '../components/mcp/EnvEditor'
 import {
     Plus, Trash2, Server, GripVertical, Layers,
     Box, Database, Folder, Search, MessageSquare, GitBranch, Globe,
@@ -1195,19 +1196,10 @@ export function McpPage() {
                                     <Input value={defForm.url} onChange={e => setDefForm({ ...defForm, url: e.target.value })} placeholder="e.g. http://127.0.0.1:3845/mcp" />
                                 </div>
                             )}
-                            <div className="space-y-2">
-                                <Label>Environment Variables (JSON)</Label>
-                                <Textarea
-                                    value={JSON.stringify(defForm.env || {}, null, 2)}
-                                    onChange={e => {
-                                        try {
-                                            setDefForm({ ...defForm, env: JSON.parse(e.target.value) })
-                                        } catch { }
-                                    }}
-                                    className="font-mono text-sm"
-                                    placeholder="{}"
-                                />
-                            </div>
+                            <EnvEditor
+                                value={defForm.env || {}}
+                                onChange={(env) => setDefForm({ ...defForm, env })}
+                            />
                         </div>
                     </ScrollArea>
                     <DialogFooter>
