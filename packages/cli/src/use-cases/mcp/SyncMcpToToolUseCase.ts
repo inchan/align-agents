@@ -1,16 +1,17 @@
 import { IUseCase } from '../IUseCase.js';
 import { ISyncService } from '../../interfaces/ISyncService.js';
 import { SyncMcpToToolRequest, SyncMcpToToolResponse } from './McpDTOs.js';
+import { DomainError, McpSyncError } from '@align-agents/errors';
 
 export class SyncMcpToToolUseCase implements IUseCase<SyncMcpToToolRequest, SyncMcpToToolResponse> {
     constructor(private syncService: ISyncService) { }
 
     async execute(request: SyncMcpToToolRequest): Promise<SyncMcpToToolResponse> {
         try {
-            const results = await this.syncService.syncToolMcp(
+            const syncedServers = await this.syncService.syncToolMcp(
                 request.toolId,
                 request.configPath,
-                request.serverIds || null, // Convert undefined/empty to null if allowed by service, or just pass as is if service handles it. Service takes string[] | null.
+                request.serverIds || null,
                 request.strategy || 'overwrite',
                 undefined,
                 request.sourceId
@@ -20,16 +21,25 @@ export class SyncMcpToToolUseCase implements IUseCase<SyncMcpToToolRequest, Sync
                 success: true,
                 toolId: request.toolId,
                 configPath: request.configPath,
-                syncedServers: request.serverIds || [],
-                message: `Successfully synced ${(request.serverIds || []).length} MCP servers to ${request.toolId}`,
+                syncedServers,
+                message: `Successfully synced ${syncedServers.length} MCP servers to ${request.toolId}`,
             };
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const domainError = DomainError.isDomainError(error)
+                ? error
+                : new McpSyncError(request.toolId, error instanceof Error ? error.message : String(error));
+
             return {
                 success: false,
                 toolId: request.toolId,
                 configPath: request.configPath,
                 syncedServers: [],
-                message: error.message,
+                message: domainError.message,
+                error: {
+                    code: domainError.code,
+                    message: domainError.message,
+                    details: domainError.details,
+                },
             };
         }
     }

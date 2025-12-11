@@ -3,6 +3,7 @@ import { IRulesService } from '../../interfaces/IRulesService.js';
 import { SyncRulesToToolRequest, SyncRulesToToolResponse } from './RulesDTOs.js';
 import { SyncHistoryRepository } from '../../infrastructure/repositories/SyncHistoryRepository.js';
 import { nanoid } from 'nanoid';
+import { DomainError, RulesSyncError } from '@align-agents/errors';
 
 export class SyncRulesToToolUseCase implements IUseCase<SyncRulesToToolRequest, SyncRulesToToolResponse> {
     constructor(
@@ -57,8 +58,11 @@ export class SyncRulesToToolUseCase implements IUseCase<SyncRulesToToolRequest, 
                 message: `VERIFIED_UPDATE: Successfully synced rules to ${request.toolId}`,
                 historyId
             };
-        } catch (error: any) {
+        } catch (error: unknown) {
             const duration = Date.now() - startTime;
+            const domainError = DomainError.isDomainError(error)
+                ? error
+                : new RulesSyncError(request.toolId, error instanceof Error ? error.message : String(error));
 
             // Record failure in sync history
             if (this.syncHistoryRepo) {
@@ -75,8 +79,12 @@ export class SyncRulesToToolUseCase implements IUseCase<SyncRulesToToolRequest, 
                         failed_count: 1,
                         skipped_count: 0,
                         strategy: request.strategy,
-                        error_message: error.message,
-                        details: JSON.stringify({ error: error.stack }),
+                        error_message: domainError.message,
+                        details: JSON.stringify({
+                            errorCode: domainError.code,
+                            errorDetails: domainError.details,
+                            stack: error instanceof Error ? error.stack : undefined
+                        }),
                         duration_ms: duration,
                         triggered_by: request.triggeredBy || 'manual'
                     });
@@ -89,8 +97,13 @@ export class SyncRulesToToolUseCase implements IUseCase<SyncRulesToToolRequest, 
                 success: false,
                 toolId: request.toolId,
                 targetPath: request.targetPath,
-                message: error.message,
-                historyId
+                message: domainError.message,
+                historyId,
+                error: {
+                    code: domainError.code,
+                    message: domainError.message,
+                    details: domainError.details,
+                },
             };
         }
     }

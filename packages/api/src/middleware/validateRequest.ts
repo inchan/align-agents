@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
+import { SchemaValidationError } from '@align-agents/errors';
 
 /**
  * Zod schema validation middleware factory
@@ -23,20 +24,12 @@ export function validateRequest<T>(
             next();
         } catch (error) {
             if (error instanceof ZodError) {
-                const formattedErrors = error.errors.map(err => ({
-                    path: err.path.join('.'),
-                    message: err.message,
-                }));
-
-                return res.status(400).json({
-                    error: 'Validation failed',
-                    details: formattedErrors,
-                });
+                const schemaError = SchemaValidationError.fromZodErrors(error.errors);
+                return res.status(schemaError.statusCode).json(schemaError.toApiResponse());
             }
 
-            return res.status(500).json({
-                error: 'Internal validation error',
-            });
+            // Forward unknown errors to global error handler
+            next(error);
         }
     };
 }
@@ -64,20 +57,12 @@ export function validateMultiple(schemas: {
             next();
         } catch (error) {
             if (error instanceof ZodError) {
-                const formattedErrors = error.errors.map(err => ({
-                    path: err.path.join('.'),
-                    message: err.message,
-                }));
-
-                return res.status(400).json({
-                    error: 'Validation failed',
-                    details: formattedErrors,
-                });
+                const schemaError = SchemaValidationError.fromZodErrors(error.errors);
+                return res.status(schemaError.statusCode).json(schemaError.toApiResponse());
             }
 
-            return res.status(500).json({
-                error: 'Internal validation error',
-            });
+            // Forward unknown errors to global error handler
+            next(error);
         }
     };
 }
