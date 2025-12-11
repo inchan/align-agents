@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { initLogger } from '@align-agents/logger';
 import { initCommand } from './commands/init.js';
 import { uiCommand } from './commands/ui.js';
 import { scanCommand } from './commands/scan.js';
@@ -9,6 +10,13 @@ import { rulesCommand } from './commands/rules.js';
 import { statusCommand } from './commands/status.js';
 import { validateCommand } from './commands/validate.js';
 import { SyncRulesToToolUseCase } from './use-cases/rules/SyncRulesToToolUseCase.js';
+
+// Initialize structured logger
+initLogger({
+    name: 'cli',
+    level: process.env.LOG_LEVEL as any ?? 'info',
+    pretty: process.env.NODE_ENV !== 'production',
+});
 
 // Logger exports
 export { LoggerService } from './services/LoggerService.js';

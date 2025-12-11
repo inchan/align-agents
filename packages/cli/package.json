@@ -15,6 +15,7 @@
         "test": "vitest"
     },
     "dependencies": {
+        "@align-agents/logger": "*",
         "@fastify/cors": "^8.5.0",
         "@fastify/static": "^7.0.1",
         "@iarna/toml": "^2.2.5",

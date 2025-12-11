@@ -1,7 +1,9 @@
 import { EventEmitter } from 'events';
+import { randomUUID } from 'crypto';
+import { getLogger, type AlignAgentsLogger } from '@align-agents/logger';
 
 /** 로그 레벨 타입 */
-export type LogLevel = 'info' | 'warn' | 'error';
+export type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'trace' | 'fatal';
 
 /** 로그 항목 인터페이스 */
 export interface LogEntry {
@@ -14,16 +16,22 @@ export interface LogEntry {
 }
 
 /**
- * 인메모리 로그 관리 서비스 (싱글톤)
- * 최대 1000개의 로그를 메모리에 보관하며, 'log' 이벤트를 발행한다.
+ * LoggerService - 메모리 기반 로그 버퍼 + Pino 구조화된 로깅
+ *
+ * 기존 API 호환성을 유지하면서 pino 로거와 통합됩니다.
+ * - getHistory(): UI에서 최근 로그 조회용
+ * - EventEmitter: SSE 스트리밍용
+ * - Pino: 파일/콘솔 구조화된 로깅
  */
 export class LoggerService extends EventEmitter {
     private static instance: LoggerService;
     private logs: LogEntry[] = [];
     private readonly MAX_LOGS = 1000;
+    private pinoLogger: AlignAgentsLogger;
 
     private constructor() {
         super();
+        this.pinoLogger = getLogger().child({ component: 'LoggerService' });
     }
 
     /**
@@ -45,7 +53,7 @@ export class LoggerService extends EventEmitter {
      */
     public log(level: LogLevel, message: string, ...args: any[]) {
         const entry: LogEntry = {
-            id: Math.random().toString(36).substring(7),
+            id: randomUUID(),
             timestamp: new Date().toISOString(),
             level,
             message,
@@ -53,12 +61,58 @@ export class LoggerService extends EventEmitter {
             args: args.length > 0 ? args : undefined
         };
 
+        // 메모리 버퍼 (UI용)
         this.logs.push(entry);
         if (this.logs.length > this.MAX_LOGS) {
             this.logs.shift();
         }
 
+        // Pino 구조화된 로깅
+        const logData = {
+            category: entry.category,
+            ...(args.length > 0 ? { args } : {}),
+        };
+
+        switch (level) {
+            case 'fatal':
+                this.pinoLogger.fatal(logData, message);
+                break;
+            case 'error':
+                this.pinoLogger.error(logData, message);
+                break;
+            case 'warn':
+                this.pinoLogger.warn(logData, message);
+                break;
+            case 'info':
+                this.pinoLogger.info(logData, message);
+                break;
+            case 'debug':
+                this.pinoLogger.debug(logData, message);
+                break;
+            case 'trace':
+                this.pinoLogger.trace(logData, message);
+                break;
+        }
+
+        // SSE 스트리밍용
         this.emit('log', entry);
+    }
+
+    // 편의 메서드
+    public info(message: string, ...args: any[]) {
+        this.log('info', message, ...args);
+    }
+
+    public warn(message: string, ...args: any[]) {
+        this.log('warn', message, ...args);
+    }
+
+    public error(message: string, ...args: any[]) {
+        this.log('error', message, ...args);
+    }
+
+    public debug(message: string, ...args: any[]) {
+        this.log('debug', message, ...args);
     }
 
     /**

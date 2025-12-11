@@ -11,7 +11,7 @@ router.get('/history', (req: Request, res: Response) => {
 
 // SSE stream for real-time logs
 router.get('/stream', (req: Request, res: Response) => {
-    const logger = LoggerService.getInstance();
+    const loggerService = LoggerService.getInstance();
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -21,13 +21,20 @@ router.get('/stream', (req: Request, res: Response) => {
     res.flushHeaders();
 
     const listener = (entry: any) => {
-        res.write(`data: ${JSON.stringify(entry)}\n\n`);
+        try {
+            if (!res.writableEnded) {
+                res.write(`data: ${JSON.stringify(entry)}\n\n`);
+            }
+        } catch (error) {
+            // 순환 참조 또는 연결 끊김 시 리스너 제거
+            loggerService.off('log', listener);
+        }
     };
 
-    logger.on('log', listener);
+    loggerService.on('log', listener);
 
     req.on('close', () => {
-        logger.off('log', listener);
+        loggerService.off('log', listener);
     });
 });
 

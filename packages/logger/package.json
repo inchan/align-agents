@@ -1,0 +1,41 @@
+{
+    "name": "@align-agents/logger",
+    "version": "0.1.0",
+    "description": "Structured logging for align-agents",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "test": "vitest"
+    },
+    "dependencies": {
+        "pino": "^9.6.0",
+        "pino-pretty": "^13.0.0",
+        "rotating-file-stream": "^3.2.5"
+    },
+    "devDependencies": {
+        "@types/express": "^4.17.21",
+        "@types/node": "^20.11.20",
+        "typescript": "^5.3.3"
+    },
+    "peerDependencies": {
+        "express": "^4.0.0",
+        "fastify": "^4.0.0"
+    },
+    "peerDependenciesMeta": {
+        "express": {
+            "optional": true
+        },
+        "fastify": {
+            "optional": true
+        }
+    }
+}
