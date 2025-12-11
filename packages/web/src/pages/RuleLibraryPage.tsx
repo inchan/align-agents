@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { EmptyState } from '@/components/shared/empty-state'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 // Mock Data Type for Rule Piece
 interface RulePiece {
@@ -110,12 +111,26 @@ export function RuleLibraryPage() {
                                     {piece.name}
                                 </CardTitle>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEdit(piece)}>
-                                        <Edit className="w-3.5 h-3.5 text-muted-foreground" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(piece.id)}>
-                                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                                    </Button>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEdit(piece)}>
+                                                    <Edit className="w-3.5 h-3.5 text-muted-foreground" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>편집</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteId(piece.id)}>
+                                                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>삭제</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </div>
                             </CardHeader>
                             <CardContent>

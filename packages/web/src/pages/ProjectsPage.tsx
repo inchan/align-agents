@@ -69,6 +69,7 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { TruncateTooltip } from '@/components/ui/truncate-tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { DndContext, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
@@ -158,11 +159,18 @@ function SortableProjectItem({
                 </div>
                 <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity flex items-center", selectedProjectId === project.id ? "opacity-100" : "")}>
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                                <MoreVertical className="w-3.5 h-3.5" />
-                            </Button>
-                        </DropdownMenuTrigger>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+                                            <MoreVertical className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>더보기</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditModal(project) }}>
                                 <Edit className="w-4 h-4 mr-2" /> Edit
@@ -380,12 +388,26 @@ export function ProjectsPage() {
                                         <Briefcase className="w-4 h-4" /> Projects
                                     </h3>
                                     <div className="flex gap-1 items-center">
-                                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => scanMutation.mutate()} title="Scan Projects">
-                                            <RefreshCw className={cn("w-3.5 h-3.5", scanMutation.isPending && "animate-spin")} />
-                                        </Button>
-                                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => { resetForm(); setIsCreateOpen(true) }} title="Add Project">
-                                            <Plus className="w-4 h-4" />
-                                        </Button>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => scanMutation.mutate()}>
+                                                        <RefreshCw className={cn("w-3.5 h-3.5", scanMutation.isPending && "animate-spin")} />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>프로젝트 스캔</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => { resetForm(); setIsCreateOpen(true) }}>
+                                                        <Plus className="w-4 h-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>프로젝트 추가</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                         <SortMenu currentSort={sortMode} onSortChange={setSortMode} className="-mr-1" />
                                     </div>
                                 </div>

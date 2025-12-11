@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { TruncateTooltip } from "@/components/ui/truncate-tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { DndContext, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 
@@ -1303,9 +1304,16 @@ export function McpPage() {
                             MCP Sets
                         </h3>
                         <div className="flex items-center">
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsCreateSetOpen(true)}>
-                                <Plus className="w-4 h-4" />
-                            </Button>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsCreateSetOpen(true)}>
+                                            <Plus className="w-4 h-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>새 MCP Set 만들기</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                             <SortMenu currentSort={setsSortMode} onSortChange={setSetsSortMode} />
                         </div>
                     </div>
@@ -1358,8 +1366,22 @@ export function McpPage() {
                                             onKeyDown={e => e.key === 'Enter' && handleSaveSetName()}
                                         />
                                         <div className="flex items-center shrink-0">
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-500" onClick={handleSaveSetName}><Check className="w-4 h-4" /></Button>
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => setIsEditingSetName(false)}><X className="w-4 h-4" /></Button>
+                                            <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-500" onClick={handleSaveSetName}><Check className="w-4 h-4" /></Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>저장</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                            <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => setIsEditingSetName(false)}><X className="w-4 h-4" /></Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>취소</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                         </div>
                                     </div>
                                 ) : (
