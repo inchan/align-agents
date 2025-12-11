@@ -1,7 +1,17 @@
 import { Request, Response } from 'express';
 import { scanForTools, ProjectScanner, TOOL_METADATA } from '@align-agents/cli';
 
+/**
+ * AI 도구 메타데이터 및 스캔 컨트롤러
+ */
 export class ToolsController {
+    /**
+     * 지원되는 모든 도구의 메타데이터를 조회한다.
+     * @param req - Express Request
+     * @param res - Express Response
+     * @returns ToolMetadata 배열
+     * @throws 500 - 조회 실패
+     */
     async getMetadata(req: Request, res: Response) {
         try {
             res.json(TOOL_METADATA);
@@ -11,6 +21,13 @@ export class ToolsController {
         }
     }
 
+    /**
+     * 설치된 AI 도구 목록을 스캔하여 조회한다.
+     * @param req - Express Request
+     * @param res - Express Response
+     * @returns ToolConfig 배열 (id, name, configPath, exists)
+     * @throws 500 - 스캔 실패
+     */
     async list(req: Request, res: Response) {
         try {
             const tools = await scanForTools();
@@ -21,10 +38,23 @@ export class ToolsController {
         }
     }
 
+    /**
+     * 설치된 AI 도구 목록을 스캔한다. (list의 별칭)
+     * @param req - Express Request
+     * @param res - Express Response
+     * @returns ToolConfig 배열
+     */
     async scan(req: Request, res: Response) {
         return this.list(req, res);
     }
 
+    /**
+     * 최근 사용한 프로젝트 목록을 조회한다.
+     * @param req - Express Request
+     * @param res - Express Response
+     * @returns ProjectInfo 배열
+     * @throws 500 - 조회 실패
+     */
     async getRecentProjects(req: Request, res: Response) {
         try {
             const scanner = new ProjectScanner();
@@ -36,6 +66,13 @@ export class ToolsController {
         }
     }
 
+    /**
+     * macOS 폴더 선택 다이얼로그를 표시한다.
+     * @param req - Express Request
+     * @param res - Express Response
+     * @returns { path: string } 또는 { path: null, cancelled: true }
+     * @throws 500 - 다이얼로그 실행 실패
+     */
     async pickFolder(req: Request, res: Response) {
         try {
             const { exec } = await import('child_process');

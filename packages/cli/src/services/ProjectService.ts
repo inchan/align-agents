@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ToolRepository } from '../repositories/ToolRepository.js';
 import { getProjectsConfigPath } from '../constants/paths.js';
 
+/** 사용자 프로젝트 정보 (자동 스캔/수동 등록 포함) */
 export interface UserProject extends Omit<ProjectInfo, 'source'> {
     id: string;
     source: ProjectInfo['source'] | 'manual';
@@ -15,6 +16,10 @@ export interface UserProject extends Omit<ProjectInfo, 'source'> {
     updatedAt: string;
 }
 
+/**
+ * 프로젝트 CRUD 및 스캔 서비스 (싱글톤)
+ * JSON 파일에 프로젝트 목록을 영속화한다.
+ */
 export class ProjectService {
     private static instance: ProjectService;
     private readonly configPath: string;
@@ -33,6 +38,7 @@ export class ProjectService {
         return ProjectService.instance;
     }
 
+    /** 설정 파일 및 디렉토리 존재 여부를 확인하고 없으면 생성한다. */
     private ensureConfig() {
         const dir = path.dirname(this.configPath);
         if (!fs.existsSync(dir)) {
@@ -43,6 +49,7 @@ export class ProjectService {
         }
     }
 
+    /** 설정 파일에서 프로젝트 목록을 로드한다. */
     private loadProjects(): UserProject[] {
         try {
             const data = fs.readFileSync(this.configPath, 'utf-8');
@@ -52,16 +59,25 @@ export class ProjectService {
         }
     }
 
+    /** 프로젝트 목록을 설정 파일에 저장한다. */
     private saveProjects(projects: UserProject[]) {
         fs.writeFileSync(this.configPath, JSON.stringify(projects, null, 2));
     }
 
+    /**
+     * 모든 프로젝트 목록을 조회한다.
+     * @returns updatedAt 기준 내림차순 정렬된 UserProject 배열
+     */
     public getProjects(): UserProject[] {
         return this.loadProjects().sort((a, b) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
     }
 
+    /**
+     * 프로젝트 순서를 재정렬한다.
+     * @param ids - 원하는 순서의 프로젝트 ID 배열
+     */
     public async reorderProjects(ids: string[]): Promise<void> {
         const projects = this.loadProjects();
         const projectMap = new Map(projects.map(p => [p.id, p]));
@@ -85,10 +101,20 @@ export class ProjectService {
         this.saveProjects(newProjects);
     }
 
+    /**
+     * 특정 프로젝트를 조회한다.
+     * @param id - 프로젝트 ID
+     * @returns UserProject 또는 undefined
+     */
     public getProject(id: string): UserProject | undefined {
         return this.loadProjects().find(p => p.id === id);
     }
 
+    /**
+     * 새 프로젝트를 생성한다.
+     * @param project - 프로젝트 정보 (name, path, source 등)
+     * @returns 생성된 UserProject
+     */
     public async createProject(project: Omit<UserProject, 'id' | 'isAutoScanned' | 'createdAt' | 'updatedAt'>): Promise<UserProject> {
         const projects = this.loadProjects();
         const now = new Date().toISOString();
@@ -106,6 +132,13 @@ export class ProjectService {
         return newProject;
     }
 
+    /**
+     * 프로젝트 정보를 수정한다.
+     * @param id - 프로젝트 ID
+     * @param updates - 수정할 필드
+     * @returns 수정된 UserProject
+     * @throws Error - 프로젝트를 찾을 수 없는 경우
+     */
     public async updateProject(id: string, updates: Partial<Omit<UserProject, 'id'>>): Promise<UserProject> {
         const projects = this.loadProjects();
         const index = projects.findIndex(p => p.id === id);
@@ -125,12 +158,23 @@ export class ProjectService {
         return updatedProject;
     }
 
+    /**
+     * 프로젝트를 삭제한다.
+     * @param id - 프로젝트 ID
+     */
     public async deleteProject(id: string): Promise<void> {
         const projects = this.loadProjects();
         const filtered = projects.filter(p => p.id !== id);
         this.saveProjects(filtered);
     }
 
+    /**
+     * 프로젝트의 상세 정보를 조회한다.
+     * 각 도구별 프로젝트 레벨 Rules/MCP 설정 존재 여부를 포함한다.
+     * @param id - 프로젝트 ID
+     * @returns 프로젝트 상세 정보 (id, path, tools[])
+     * @throws Error - 프로젝트를 찾을 수 없는 경우
+     */
     public async getProjectDetails(id: string): Promise<any> {
         const project = this.loadProjects().find(p => p.id === id);
         if (!project) {
@@ -233,6 +277,11 @@ export class ProjectService {
         };
     }
 
+    /**
+     * IDE 등에서 최근 프로젝트를 스캔하고 기존 목록과 병합한다.
+     * 새 프로젝트만 추가되며, 기존 프로젝트는 업데이트되지 않는다.
+     * @returns 병합된 UserProject 배열
+     */
     public async scanAndMergeProjects(): Promise<UserProject[]> {
         const scannedProjects = await this.scanner.getAllRecentProjects();
         const currentProjects = this.loadProjects();

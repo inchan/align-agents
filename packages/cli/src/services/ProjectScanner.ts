@@ -9,6 +9,10 @@ import { GeminiScannerStrategy } from './scanners/GeminiScannerStrategy.js';
 
 export type { ProjectInfo };
 
+/**
+ * 여러 전략을 사용하여 최근 프로젝트를 스캔하는 서비스.
+ * Fallback 방식으로 IDE → Claude → Gemini 순으로 스캔을 시도한다.
+ */
 export class ProjectScanner {
     private strategies: IProjectScannerStrategy[] = [];
 
@@ -23,8 +27,10 @@ export class ProjectScanner {
     }
 
     /**
-     * 모든 최근 프로젝트 통합 스캔 (Fallback 방식)
-     * 전략을 순차적으로 실행하며, 결과가 있는 경우 즉시 반환합니다.
+     * 모든 최근 프로젝트를 통합 스캔한다. (Fallback 방식)
+     * 전략을 순차적으로 실행하며, 결과가 있는 경우 즉시 반환한다.
+     * - 홈 디렉토리, 숨김 폴더 내 프로젝트, Git worktree는 제외
+     * @returns 유효한 ProjectInfo 배열 (중복 제거됨)
      */
     async getAllRecentProjects(): Promise<ProjectInfo[]> {
         const homeDir = os.homedir();

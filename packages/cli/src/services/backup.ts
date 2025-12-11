@@ -5,7 +5,9 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * 백업 저장소 초기화
+ * 백업 저장소(Git)를 초기화한다.
+ * 설정 디렉토리에 Git 저장소가 없으면 생성하고 .gitignore를 설정한다.
+ * @throws Error - Git 초기화 실패 시
  */
 export async function initBackupRepo(): Promise<void> {
     const fsSystem = new NodeFileSystem();
@@ -33,7 +35,10 @@ export async function initBackupRepo(): Promise<void> {
 }
 
 /**
- * 백업 생성 (커밋)
+ * 현재 상태의 백업을 생성한다. (Git 커밋)
+ * @param message - 커밋 메시지 (선택, 기본: 현재 시간)
+ * @returns 생성된 커밋 해시
+ * @throws Error - 변경사항이 없거나 커밋 실패 시
  */
 export async function createBackup(message?: string): Promise<string> {
     const fsSystem = new NodeFileSystem();
@@ -59,9 +64,10 @@ export async function createBackup(message?: string): Promise<string> {
 }
 
 /**
- * 백업 목록 조회
+ * 백업 목록을 조회한다. (Git 로그)
+ * @returns 백업 목록 (hash, fullHash, date, message)
  */
-export async function getBackups(): Promise<Array<{ hash: string; date: string; message: string }>> {
+export async function getBackups(): Promise<Array<{ hash: string; fullHash?: string; date: string; message: string }>> {
     const fsSystem = new NodeFileSystem();
     const syncService = new SyncService(fsSystem);
     const masterDir = await syncService.getMasterDir();
@@ -88,7 +94,10 @@ export async function getBackups(): Promise<Array<{ hash: string; date: string; 
 }
 
 /**
- * 백업 복원
+ * 지정된 백업으로 복원한다. (Git hard reset)
+ * 현재 변경사항이 있으면 stash 후 복원한다.
+ * @param hash - 복원할 커밋 해시
+ * @throws Error - 백업 저장소가 없거나 복원 실패 시
  */
 export async function restoreBackup(hash: string): Promise<void> {
     const fsSystem = new NodeFileSystem();

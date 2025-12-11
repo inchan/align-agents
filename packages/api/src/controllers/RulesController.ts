@@ -7,9 +7,24 @@ import {
     SyncRulesToAllToolsUseCase
 } from '@align-agents/cli';
 
+/**
+ * Rules(에이전트 규칙) 동기화 및 관리 컨트롤러
+ */
 export class RulesController {
-    // Master rules methods removed
-
+    /**
+     * Rule을 도구에 동기화한다.
+     * toolId가 있으면 특정 도구에, 없으면 모든 도구에 동기화.
+     * @param req - Express Request
+     *   - body.sourceId: Rule ID (필수)
+     *   - body.toolId?: 대상 도구 ID
+     *   - body.strategy?: 동기화 전략 ('overwrite' | 'smart-update')
+     *   - body.global?: 전역 규칙 여부 (기본: true)
+     *   - body.targetPath?: 프로젝트 경로
+     * @param res - Express Response
+     * @returns 동기화 결과
+     * @throws 400 - sourceId 누락
+     * @throws 500 - 동기화 실패
+     */
     async sync(req: Request, res: Response) {
         try {
             const { toolId, strategy, targetPath, global, sourceId } = req.body;
@@ -60,10 +75,17 @@ export class RulesController {
         }
     }
 
-
-
+    // ─────────────────────────────────────────────────────────────────────────
     // Multi-rules management API
+    // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * 등록된 모든 Rule 목록을 조회한다.
+     * @param req - Express Request
+     * @param res - Express Response
+     * @returns Rule 배열
+     * @throws 500 - 조회 실패
+     */
     async getRulesList(req: Request, res: Response) {
         try {
             const rules = await rulesService.getRulesList();
@@ -74,6 +96,14 @@ export class RulesController {
         }
     }
 
+    /**
+     * 새 Rule을 생성한다.
+     * @param req - Express Request (body: { name, content })
+     * @param res - Express Response
+     * @returns 생성된 Rule
+     * @throws 400 - name 또는 content 누락
+     * @throws 500 - 생성 실패
+     */
     async createRule(req: Request, res: Response) {
         try {
             const { name, content } = req.body;
@@ -88,6 +118,15 @@ export class RulesController {
         }
     }
 
+    /**
+     * Rule 내용을 수정한다.
+     * @param req - Express Request (params.id: Rule ID, body: { content, name? })
+     * @param res - Express Response
+     * @returns 수정된 Rule
+     * @throws 400 - content 누락
+     * @throws 404 - Rule 없음
+     * @throws 500 - 수정 실패
+     */
     async updateRule(req: Request, res: Response) {
         try {
             const { id } = req.params;
@@ -106,6 +145,15 @@ export class RulesController {
         }
     }
 
+    /**
+     * Rule을 삭제한다.
+     * @param req - Express Request (params.id: Rule ID)
+     * @param res - Express Response
+     * @returns { success: true }
+     * @throws 400 - 활성 상태인 Rule 삭제 시도
+     * @throws 404 - Rule 없음
+     * @throws 500 - 삭제 실패
+     */
     async deleteRule(req: Request, res: Response) {
         try {
             const { id } = req.params;
@@ -123,6 +171,14 @@ export class RulesController {
         }
     }
 
+    /**
+     * 특정 Rule을 활성 상태로 설정한다.
+     * @param req - Express Request (params.id: Rule ID)
+     * @param res - Express Response
+     * @returns { success: true }
+     * @throws 404 - Rule 없음
+     * @throws 500 - 설정 실패
+     */
     async setActiveRule(req: Request, res: Response) {
         try {
             const { id } = req.params;

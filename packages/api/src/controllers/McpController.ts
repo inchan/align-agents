@@ -6,9 +6,25 @@ import {
     scanForTools
 } from '@align-agents/cli';
 
+/**
+ * MCP(Model Context Protocol) 서버 설정 동기화 및 관리 컨트롤러
+ */
 export class McpController {
-    // Master MCP methods removed
-
+    /**
+     * MCP 설정을 도구에 동기화한다.
+     * toolId가 있으면 특정 도구에, 없으면 모든 도구에 동기화.
+     * @param req - Express Request
+     *   - body.sourceId: MCP Set ID (필수)
+     *   - body.toolId?: 대상 도구 ID
+     *   - body.strategy?: 동기화 전략 ('overwrite' | 'smart-update')
+     *   - body.global?: 전역 설정 여부
+     *   - body.targetPath?: 프로젝트 경로
+     *   - body.serverIds?: 동기화할 서버 ID 배열
+     * @param res - Express Response
+     * @returns 동기화 결과
+     * @throws 400 - sourceId 누락 또는 설정 경로 해석 실패
+     * @throws 500 - 동기화 실패
+     */
     async sync(req: Request, res: Response) {
         try {
             const { toolId, strategy, sourceId, global, targetPath } = req.body;
@@ -50,6 +66,11 @@ export class McpController {
         }
     }
 
+    /**
+     * 특정 도구에 MCP 설정을 동기화한다. (내부용)
+     * @param req - Express Request
+     * @param res - Express Response
+     */
     private async syncMcpToTool(req: Request, res: Response): Promise<void> {
         try {
             console.log(`[API] MCP sync requested:`, req.body);
@@ -85,6 +106,14 @@ export class McpController {
         }
     }
 
+    /**
+     * 도구의 MCP 설정 파일 경로를 결정한다.
+     * @param toolId - 도구 ID
+     * @param global - 전역 설정 여부 (기본: true)
+     * @param targetPath - 프로젝트 경로 (프로젝트 모드 시 필수)
+     * @param providedPath - 직접 지정된 경로 (있으면 우선 사용)
+     * @returns 설정 파일 경로 또는 null
+     */
     private async resolveConfigPath(toolId: string, global?: boolean, targetPath?: string, providedPath?: string): Promise<string | null> {
         if (providedPath) return providedPath;
 
@@ -110,7 +139,17 @@ export class McpController {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
     // MCP Definitions Management
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * 모든 MCP Definition 목록을 조회한다.
+     * @param req - Express Request
+     * @param res - Express Response
+     * @returns MCP Definition 배열
+     * @throws 500 - 조회 실패
+     */
     async getDefinitions(req: Request, res: Response) {
         try {
             const definitions = await mcpService.getMcpDefinitions();
@@ -121,6 +160,14 @@ export class McpController {
         }
     }
 
+    /**
+     * 새 MCP Definition을 생성한다.
+     * @param req - Express Request (body: { name, command, args, description?, env? })
+     * @param res - Express Response
+     * @returns 생성된 MCP Definition
+     * @throws 400 - 필수 필드 누락 (name, command, args)
+     * @throws 500 - 생성 실패
+     */
     async createDefinition(req: Request, res: Response) {
         try {
             const { name, command, args, description, env } = req.body;
@@ -135,6 +182,14 @@ export class McpController {
         }
     }
 
+    /**
+     * MCP Definition을 수정한다.
+     * @param req - Express Request (params.id: Definition ID, body: 수정할 필드)
+     * @param res - Express Response
+     * @returns 수정된 MCP Definition
+     * @throws 404 - Definition 없음
+     * @throws 500 - 수정 실패
+     */
     async updateDefinition(req: Request, res: Response) {
         try {
             const { id } = req.params;
@@ -150,6 +205,14 @@ export class McpController {
         }
     }
 
+    /**
+     * MCP Definition을 삭제한다.
+     * @param req - Express Request (params.id: Definition ID)
+     * @param res - Express Response
+     * @returns { success: true }
+     * @throws 404 - Definition 없음
+     * @throws 500 - 삭제 실패
+     */
     async deleteDefinition(req: Request, res: Response) {
         try {
             const { id } = req.params;
@@ -164,7 +227,17 @@ export class McpController {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
     // MCP Sets Management
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * 모든 MCP Set 목록을 조회한다.
+     * @param req - Express Request
+     * @param res - Express Response
+     * @returns MCP Set 배열
+     * @throws 500 - 조회 실패
+     */
     async getSets(req: Request, res: Response) {
         try {
             const sets = await mcpService.getMcpSets();
@@ -175,6 +248,14 @@ export class McpController {
         }
     }
 
+    /**
+     * 새 MCP Set을 생성한다.
+     * @param req - Express Request (body: { name, items?, description? })
+     * @param res - Express Response
+     * @returns 생성된 MCP Set
+     * @throws 400 - name 누락
+     * @throws 500 - 생성 실패
+     */
     async createSet(req: Request, res: Response) {
         try {
             const { name, items, description } = req.body;
@@ -189,6 +270,14 @@ export class McpController {
         }
     }
 
+    /**
+     * MCP Set을 수정한다.
+     * @param req - Express Request (params.id: Set ID, body: 수정할 필드)
+     * @param res - Express Response
+     * @returns 수정된 MCP Set
+     * @throws 404 - Set 없음
+     * @throws 500 - 수정 실패
+     */
     async updateSet(req: Request, res: Response) {
         try {
             const { id } = req.params;
@@ -204,6 +293,15 @@ export class McpController {
         }
     }
 
+    /**
+     * MCP Set을 삭제한다.
+     * @param req - Express Request (params.id: Set ID)
+     * @param res - Express Response
+     * @returns { success: true }
+     * @throws 400 - 활성 상태인 Set 삭제 시도
+     * @throws 404 - Set 없음
+     * @throws 500 - 삭제 실패
+     */
     async deleteSet(req: Request, res: Response) {
         try {
             const { id } = req.params;
@@ -221,6 +319,14 @@ export class McpController {
         }
     }
 
+    /**
+     * 특정 MCP Set을 활성 상태로 설정한다.
+     * @param req - Express Request (params.id: Set ID)
+     * @param res - Express Response
+     * @returns { success: true }
+     * @throws 404 - Set 없음
+     * @throws 500 - 설정 실패
+     */
     async setActiveSet(req: Request, res: Response) {
         try {
             const { id } = req.params;

@@ -3,6 +3,7 @@ import { getConfigDir } from '../constants/paths.js';
 import path from 'path';
 import os from 'os';
 
+/** 동기화 통계 요약 인터페이스 */
 export interface StatsSummary {
     totalSyncs: number;
     lastSync: string | null;
@@ -11,6 +12,7 @@ export interface StatsSummary {
     historyCount: number;
 }
 
+/** 활동 로그 항목 인터페이스 */
 export interface ActivityLog {
     id: string;
     timestamp: string;
@@ -19,6 +21,10 @@ export interface ActivityLog {
     context?: Record<string, unknown>;
 }
 
+/**
+ * 동기화 통계 및 활동 로그 관리 서비스 (싱글톤)
+ * JSON 파일에 통계와 활동 로그를 영속화한다.
+ */
 export class StatsService {
     private static instance: StatsService;
     private configDir: string;
@@ -39,12 +45,17 @@ export class StatsService {
         return StatsService.instance;
     }
 
+    /** 설정 디렉토리가 없으면 생성한다. */
     private ensureConfigDir() {
         if (!fs.existsSync(this.configDir)) {
             fs.mkdirSync(this.configDir, { recursive: true });
         }
     }
 
+    /**
+     * 동기화 통계 요약을 조회한다.
+     * @returns StatsSummary 객체
+     */
     public getSummary(): StatsSummary {
         if (!fs.existsSync(this.statsFile)) {
             return {
@@ -68,6 +79,11 @@ export class StatsService {
         }
     }
 
+    /**
+     * 활동 로그를 조회한다.
+     * @param limit - 반환할 최대 로그 수 (기본: 50)
+     * @returns ActivityLog 배열
+     */
     public getActivityFeed(limit: number = 50): ActivityLog[] {
         if (!fs.existsSync(this.activityFile)) {
             return [];
@@ -80,6 +96,13 @@ export class StatsService {
         }
     }
 
+    /**
+     * 동기화 결과를 기록한다.
+     * 통계를 업데이트하고 활동 로그에 추가한다.
+     * @param success - 성공 여부
+     * @param message - 로그 메시지
+     * @param context - 추가 컨텍스트 정보
+     */
     public async recordSync(success: boolean, message: string, context?: Record<string, unknown>) {
         const summary = this.getSummary();
 
@@ -100,6 +123,12 @@ export class StatsService {
         this.addActivityLog(success ? 'info' : 'error', message, context);
     }
 
+    /**
+     * 활동 로그를 추가한다. 최대 1000개까지 보관한다.
+     * @param level - 로그 레벨
+     * @param message - 로그 메시지
+     * @param context - 추가 컨텍스트 정보
+     */
     public addActivityLog(level: 'info' | 'warn' | 'error', message: string, context?: Record<string, unknown>) {
         let logs: ActivityLog[] = [];
         if (fs.existsSync(this.activityFile)) {

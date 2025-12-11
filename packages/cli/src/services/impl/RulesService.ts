@@ -15,6 +15,10 @@ import { StateService } from './StateService.js';
 import { getDatabase } from '../../infrastructure/database.js';
 
 
+/**
+ * Rules(에이전트 규칙) 관리 및 동기화 서비스.
+ * SQLite 기반의 RulesConfigRepository를 통해 Rules를 영속화한다.
+ */
 export class RulesService implements IRulesService {
     private repository: RulesConfigRepository;
     private masterDir: string;
@@ -41,41 +45,55 @@ export class RulesService implements IRulesService {
         this.masterDir = dir;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
     // Multi-rules management
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** 모든 Rule 목록을 조회한다. */
     async getRulesList(): Promise<Rule[]> {
         return this.repository.getRulesList();
     }
 
+    /** 특정 Rule을 조회한다. */
     async getRule(id: string): Promise<Rule | null> {
         return this.repository.getRule(id);
     }
 
+    /** 새 Rule을 생성한다. */
     async createRule(name: string, content: string): Promise<Rule> {
         return this.repository.createRule(name, content);
     }
 
+    /** Rule을 수정한다. */
     async updateRule(id: string, content: string, name?: string): Promise<Rule> {
         return this.repository.updateRule(id, content, name);
     }
 
+    /** Rule을 삭제한다. */
     async deleteRule(id: string): Promise<void> {
         return this.repository.deleteRule(id);
     }
 
+    /** 특정 Rule을 활성 상태로 설정한다. */
     async setActiveRule(id: string): Promise<void> {
         return this.repository.setActiveRule(id);
     }
 
+    /** Rule 순서를 재정렬한다. */
     async reorderRules(ids: string[]): Promise<void> {
         return this.repository.reorderRules(ids);
     }
 
-    // Master rules methods removed
+    // ─────────────────────────────────────────────────────────────────────────
+    // Rules Config Management
+    // ─────────────────────────────────────────────────────────────────────────
 
+    /** Rules 설정을 로드한다. */
     async loadRulesConfig(): Promise<RulesConfig> {
         return this.repository.load();
     }
 
+    /** Rules 설정을 저장한다. */
     async saveRulesConfig(config: RulesConfig): Promise<void> {
         const validatedConfig = validateData(RulesConfigSchema, config, 'Invalid rules config');
 
@@ -88,11 +106,22 @@ export class RulesService implements IRulesService {
         return this.repository.save(validatedConfig);
     }
 
+    /** 도구 ID에 해당하는 Rules 파일명을 반환한다. */
     private getToolRulesFilename(toolId: string): string | null {
         const meta = getToolMetadata(toolId);
         return meta?.rulesFilename || null;
     }
 
+    /**
+     * 특정 도구에 Rule을 동기화한다.
+     * @param toolId - 대상 도구 ID
+     * @param targetPath - 프로젝트 경로 (프로젝트 모드 시)
+     * @param global - 전역 Rules 사용 여부 (기본: true)
+     * @param strategy - 동기화 전략 (기본: 'overwrite')
+     * @param backupOptions - 백업 옵션
+     * @param sourceId - Rule ID (필수)
+     * @throws Error - 알 수 없는 도구, sourceId 누락 등
+     */
     async syncToolRules(toolId: string, targetPath: string, global: boolean = true, strategy: SyncStrategy = 'overwrite', backupOptions?: { maxBackups?: number; skipBackup?: boolean }, sourceId?: string): Promise<void> {
         const meta = getToolMetadata(toolId);
         if (!meta) {
@@ -206,6 +235,13 @@ export class RulesService implements IRulesService {
         }
     }
 
+    /**
+     * 모든 도구에 Rule을 동기화한다.
+     * @param targetPath - 프로젝트 경로
+     * @param strategy - 동기화 전략 (기본: 'overwrite')
+     * @param sourceId - Rule ID (필수)
+     * @returns 각 도구별 동기화 결과 배열
+     */
     async syncAllToolsRules(targetPath: string, strategy: SyncStrategy = 'overwrite', sourceId?: string): Promise<RulesSyncResult[]> {
         const config = await this.loadRulesConfig();
         const results: RulesSyncResult[] = [];
@@ -331,6 +367,7 @@ export class RulesService implements IRulesService {
         return results;
     }
 
+    /** Rules 설정을 초기화한다. 이미 설정이 있으면 무시한다. */
     async initRulesConfig(): Promise<void> {
         const current = await this.loadRulesConfig();
         if (Object.keys(current).length > 0) return;
@@ -349,12 +386,12 @@ export class RulesService implements IRulesService {
         await this.saveRulesConfig(defaultConfig);
     }
 
+    /** 현재 Rules 설정을 조회한다. */
     async getRulesConfig(): Promise<RulesConfig> {
         return this.repository.load();
     }
 
-
-
+    /** 지원되는 도구 ID 목록을 반환한다. */
     listSupportedTools(): string[] {
         return getRulesCapableTools().map(t => t.id);
     }

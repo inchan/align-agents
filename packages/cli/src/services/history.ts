@@ -1,9 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { getConfigDir } from '../constants/paths.js';
+import os from 'os';
 
+/** 히스토리 타입 */
 export type HistoryType = 'rules' | 'mcp' | 'sync';
 
+/** 히스토리 항목 인터페이스 */
 export interface HistoryEntry {
     id: string;
     timestamp: string;
@@ -11,17 +14,24 @@ export interface HistoryEntry {
     description?: string;
 }
 
-import os from 'os';
-
+/** 히스토리 저장 디렉토리 경로를 반환한다. */
 function getHistoryDir(): string {
     // 동기 함수이므로 직접 경로 계산
     return path.join(getConfigDir(), 'history');
 }
 
+/** 히스토리 인덱스 파일 경로를 반환한다. */
 function getHistoryIndexFile(): string {
     return path.join(getHistoryDir(), 'index.json');
 }
 
+/**
+ * 버전 정보를 저장한다. 최대 50개까지 보관하며 초과 시 오래된 항목 삭제.
+ * @param type - 히스토리 타입 ('rules' | 'mcp' | 'sync')
+ * @param content - 저장할 내용
+ * @param description - 설명 (선택)
+ * @returns 생성된 히스토리 ID
+ */
 export function saveVersion(type: HistoryType, content: string, description?: string): string {
     const historyDir = getHistoryDir();
     if (!fs.existsSync(historyDir)) {
@@ -69,6 +79,11 @@ export function saveVersion(type: HistoryType, content: string, description?: st
     return id;
 }
 
+/**
+ * 저장된 버전 목록을 조회한다.
+ * @param type - 필터링할 히스토리 타입 (선택, 미지정 시 전체)
+ * @returns HistoryEntry 배열
+ */
 export function listVersions(type?: HistoryType): HistoryEntry[] {
     const indexFile = getHistoryIndexFile();
     if (!fs.existsSync(indexFile)) return [];
@@ -84,6 +99,11 @@ export function listVersions(type?: HistoryType): HistoryEntry[] {
     }
 }
 
+/**
+ * 특정 버전의 내용을 조회한다.
+ * @param id - 히스토리 ID
+ * @returns 저장된 내용 또는 null
+ */
 export function getVersionContent(id: string): string | null {
     const historyDir = getHistoryDir();
     const contentPath = path.join(historyDir, `${id}.json`);
