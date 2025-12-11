@@ -16,6 +16,7 @@ import { DndContext, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 
 import { TruncateTooltip } from '@/components/ui/truncate-tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { SortMenu } from '../components/common/SortMenu'
 import { useSortableList } from '../hooks/useSortableList'
 import { Badge } from '@/components/ui/badge'
@@ -312,9 +313,16 @@ export function RulesPage() {
                             <div className="p-4 border-b bg-muted/40 flex items-center justify-between shrink-0">
                                 <h3 className="font-semibold text-sm">Rules</h3>
                                 <div className="flex items-center gap-1">
-                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsCreateModalOpen(true)}>
-                                        <Plus className="w-4 h-4" />
-                                    </Button>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsCreateModalOpen(true)}>
+                                                    <Plus className="w-4 h-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>새 규칙 생성</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                     <SortMenu currentSort={sortMode} onSortChange={setSortMode} className="-mr-1" />
                                 </div>
                             </div>

@@ -7,6 +7,7 @@ import { SyncTargetSelector } from './SyncTargetSelector'
 import { useGlobalSync } from '@/hooks/useGlobalSync'
 import { cn } from '@/lib/utils'
 import { Spinner } from '@/components/ui/Spinner'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -44,15 +45,22 @@ export function Header({ onMenuClick }: HeaderProps) {
   return (
     <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={onMenuClick}
-        >
-          <Menu className="h-5 w-5" />
-          <span className="sr-only">Toggle menu</span>
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                onClick={onMenuClick}
+              >
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>메뉴 열기</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <h1 className="text-lg font-semibold">{getPageTitle(location.pathname)}</h1>
       </div>
 
@@ -85,15 +93,22 @@ export function Header({ onMenuClick }: HeaderProps) {
           )}
           Sync
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        >
-          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              >
+                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>테마 변경</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   )
