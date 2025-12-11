@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { randomUUID } from 'crypto';
 import { getLogger, type AlignAgentsLogger } from '@align-agents/logger';
 
 /** 로그 레벨 타입 */
@@ -52,7 +53,7 @@ export class LoggerService extends EventEmitter {
      */
     public log(level: LogLevel, message: string, ...args: any[]) {
         const entry: LogEntry = {
-            id: Math.random().toString(36).substring(7),
+            id: randomUUID(),
             timestamp: new Date().toISOString(),
             level,
             message,

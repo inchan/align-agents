@@ -89,6 +89,17 @@ export function createLogger(config: LoggerConfig = {}): AlignAgentsLogger {
             // 파일 스트림에도 로그를 기록하는 wrapper
             const fileMultistream = multistream(streams);
 
+            // 로그 레벨 우선순위 (낮을수록 더 심각)
+            const levelPriority: Record<string, number> = {
+                fatal: 60,
+                error: 50,
+                warn: 40,
+                info: 30,
+                debug: 20,
+                trace: 10,
+            };
+            const configLevelPriority = levelPriority[mergedConfig.level] ?? 30;
+
             return new Proxy(consoleLogger, {
                 get(target, prop, receiver) {
                     const value = Reflect.get(target, prop, receiver);
@@ -96,18 +107,20 @@ export function createLogger(config: LoggerConfig = {}): AlignAgentsLogger {
                         return (...args: unknown[]) => {
                             // 콘솔에 출력
                             (value as Function).apply(target, args);
-                            // 파일에도 기록 (JSON 형식으로)
-                            const logObj = typeof args[0] === 'object' ? args[0] : {};
-                            const msg = typeof args[0] === 'string' ? args[0] : (args[1] as string) ?? '';
-                            const level = pino.levels.values[prop as string];
-                            const logLine = JSON.stringify({
-                                level: prop,
-                                time: new Date().toISOString(),
-                                name: mergedConfig.name,
-                                msg,
-                                ...logObj,
-                            }) + '\n';
-                            fileMultistream.write(logLine);
+                            // 파일에도 기록 (JSON 형식으로) - 레벨 필터링 적용
+                            const currentLevelPriority = levelPriority[prop as string] ?? 30;
+                            if (currentLevelPriority >= configLevelPriority) {
+                                const logObj = typeof args[0] === 'object' ? args[0] : {};
+                                const msg = typeof args[0] === 'string' ? args[0] : (args[1] as string) ?? '';
+                                const logLine = JSON.stringify({
+                                    level: currentLevelPriority,
+                                    time: new Date().toISOString(),
+                                    name: mergedConfig.name,
+                                    msg,
+                                    ...logObj,
+                                }) + '\n';
+                                fileMultistream.write(logLine);
+                            }
                         };
                     }
                     return value;

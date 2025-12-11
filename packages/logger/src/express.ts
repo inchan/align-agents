@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import type { Request, Response, NextFunction, RequestHandler, ErrorRequestHandler } from 'express';
 import { randomUUID } from 'crypto';
 import { createLogger, getLogger } from './logger.js';
 import type { LoggerConfig, AlignAgentsLogger } from './types.js';
@@ -94,7 +94,7 @@ export function expressLoggerMiddleware(options: ExpressLoggerOptions = {}): Req
     };
 }
 
-export function expressErrorLogger(options: ExpressLoggerOptions = {}) {
+export function expressErrorLogger(options: ExpressLoggerOptions = {}): ErrorRequestHandler {
     const logger = createExpressLogger(options);
 
     return (err: Error, req: Request, res: Response, next: NextFunction): void => {
