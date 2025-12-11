@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchRulesList, createRule, updateRule, deleteRule, reorderRules, type Rule } from '../lib/api'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import Editor, { type EditorProps } from '@monaco-editor/react'
 
 import { toast } from 'sonner'
 import { Spinner } from '../components/ui/Spinner'
@@ -9,7 +10,6 @@ import { Plus, Trash2, Save, FileText, X, GripVertical } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import { Textarea } from '../components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DndContext, closestCenter } from '@dnd-kit/core'
@@ -20,6 +20,7 @@ import { SortMenu } from '../components/common/SortMenu'
 import { useSortableList } from '../hooks/useSortableList'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/shared/empty-state'
+import { useTheme } from '../components/theme-provider'
 
 interface SortableRuleItemProps {
     rule: Rule
@@ -120,8 +121,52 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
     )
 }
 
+// Hook to provide Monaco Editor configuration with theme support
+function useMonacoConfig() {
+    const { theme } = useTheme()
+
+    // Determine the Monaco theme based on current app theme
+    const monacoTheme = useMemo(() => {
+        if (theme === 'dark') return 'vs-dark'
+        if (theme === 'light') return 'vs'
+        // For 'system' theme, check the actual applied theme
+        const isDark = window.document.documentElement.classList.contains('dark')
+        return isDark ? 'vs-dark' : 'vs'
+    }, [theme])
+
+    // Shared editor options factory
+    const getEditorOptions = (variant: 'edit' | 'create'): EditorProps['options'] => ({
+        minimap: { enabled: variant === 'edit' },
+        lineNumbers: 'on',
+        wordWrap: 'on',
+        scrollBeyondLastLine: false,
+        fontSize: 14,
+        tabSize: 2,
+        formatOnPaste: true,
+        formatOnType: true,
+        padding: {
+            top: variant === 'edit' ? 16 : 12,
+            bottom: variant === 'edit' ? 16 : 12
+        },
+        scrollbar: {
+            verticalScrollbarSize: 10,
+            horizontalScrollbarSize: 10,
+        },
+    })
+
+    // Loading component
+    const loadingComponent = (
+        <div className="flex items-center justify-center h-full">
+            <Spinner size={24} />
+        </div>
+    )
+
+    return { monacoTheme, getEditorOptions, loadingComponent }
+}
+
 export function RulesPage() {
     const queryClient = useQueryClient()
+    const { monacoTheme, getEditorOptions, loadingComponent } = useMonacoConfig()
 
     const [viewedRuleId, setViewedRuleId] = useState<string | null>(null)
     const [isEditing, setIsEditing] = useState(false)
@@ -360,12 +405,17 @@ export function RulesPage() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Textarea
-                                                value={editedContent}
-                                                onChange={(e) => setEditedContent(e.target.value)}
-                                                className="flex-1 font-mono text-sm resize-none border-0 focus-visible:ring-0 rounded-none p-6 leading-relaxed"
-                                                placeholder="Enter rule content..."
-                                            />
+                                            <div role="region" aria-label="Rule content editor" className="flex-1">
+                                                <Editor
+                                                    height="100%"
+                                                    language="markdown"
+                                                    theme={monacoTheme}
+                                                    value={editedContent}
+                                                    onChange={(value) => setEditedContent(value || '')}
+                                                    loading={loadingComponent}
+                                                    options={getEditorOptions('edit')}
+                                                />
+                                            </div>
                                         </div>
                                     )
                                 ) : (
@@ -403,13 +453,17 @@ export function RulesPage() {
                                     <div className="flex justify-between items-center">
                                         <Label htmlFor="ruleContent">Content</Label>
                                     </div>
-                                    <Textarea
-                                        id="ruleContent"
-                                        value={newRuleContent}
-                                        onChange={(e) => setNewRuleContent(e.target.value)}
-                                        placeholder="Enter rule content..."
-                                        className="min-h-[180px] font-mono text-sm"
-                                    />
+                                    <div role="region" aria-label="New rule content editor" className="border rounded-md overflow-hidden h-[300px]">
+                                        <Editor
+                                            height="100%"
+                                            language="markdown"
+                                            theme={monacoTheme}
+                                            value={newRuleContent}
+                                            onChange={(value) => setNewRuleContent(value || '')}
+                                            loading={loadingComponent}
+                                            options={getEditorOptions('create')}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                             <DialogFooter>
