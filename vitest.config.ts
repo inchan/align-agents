@@ -2,7 +2,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
     test: {
-        include: ['packages/**/src/**/*.{test,spec}.{ts,tsx}'],
+        include: [
+            'packages/**/src/**/*.{test,spec}.{ts,tsx}',
+            'packages/**/src/__tests__/**/*.{test,spec}.{ts,tsx}',
+        ],
         exclude: [
             '**/node_modules/**',
             '**/dist/**',
@@ -14,6 +17,7 @@ export default defineConfig({
             reporter: ['text', 'html'],
             reportsDirectory: './coverage',
             include: [
+                'packages/errors/src/**/*.ts',
                 'packages/**/src/services/**/*.ts',
                 'packages/**/src/use-cases/**/*.ts',
                 'packages/**/src/utils/**/*.ts',

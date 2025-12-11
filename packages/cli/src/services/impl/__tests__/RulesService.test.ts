@@ -214,7 +214,7 @@ describe('RulesService', () => {
         it('should throw error for unknown tool', async () => {
             await expect(
                 service.syncToolRules('unknown_tool', '/path', true, 'overwrite')
-            ).rejects.toThrow('Unknown tool: unknown_tool');
+            ).rejects.toThrow("Tool with id 'unknown_tool' not found");
         });
 
         it('should throw error when target path is required but not provided', async () => {
@@ -249,7 +249,7 @@ describe('RulesService', () => {
 
             await expect(
                 service.syncToolRules('claude', '', true, 'overwrite', undefined, 'nonexistent')
-            ).rejects.toThrow('Rule not found');
+            ).rejects.toThrow("Rule with id 'nonexistent' not found");
             // Log result is not called if error is thrown early
         });
 

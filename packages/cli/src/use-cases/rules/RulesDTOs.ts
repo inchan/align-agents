@@ -1,4 +1,8 @@
 import { SyncStrategy } from '../../services/strategies.js';
+import type { ErrorInfo } from '../common/types.js';
+
+// Re-export ErrorInfo for consumers
+export type { ErrorInfo };
 
 // Request DTOs
 export interface SyncRulesToToolRequest {
@@ -34,6 +38,7 @@ export interface SyncRulesToToolResponse {
     targetPath: string;
     message?: string;
     historyId?: string; // Sync history entry ID
+    error?: ErrorInfo;
 }
 
 export interface SyncRulesToAllToolsResponse {
@@ -45,6 +50,7 @@ export interface SyncRulesToAllToolsResponse {
         targetPath?: string;
         message?: string;
         rulesFilename?: string;
+        error?: ErrorInfo;
     }>;
 }
 

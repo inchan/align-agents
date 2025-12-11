@@ -1,3 +1,6 @@
+// Errors (re-export from @align-agents/errors)
+export * from '@align-agents/errors';
+
 // Interfaces
 export * from './interfaces/IFileSystem.js'; // Still used by RulesService, HistoryService, SyncService
 export * from './interfaces/IDatabase.js'; // New database interface
@@ -30,9 +33,19 @@ export { ProjectService } from './services/ProjectService.js';
 export type { UserProject } from './services/ProjectService.js';
 export * from './utils/backup.js';
 
+// Use Cases - Common types
+export type { ErrorInfo } from './use-cases/common/types.js';
+
 // Use Cases
 export * from './use-cases/IUseCase.js';
-export * from './use-cases/rules/RulesDTOs.js';
+export {
+    type SyncRulesToToolRequest,
+    type SyncRulesToToolResponse,
+    type SyncRulesToAllToolsRequest,
+    type SyncRulesToAllToolsResponse,
+    type LoadMasterRulesRequest,
+    type LoadMasterRulesResponse,
+} from './use-cases/rules/RulesDTOs.js';
 export { SyncRulesToToolUseCase } from './use-cases/rules/SyncRulesToToolUseCase.js';
 export { SyncRulesToAllToolsUseCase } from './use-cases/rules/SyncRulesToAllToolsUseCase.js';
 
@@ -40,7 +53,16 @@ export { SyncRulesToAllToolsUseCase } from './use-cases/rules/SyncRulesToAllTool
 export { LoggerService } from './services/LoggerService.js';
 // Master use case exports removed
 export { LogInterceptor } from './infrastructure/LogInterceptor.js';
-export * from './use-cases/mcp/McpDTOs.js';
+export {
+    type SyncMcpToToolRequest,
+    type SyncMcpToToolResponse,
+    type SyncMcpToAllToolsRequest,
+    type SyncMcpToAllToolsResponse,
+    type LoadMasterMcpRequest,
+    type LoadMasterMcpResponse,
+    type AddMcpServerRequest,
+    type AddMcpServerResponse,
+} from './use-cases/mcp/McpDTOs.js';
 export * from './use-cases/mcp/SyncMcpToToolUseCase.js';
 export * from './use-cases/mcp/SyncMcpToAllToolsUseCase.js';
 

@@ -1,5 +1,9 @@
 import { SyncStrategy } from '../../services/strategies.js';
 import { McpServer } from '../../interfaces/ISyncService.js';
+import type { ErrorInfo } from '../common/types.js';
+
+// Re-export ErrorInfo for consumers
+export type { ErrorInfo };
 
 // Request DTOs
 export interface SyncMcpToToolRequest {
@@ -34,6 +38,7 @@ export interface SyncMcpToToolResponse {
     configPath: string;
     syncedServers: string[];
     message?: string;
+    error?: ErrorInfo;
 }
 
 export interface SyncMcpToAllToolsResponse {
@@ -43,6 +48,7 @@ export interface SyncMcpToAllToolsResponse {
         configPath?: string;
         syncedServers?: string[];
         message?: string;
+        error?: ErrorInfo;
     }>;
 }
 
