@@ -38,6 +38,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 
 import { SortMenu } from '../components/common/SortMenu'
 import { useSortableList } from '../hooks/useSortableList'
+import { useDebounce } from '../hooks/useDebounce'
 
 // --- Components ---
 
@@ -299,13 +300,17 @@ function SortableLibraryItem({ def, isDragEnabled, selectedSetId, searchQuery = 
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                        <div className="font-medium text-sm truncate">
+                        <TruncateTooltip className="font-medium text-sm" side="top">
                             <HighlightText text={def.name} query={searchQuery} />
-                        </div>
+                        </TruncateTooltip>
                     </div>
-                    <div className="text-xs text-muted-foreground font-mono mt-1 truncate">
+                    <TruncateTooltip
+                        className="text-xs text-muted-foreground font-mono mt-1"
+                        contentClassName="font-mono text-xs"
+                        side="bottom"
+                    >
                         <HighlightText text={`${def.command} ${def.args?.join(' ') || ''}`} query={searchQuery} />
-                    </div>
+                    </TruncateTooltip>
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -432,8 +437,16 @@ export function McpPage() {
     const [showAssigned, setShowAssigned] = useState(false);
 
     // Search state for Library
-    const [searchQuery, setSearchQuery] = useState('')
+    const [searchQuery, setSearchQuery] = useState(() => {
+        // Load from localStorage on initial mount
+        try {
+            return localStorage.getItem('mcp-library-search') || ''
+        } catch {
+            return ''
+        }
+    })
     const searchInputRef = useRef<HTMLInputElement>(null)
+    const debouncedSearchQuery = useDebounce(searchQuery, 300)
 
     // --- Sorting & Drag-Drop: Sets (Left) ---
     const {
@@ -505,9 +518,9 @@ export function McpPage() {
             items = mcpPool.filter(def => !assignedIds.has(def.id));
         }
 
-        // Apply search filter
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase();
+        // Apply search filter (using debounced query for performance)
+        if (debouncedSearchQuery.trim()) {
+            const query = debouncedSearchQuery.toLowerCase();
             items = items.filter(def => {
                 // Search by name
                 if (def.name.toLowerCase().includes(query)) return true;
@@ -542,7 +555,7 @@ export function McpPage() {
                 updatedAt: (def as any)?.updatedAt || new Date().toISOString(),
             }
         })
-    }, [selectedSet, mcpPool, showAssigned, searchQuery]);
+    }, [selectedSet, mcpPool, showAssigned, debouncedSearchQuery]);
 
     const {
         sortMode: librarySortMode,
@@ -565,6 +578,15 @@ export function McpPage() {
             setSelectedSetId(mcpSets[0]?.id || null)
         }
     }, [mcpSets, selectedSetId])
+
+    // Save search query to localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem('mcp-library-search', searchQuery)
+        } catch {
+            // Ignore localStorage errors
+        }
+    }, [searchQuery])
 
     // Keyboard shortcut for search (Ctrl/Cmd+K)
     useEffect(() => {
@@ -1350,14 +1372,20 @@ export function McpPage() {
 
                         {/* Search Input */}
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
                             <Input
                                 ref={searchInputRef}
                                 placeholder="Search servers... (Ctrl+K)"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-9 h-9"
+                                aria-label="Search MCP servers"
+                                aria-describedby="search-results-count"
+                                role="searchbox"
                             />
+                            <span id="search-results-count" className="sr-only" aria-live="polite" aria-atomic="true">
+                                {sortedLibraryItems.length} {sortedLibraryItems.length === 1 ? 'result' : 'results'} found
+                            </span>
                             {searchQuery && (
                                 <Button
                                     variant="ghost"
@@ -1365,8 +1393,9 @@ export function McpPage() {
                                     className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                                     onClick={() => setSearchQuery('')}
                                     title="Clear search"
+                                    aria-label="Clear search query"
                                 >
-                                    <X className="w-3 h-3" />
+                                    <X className="w-3 h-3" aria-hidden="true" />
                                 </Button>
                             )}
                         </div>
