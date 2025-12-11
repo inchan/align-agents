@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchRulesList, createRule, updateRule, deleteRule, reorderRules, type Rule } from '../lib/api'
-import { useState, useEffect } from 'react'
-import Editor from '@monaco-editor/react'
+import { useState, useEffect, useMemo } from 'react'
+import Editor, { type EditorProps } from '@monaco-editor/react'
 
 import { toast } from 'sonner'
 import { Spinner } from '../components/ui/Spinner'
@@ -20,6 +20,7 @@ import { SortMenu } from '../components/common/SortMenu'
 import { useSortableList } from '../hooks/useSortableList'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/shared/empty-state'
+import { useTheme } from '../components/theme-provider'
 
 interface SortableRuleItemProps {
     rule: Rule
@@ -120,8 +121,52 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
     )
 }
 
+// Hook to provide Monaco Editor configuration with theme support
+function useMonacoConfig() {
+    const { theme } = useTheme()
+
+    // Determine the Monaco theme based on current app theme
+    const monacoTheme = useMemo(() => {
+        if (theme === 'dark') return 'vs-dark'
+        if (theme === 'light') return 'vs'
+        // For 'system' theme, check the actual applied theme
+        const isDark = window.document.documentElement.classList.contains('dark')
+        return isDark ? 'vs-dark' : 'vs'
+    }, [theme])
+
+    // Shared editor options factory
+    const getEditorOptions = (variant: 'edit' | 'create'): EditorProps['options'] => ({
+        minimap: { enabled: variant === 'edit' },
+        lineNumbers: 'on',
+        wordWrap: 'on',
+        scrollBeyondLastLine: false,
+        fontSize: 14,
+        tabSize: 2,
+        formatOnPaste: true,
+        formatOnType: true,
+        padding: {
+            top: variant === 'edit' ? 16 : 12,
+            bottom: variant === 'edit' ? 16 : 12
+        },
+        scrollbar: {
+            verticalScrollbarSize: 10,
+            horizontalScrollbarSize: 10,
+        },
+    })
+
+    // Loading component
+    const loadingComponent = (
+        <div className="flex items-center justify-center h-full">
+            <Spinner size={24} />
+        </div>
+    )
+
+    return { monacoTheme, getEditorOptions, loadingComponent }
+}
+
 export function RulesPage() {
     const queryClient = useQueryClient()
+    const { monacoTheme, getEditorOptions, loadingComponent } = useMonacoConfig()
 
     const [viewedRuleId, setViewedRuleId] = useState<string | null>(null)
     const [isEditing, setIsEditing] = useState(false)
@@ -360,28 +405,17 @@ export function RulesPage() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Editor
-                                                height="100%"
-                                                language="markdown"
-                                                theme="vs-dark"
-                                                value={editedContent}
-                                                onChange={(value) => setEditedContent(value || '')}
-                                                options={{
-                                                    minimap: { enabled: true },
-                                                    lineNumbers: 'on',
-                                                    wordWrap: 'on',
-                                                    scrollBeyondLastLine: false,
-                                                    fontSize: 14,
-                                                    tabSize: 2,
-                                                    formatOnPaste: true,
-                                                    formatOnType: true,
-                                                    padding: { top: 16, bottom: 16 },
-                                                    scrollbar: {
-                                                        verticalScrollbarSize: 10,
-                                                        horizontalScrollbarSize: 10,
-                                                    },
-                                                }}
-                                            />
+                                            <div role="region" aria-label="Rule content editor" className="flex-1">
+                                                <Editor
+                                                    height="100%"
+                                                    language="markdown"
+                                                    theme={monacoTheme}
+                                                    value={editedContent}
+                                                    onChange={(value) => setEditedContent(value || '')}
+                                                    loading={loadingComponent}
+                                                    options={getEditorOptions('edit')}
+                                                />
+                                            </div>
                                         </div>
                                     )
                                 ) : (
@@ -419,28 +453,15 @@ export function RulesPage() {
                                     <div className="flex justify-between items-center">
                                         <Label htmlFor="ruleContent">Content</Label>
                                     </div>
-                                    <div className="border rounded-md overflow-hidden" style={{ height: '300px' }}>
+                                    <div role="region" aria-label="New rule content editor" className="border rounded-md overflow-hidden h-[300px]">
                                         <Editor
                                             height="100%"
                                             language="markdown"
-                                            theme="vs-dark"
+                                            theme={monacoTheme}
                                             value={newRuleContent}
                                             onChange={(value) => setNewRuleContent(value || '')}
-                                            options={{
-                                                minimap: { enabled: false },
-                                                lineNumbers: 'on',
-                                                wordWrap: 'on',
-                                                scrollBeyondLastLine: false,
-                                                fontSize: 14,
-                                                tabSize: 2,
-                                                formatOnPaste: true,
-                                                formatOnType: true,
-                                                padding: { top: 12, bottom: 12 },
-                                                scrollbar: {
-                                                    verticalScrollbarSize: 10,
-                                                    horizontalScrollbarSize: 10,
-                                                },
-                                            }}
+                                            loading={loadingComponent}
+                                            options={getEditorOptions('create')}
                                         />
                                     </div>
                                 </div>
