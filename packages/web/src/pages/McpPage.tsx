@@ -38,8 +38,35 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 
 import { SortMenu } from '../components/common/SortMenu'
 import { useSortableList } from '../hooks/useSortableList'
+import { useDebounce } from '../hooks/useDebounce'
 
 // --- Components ---
+
+// Highlight search terms
+function HighlightText({ text, query }: { text: string; query: string }) {
+    if (!query.trim()) return <>{text}</>;
+
+    try {
+        const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+
+        return (
+            <>
+                {parts.map((part, i) =>
+                    part.toLowerCase() === query.toLowerCase() ? (
+                        <mark key={i} className="bg-primary/20 text-primary font-medium rounded px-0.5">
+                            {part}
+                        </mark>
+                    ) : (
+                        part
+                    )
+                )}
+            </>
+        );
+    } catch {
+        // If regex fails, return original text
+        return <>{text}</>;
+    }
+}
 
 interface SortableMcpSetItemProps {
     set: McpSet
@@ -226,12 +253,13 @@ interface SortableLibraryItemProps {
     def: McpDef & { isAssigned?: boolean }
     isDragEnabled: boolean
     selectedSetId: string | null
+    searchQuery?: string
     onAddToSet: () => void
     onEdit: () => void
     onDelete: () => void
 }
 
-function SortableLibraryItem({ def, isDragEnabled, selectedSetId, onAddToSet, onEdit, onDelete }: SortableLibraryItemProps) {
+function SortableLibraryItem({ def, isDragEnabled, selectedSetId, searchQuery = '', onAddToSet, onEdit, onDelete }: SortableLibraryItemProps) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: def.id,
         disabled: !isDragEnabled
@@ -272,11 +300,8 @@ function SortableLibraryItem({ def, isDragEnabled, selectedSetId, onAddToSet, on
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                        <TruncateTooltip
-                            className="font-medium text-sm"
-                            side="top"
-                        >
-                            {def.name}
+                        <TruncateTooltip className="font-medium text-sm" side="top">
+                            <HighlightText text={def.name} query={searchQuery} />
                         </TruncateTooltip>
                     </div>
                     <TruncateTooltip
@@ -284,7 +309,7 @@ function SortableLibraryItem({ def, isDragEnabled, selectedSetId, onAddToSet, on
                         contentClassName="font-mono text-xs"
                         side="bottom"
                     >
-                        {def.command} {def.args?.join(' ')}
+                        <HighlightText text={`${def.command} ${def.args?.join(' ') || ''}`} query={searchQuery} />
                     </TruncateTooltip>
                 </div>
                 <DropdownMenu>
@@ -411,6 +436,18 @@ export function McpPage() {
     // Toggle for Library assigned items
     const [showAssigned, setShowAssigned] = useState(false);
 
+    // Search state for Library
+    const [searchQuery, setSearchQuery] = useState(() => {
+        // Load from localStorage on initial mount
+        try {
+            return localStorage.getItem('mcp-library-search') || ''
+        } catch {
+            return ''
+        }
+    })
+    const searchInputRef = useRef<HTMLInputElement>(null)
+    const debouncedSearchQuery = useDebounce(searchQuery, 300)
+
     // --- Sorting & Drag-Drop: Sets (Left) ---
     const {
         sortMode: setsSortMode,
@@ -481,6 +518,32 @@ export function McpPage() {
             items = mcpPool.filter(def => !assignedIds.has(def.id));
         }
 
+        // Apply search filter (using debounced query for performance)
+        if (debouncedSearchQuery.trim()) {
+            const query = debouncedSearchQuery.toLowerCase();
+            items = items.filter(def => {
+                // Search by name
+                if (def.name.toLowerCase().includes(query)) return true;
+
+                // Search by command
+                if (def.command.toLowerCase().includes(query)) return true;
+
+                // Search by description
+                if (def.description?.toLowerCase().includes(query)) return true;
+
+                // Search by args
+                if (def.args?.some(arg => arg.toLowerCase().includes(query))) return true;
+
+                // Search by env keys
+                if (def.env) {
+                    const envKeys = Object.keys(def.env).join(' ').toLowerCase();
+                    if (envKeys.includes(query)) return true;
+                }
+
+                return false;
+            });
+        }
+
         return items.map(def => {
             const isAssigned = selectedSet?.items.some(item => item.serverId === def.id);
             return {
@@ -492,7 +555,7 @@ export function McpPage() {
                 updatedAt: (def as any)?.updatedAt || new Date().toISOString(),
             }
         })
-    }, [selectedSet, mcpPool, showAssigned]);
+    }, [selectedSet, mcpPool, showAssigned, debouncedSearchQuery]);
 
     const {
         sortMode: librarySortMode,
@@ -515,6 +578,28 @@ export function McpPage() {
             setSelectedSetId(mcpSets[0]?.id || null)
         }
     }, [mcpSets, selectedSetId])
+
+    // Save search query to localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem('mcp-library-search', searchQuery)
+        } catch {
+            // Ignore localStorage errors
+        }
+    }, [searchQuery])
+
+    // Keyboard shortcut for search (Ctrl/Cmd+K)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [])
 
     const resetDefForm = () => {
         setDefForm({ name: '', command: '', args: [], cwd: '', env: {} })
@@ -1252,30 +1337,67 @@ export function McpPage() {
 
                 {/* 3. Library List */}
                 <div className="flex flex-col min-h-0 border rounded-xl overflow-hidden bg-card/50">
-                    <div className="p-4 border-b bg-muted/40 flex items-center justify-between shrink-0 h-[65px]">
-                        <h3 className="font-semibold text-sm flex items-center gap-2">
-                            <Library className="w-4 h-4 text-muted-foreground" />
-                            Library
-                        </h3>
-                        <div className="flex items-center gap-1">
-                            {/* Toggle Show Assigned */}
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                className={cn("h-8 w-8 p-0", showAssigned ? "text-primary" : "text-muted-foreground")}
-                                onClick={() => setShowAssigned(!showAssigned)}
-                                title={showAssigned ? "Hide assigned items" : "Show assigned items"}
-                            >
-                                {showAssigned ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                            </Button>
+                    <div className="p-4 border-b bg-muted/40 shrink-0 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-sm flex items-center gap-2">
+                                    <Library className="w-4 h-4 text-muted-foreground" />
+                                    Library
+                                </h3>
+                                <Badge variant="outline" className="text-[10px] h-4 px-1">
+                                    {sortedLibraryItems.length}
+                                </Badge>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                {/* Toggle Show Assigned */}
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className={cn("h-8 w-8 p-0", showAssigned ? "text-primary" : "text-muted-foreground")}
+                                    onClick={() => setShowAssigned(!showAssigned)}
+                                    title={showAssigned ? "Hide assigned items" : "Show assigned items"}
+                                >
+                                    {showAssigned ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                </Button>
 
-                            <SortMenu currentSort={librarySortMode} onSortChange={setLibrarySortMode} className="mr-1" />
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsImportOpen(true)} title="Import">
-                                <Import className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleOpenDefModal()} title="Create new">
-                                <Plus className="w-4 h-4" />
-                            </Button>
+                                <SortMenu currentSort={librarySortMode} onSortChange={setLibrarySortMode} className="mr-1" />
+                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsImportOpen(true)} title="Import">
+                                    <Import className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleOpenDefModal()} title="Create new">
+                                    <Plus className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Search Input */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
+                            <Input
+                                ref={searchInputRef}
+                                placeholder="Search servers... (Ctrl+K)"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 h-9"
+                                aria-label="Search MCP servers"
+                                aria-describedby="search-results-count"
+                                role="searchbox"
+                            />
+                            <span id="search-results-count" className="sr-only" aria-live="polite" aria-atomic="true">
+                                {sortedLibraryItems.length} {sortedLibraryItems.length === 1 ? 'result' : 'results'} found
+                            </span>
+                            {searchQuery && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                    onClick={() => setSearchQuery('')}
+                                    title="Clear search"
+                                    aria-label="Clear search query"
+                                >
+                                    <X className="w-3 h-3" aria-hidden="true" />
+                                </Button>
+                            )}
                         </div>
                     </div>
                     <ScrollArea className="flex-1">
@@ -1291,9 +1413,9 @@ export function McpPage() {
                                 >
                                     {sortedLibraryItems.length === 0 ? (
                                         <EmptyState
-                                            icon={Box}
-                                            title="Library Empty"
-                                            description={selectedSet ? "All items are in this set." : "No MCP definitions found."}
+                                            icon={searchQuery ? Search : Box}
+                                            title={searchQuery ? "No results found" : "Library Empty"}
+                                            description={searchQuery ? `No servers matching "${searchQuery}"` : (selectedSet ? "All items are in this set." : "No MCP definitions found.")}
                                         />
                                     ) : (
                                         sortedLibraryItems.map(def => (
@@ -1302,6 +1424,7 @@ export function McpPage() {
                                                 def={def}
                                                 isDragEnabled={isLibraryDragEnabled}
                                                 selectedSetId={selectedSetId}
+                                                searchQuery={searchQuery}
                                                 onAddToSet={() => {
                                                     if (selectedSetId) addMcpToSetMutation.mutate({ setId: selectedSetId, serverId: def.id })
                                                 }}
