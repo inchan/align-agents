@@ -542,7 +542,10 @@ export function McpPage() {
                 if (def.name.toLowerCase().includes(query)) return true;
 
                 // Search by command
-                if (def.command.toLowerCase().includes(query)) return true;
+                if (def.command?.toLowerCase().includes(query)) return true;
+
+                // Search by url (HTTP/SSE type)
+                if (def.url?.toLowerCase().includes(query)) return true;
 
                 // Search by description
                 if (def.description?.toLowerCase().includes(query)) return true;

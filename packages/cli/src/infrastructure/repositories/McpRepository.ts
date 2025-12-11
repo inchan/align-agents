@@ -9,7 +9,7 @@ export class McpRepository {
 
     async getDefinitions(): Promise<McpDef[]> {
         const rows = this.db.prepare<any>(`
-            SELECT id, name, command, args, cwd, description, env, created_at, updated_at
+            SELECT id, name, command, args, cwd, type, url, description, env, created_at, updated_at
             FROM mcp_definitions
             WHERE is_archived = 0
             ORDER BY created_at DESC
@@ -20,7 +20,7 @@ export class McpRepository {
 
     async getDefinition(id: string): Promise<McpDef | null> {
         const row = this.db.prepare<any>(`
-            SELECT id, name, command, args, cwd, description, env, created_at, updated_at
+            SELECT id, name, command, args, cwd, type, url, description, env, created_at, updated_at
             FROM mcp_definitions
             WHERE id = ? AND is_archived = 0
         `).get(id);
@@ -37,14 +37,16 @@ export class McpRepository {
         const now = new Date().toISOString();
 
         this.db.prepare(`
-            INSERT INTO mcp_definitions (id, name, command, args, cwd, description, env, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO mcp_definitions (id, name, command, args, cwd, type, url, description, env, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             newDef.id,
             newDef.name,
-            newDef.command,
-            JSON.stringify(newDef.args),
+            newDef.command ?? null,
+            newDef.args ? JSON.stringify(newDef.args) : null,
             newDef.cwd ?? null,
+            newDef.type ?? null,
+            newDef.url ?? null,
             newDef.description ?? null,
             newDef.env ? JSON.stringify(newDef.env) : null,
             now,
@@ -65,13 +67,15 @@ export class McpRepository {
 
         this.db.prepare(`
             UPDATE mcp_definitions
-            SET name = ?, command = ?, args = ?, cwd = ?, description = ?, env = ?, updated_at = ?
+            SET name = ?, command = ?, args = ?, cwd = ?, type = ?, url = ?, description = ?, env = ?, updated_at = ?
             WHERE id = ?
         `).run(
             updated.name,
-            updated.command,
-            JSON.stringify(updated.args),
+            updated.command ?? null,
+            updated.args ? JSON.stringify(updated.args) : null,
             updated.cwd ?? null,
+            updated.type ?? null,
+            updated.url ?? null,
             updated.description ?? null,
             updated.env ? JSON.stringify(updated.env) : null,
             now,
@@ -381,9 +385,14 @@ export class McpRepository {
         return {
             id: row.id,
             name: row.name,
-            command: row.command,
-            args: JSON.parse(row.args),
+            // stdio type fields
+            command: row.command || undefined,
+            args: row.args ? JSON.parse(row.args) : undefined,
             cwd: row.cwd || undefined,
+            // HTTP/SSE type fields
+            type: row.type || undefined,
+            url: row.url || undefined,
+            // common fields
             description: row.description || undefined,
             env: row.env ? JSON.parse(row.env) : undefined
         };

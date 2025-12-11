@@ -4,9 +4,12 @@ import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { McpDef } from '@/lib/api'
 
-export function getMcpIcon(name: string, command: string) {
+export function getMcpIcon(name: string, command?: string, type?: string, url?: string) {
     const lowerName = name.toLowerCase()
-    const lowerCmd = command.toLowerCase()
+    const lowerCmd = (command || '').toLowerCase()
+
+    // HTTP/SSE type always shows Globe icon
+    if (type === 'http' || type === 'sse' || (url && !command)) return <Globe className="w-4 h-4" />
 
     if (lowerName.includes('github') || lowerName.includes('git') || lowerCmd.includes('git')) return <GitBranch className="w-4 h-4" />
     if (lowerName.includes('file') || lowerName.includes('fs') || lowerCmd.includes('fs')) return <Folder className="w-4 h-4" />
@@ -19,7 +22,7 @@ export function getMcpIcon(name: string, command: string) {
 }
 
 export function McpIcon({ def, className }: { def: McpDef, className?: string }) {
-    const { name, command, args } = def
+    const { name, command, args, type, url } = def
 
     // 1. Try to find GitHub URL in args to get the owner's avatar
     let githubOwner = ''
@@ -34,7 +37,7 @@ export function McpIcon({ def, className }: { def: McpDef, className?: string })
         }
     }
 
-    const icon = getMcpIcon(name, command)
+    const icon = getMcpIcon(name, command, type, url)
 
     if (!githubOwner) {
         return icon

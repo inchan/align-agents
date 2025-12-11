@@ -10,12 +10,18 @@ CREATE TABLE IF NOT EXISTS schema_version (
 );
 
 -- MCP Definitions Pool
+-- Supports both stdio (command/args) and HTTP/SSE (type/url) types
 CREATE TABLE IF NOT EXISTS mcp_definitions (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    command TEXT NOT NULL,
-    args TEXT NOT NULL,
+    -- stdio type fields (nullable for HTTP/SSE)
+    command TEXT,
+    args TEXT,
     cwd TEXT,
+    -- HTTP/SSE type fields
+    type TEXT,  -- 'stdio', 'http', 'sse' (NULL defaults to stdio)
+    url TEXT,
+    -- common fields
     description TEXT,
     env TEXT,
     is_archived INTEGER NOT NULL DEFAULT 0,
