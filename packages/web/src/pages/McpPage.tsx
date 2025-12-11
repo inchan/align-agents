@@ -240,7 +240,7 @@ function SortableSetItem({ item, def, isDragEnabled, onToggle, onRemove, onEdit 
                         className={cn("text-xs font-mono mt-1 px-1 py-0.5 rounded w-fit max-w-full", item.disabled ? "text-muted-foreground/70 bg-transparent p-0" : "text-muted-foreground bg-muted/50")}
                         contentClassName="font-mono text-xs"
                     >
-                        {def.command} {def.args?.join(' ')}
+                        {getMcpDefDisplayString(def)}
                     </TruncateTooltip>
                 </div>
             </div>
@@ -309,7 +309,7 @@ function SortableLibraryItem({ def, isDragEnabled, selectedSetId, searchQuery = 
                         contentClassName="font-mono text-xs"
                         side="bottom"
                     >
-                        <HighlightText text={`${def.command} ${def.args?.join(' ') || ''}`} query={searchQuery} />
+                        <HighlightText text={getMcpDefDisplayString(def)} query={searchQuery} />
                     </TruncateTooltip>
                 </div>
                 <DropdownMenu>
@@ -344,9 +344,25 @@ function SortableLibraryItem({ def, isDragEnabled, selectedSetId, searchQuery = 
     )
 }
 
-function getMcpIcon(name: string, command: string) {
+// Helper to check if MCP def is HTTP type
+function isHttpTypeDef(def: McpDef): boolean {
+    return def.type === 'http' || def.type === 'sse' || (!!def.url && !def.command)
+}
+
+// Helper to get display string for MCP def (command + args or URL)
+function getMcpDefDisplayString(def: McpDef): string {
+    if (isHttpTypeDef(def)) {
+        return def.url || ''
+    }
+    return [def.command, ...(def.args || [])].filter(Boolean).join(' ')
+}
+
+function getMcpIcon(name: string, command?: string, type?: string, url?: string) {
     const lowerName = name.toLowerCase()
-    const lowerCmd = command.toLowerCase()
+    const lowerCmd = (command || '').toLowerCase()
+
+    // HTTP/SSE type always shows Globe icon
+    if (type === 'http' || type === 'sse' || (url && !command)) return <Globe className="w-4 h-4" />
 
     if (lowerName.includes('github') || lowerName.includes('git') || lowerCmd.includes('git')) return <GitBranch className="w-4 h-4" />
     if (lowerName.includes('file') || lowerName.includes('fs') || lowerCmd.includes('fs')) return <Folder className="w-4 h-4" />
@@ -359,7 +375,7 @@ function getMcpIcon(name: string, command: string) {
 }
 
 function McpIcon({ def, className }: { def: McpDef, className?: string }) {
-    const { name, command, args } = def
+    const { name, command, args, type, url } = def
 
     let githubOwner = ''
     if (args) {
@@ -372,7 +388,7 @@ function McpIcon({ def, className }: { def: McpDef, className?: string }) {
         }
     }
 
-    const icon = getMcpIcon(name, command)
+    const icon = getMcpIcon(name, command, type, url)
 
     if (!githubOwner) {
         return icon
@@ -724,9 +740,23 @@ export function McpPage() {
     }
 
     const handleSaveDef = () => {
-        if (!defForm.name?.trim() || !defForm.command?.trim()) {
-            toast.error('Name and Command are required')
+        if (!defForm.name?.trim()) {
+            toast.error('Name is required')
             return
+        }
+
+        // Validate based on type
+        const isHttp = defForm.type === 'http' || defForm.type === 'sse' || (defForm.url && !defForm.command)
+        if (isHttp) {
+            if (!defForm.url?.trim()) {
+                toast.error('URL is required for HTTP/SSE type')
+                return
+            }
+        } else {
+            if (!defForm.command?.trim()) {
+                toast.error('Command is required for stdio type')
+                return
+            }
         }
 
         if (editingDefId) {
@@ -744,6 +774,8 @@ export function McpPage() {
                 command: def.command,
                 args: def.args,
                 cwd: def.cwd || '',
+                type: def.type,
+                url: def.url || '',
                 env: def.env
             })
         } else {
@@ -776,13 +808,14 @@ export function McpPage() {
 
             // Check for specific MCP structure
             if (parsed.mcpServers) return true
-            if (parsed.command || parsed.args) return true // Single server config
+            if (parsed.command || parsed.args) return true // Single stdio server config
+            if (parsed.type && parsed.url) return true // Single http/sse server config
 
             // Check if it's a map of servers
             if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-                // Check if any value looks like a server config
+                // Check if any value looks like a server config (stdio or http type)
                 return Object.values(parsed).some((val: any) =>
-                    val && typeof val === 'object' && (val.command || val.args)
+                    val && typeof val === 'object' && (val.command || val.args || (val.type && val.url) || val.url)
                 )
             }
 
@@ -840,7 +873,14 @@ export function McpPage() {
                 servers = parsed
             }
 
-            const extractServerName = (command: string, args: string[]): string => {
+            // Helper to check if a config is HTTP/SSE type
+            const isHttpType = (config: any): boolean => {
+                return config.type === 'http' || config.type === 'sse' || (config.url && !config.command)
+            }
+
+            // Extract server name for stdio type
+            const extractServerName = (command?: string, args?: string[]): string => {
+                if (!command) return ''
                 if (!args || args.length === 0) return command
                 const lastArg = args[args.length - 1]
                 if (lastArg.includes('@')) {
@@ -855,19 +895,39 @@ export function McpPage() {
                 return lastArg
             }
 
+            // Extract identifier for matching (works for both stdio and http types)
+            const getServerIdentifier = (config: any, name: string): string => {
+                if (isHttpType(config)) {
+                    // For HTTP type, use URL or name as identifier
+                    return config.url || name
+                }
+                return extractServerName(config.command, config.args || []) || name
+            }
+
             const promises = Object.entries(servers).map(async ([name, config]: [string, any]) => {
-                const serverName = extractServerName(config.command, config.args || [])
+                const serverIdentifier = getServerIdentifier(config, name)
                 const existing = mcpPool.find(def => {
-                    const existingName = extractServerName(def.command, def.args)
-                    return existingName.toLowerCase() === serverName.toLowerCase()
+                    const existingIdentifier = isHttpType(def)
+                        ? (def.url || def.name)
+                        : (extractServerName(def.command, def.args) || def.name)
+                    return existingIdentifier.toLowerCase() === serverIdentifier.toLowerCase()
                 })
 
-                const defData = {
+                // Build defData based on server type
+                const defData: any = {
                     name: name,
-                    command: config.command,
-                    args: config.args || [],
                     description: config.description,
                     env: config.env || {}
+                }
+
+                if (isHttpType(config)) {
+                    // HTTP/SSE type
+                    defData.type = config.type || 'http'
+                    defData.url = config.url
+                } else {
+                    // stdio type (default)
+                    defData.command = config.command
+                    defData.args = config.args || []
                 }
 
                 if (existing) {
@@ -1062,7 +1122,13 @@ export function McpPage() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={isAddMcpOpen} onOpenChange={setIsAddMcpOpen}>
+            <Dialog open={isAddMcpOpen} onOpenChange={(open) => {
+                setIsAddMcpOpen(open)
+                if (!open) {
+                    setEditingDefId(null)
+                    resetDefForm()
+                }
+            }}>
                 <DialogContent className="max-w-xl">
                     <DialogHeader>
                         <DialogTitle>{editingDefId ? 'Edit MCP Definition' : 'Add MCP Definition'}</DialogTitle>
@@ -1075,19 +1141,57 @@ export function McpPage() {
                                 <Input value={defForm.name} onChange={e => setDefForm({ ...defForm, name: e.target.value })} placeholder="e.g. Postgres" />
                             </div>
                             <div className="space-y-2">
-                                <Label>Command</Label>
-                                <Input value={defForm.command} onChange={e => setDefForm({ ...defForm, command: e.target.value })} placeholder="e.g. npx, docker, python" />
+                                <Label>Type</Label>
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant={!defForm.type || defForm.type === 'stdio' ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={() => setDefForm({ ...defForm, type: undefined, url: '' })}
+                                    >
+                                        stdio
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={defForm.type === 'http' ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={() => setDefForm({ ...defForm, type: 'http', command: '', args: [] })}
+                                    >
+                                        http
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={defForm.type === 'sse' ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={() => setDefForm({ ...defForm, type: 'sse', command: '', args: [] })}
+                                    >
+                                        sse
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Arguments (one per line)</Label>
-                                <Textarea
-                                    value={defForm.args?.join('\n')}
-                                    onChange={e => setDefForm({ ...defForm, args: e.target.value.split('\n').filter(Boolean) })}
-                                    placeholder="-y\n@modelcontextprotocol/server-postgres\npostgresql://user:pass@localhost/db"
-                                    className="font-mono text-sm"
-                                    rows={5}
-                                />
-                            </div>
+                            {(!defForm.type || defForm.type === 'stdio') ? (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label>Command</Label>
+                                        <Input value={defForm.command} onChange={e => setDefForm({ ...defForm, command: e.target.value })} placeholder="e.g. npx, docker, python" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Arguments (one per line)</Label>
+                                        <Textarea
+                                            value={defForm.args?.join('\n')}
+                                            onChange={e => setDefForm({ ...defForm, args: e.target.value.split('\n').filter(Boolean) })}
+                                            placeholder="-y\n@modelcontextprotocol/server-postgres\npostgresql://user:pass@localhost/db"
+                                            className="font-mono text-sm"
+                                            rows={5}
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="space-y-2">
+                                    <Label>URL</Label>
+                                    <Input value={defForm.url} onChange={e => setDefForm({ ...defForm, url: e.target.value })} placeholder="e.g. http://127.0.0.1:3845/mcp" />
+                                </div>
+                            )}
                             <div className="space-y-2">
                                 <Label>Environment Variables (JSON)</Label>
                                 <Textarea

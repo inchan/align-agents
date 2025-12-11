@@ -400,12 +400,19 @@ export async function fetchActivityFeed(): Promise<ActivityLog[]> {
 }
 
 // MCP Pool API
+export type McpServerType = 'stdio' | 'http' | 'sse';
+
 export interface McpDef {
     id: string;
     name: string;
-    command: string;
-    args: string[];
+    // stdio type fields
+    command?: string;
+    args?: string[];
     cwd?: string;
+    // http/sse type fields
+    type?: McpServerType;
+    url?: string;
+    // common fields
     description?: string;
     env?: Record<string, string>;
 }
