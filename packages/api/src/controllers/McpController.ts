@@ -162,20 +162,50 @@ export class McpController {
 
     /**
      * 새 MCP Definition을 생성한다.
-     * @param req - Express Request (body: { name, command, args, description?, env? })
+     * @param req - Express Request (body: { name, command?, args?, type?, url?, description?, env? })
      * @param res - Express Response
      * @returns 생성된 MCP Definition
-     * @throws 400 - 필수 필드 누락 (name, command, args)
+     * @throws 400 - 필수 필드 누락 (stdio: name, command, args / http: name, url)
      * @throws 500 - 생성 실패
      */
     async createDefinition(req: Request, res: Response) {
         try {
-            const { name, command, args, description, env } = req.body;
-            if (!name || !command || !args) {
-                return res.status(400).json({ error: 'Name, command, and args are required' });
+            const { name, command, args, type, url, description, env } = req.body;
+
+            // Validate based on server type
+            const isHttpType = type === 'http' || type === 'sse' || (url && !command);
+
+            if (!name) {
+                return res.status(400).json({ error: 'Name is required' });
             }
-            const definition = await mcpService.createMcpDefinition({ name, command, args, description, env });
-            res.json(definition);
+
+            if (isHttpType) {
+                // HTTP/SSE type validation
+                if (!url) {
+                    return res.status(400).json({ error: 'URL is required for HTTP/SSE type MCP servers' });
+                }
+                // Validate URL format
+                try {
+                    new URL(url);
+                } catch {
+                    return res.status(400).json({ error: 'Invalid URL format' });
+                }
+                const definition = await mcpService.createMcpDefinition({
+                    name,
+                    type: type || 'http',
+                    url,
+                    description,
+                    env
+                });
+                res.json(definition);
+            } else {
+                // stdio type validation (default)
+                if (!command) {
+                    return res.status(400).json({ error: 'Command is required for stdio type MCP servers' });
+                }
+                const definition = await mcpService.createMcpDefinition({ name, command, args: args || [], description, env });
+                res.json(definition);
+            }
         } catch (error) {
             console.error('Error creating MCP definition:', error);
             res.status(500).json({ error: 'Failed to create MCP definition' });
