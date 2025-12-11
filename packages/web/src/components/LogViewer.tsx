@@ -3,15 +3,25 @@ import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { Pause, Play, Trash2, Search, Filter } from 'lucide-react';
+import { Pause, Play, Trash2, Search, Filter, Download, ChevronDown } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
+/**
+ * LogEntry - API 응답 타입
+ * Note: packages/cli/src/services/LoggerService.ts의 LogEntry와 동기화 필요
+ */
 export interface LogEntry {
     id: string;
     timestamp: string;
-    level: 'info' | 'warn' | 'error';
+    level: 'info' | 'warn' | 'error' | 'debug' | 'trace' | 'fatal';
     message: string;
     category?: string;
-    args?: any[];
+    args?: unknown[];
 }
 
 interface LogViewerProps {
@@ -19,12 +29,16 @@ interface LogViewerProps {
     onClear: () => void;
     isPaused: boolean;
     onTogglePause: () => void;
+    onExport?: (format: 'json' | 'csv') => void;
 }
 
-export function LogViewer({ logs, onClear, isPaused, onTogglePause }: LogViewerProps) {
+const LOG_LEVELS = ['all', 'fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const;
+type LogLevelFilter = typeof LOG_LEVELS[number];
+
+export function LogViewer({ logs, onClear, isPaused, onTogglePause, onExport }: LogViewerProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [filterText, setFilterText] = useState('');
-    const [selectedLevel, setSelectedLevel] = useState<'all' | 'info' | 'warn' | 'error'>('all');
+    const [selectedLevel, setSelectedLevel] = useState<LogLevelFilter>('all');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
     // Auto-scroll
@@ -47,6 +61,40 @@ export function LogViewer({ logs, onClear, isPaused, onTogglePause }: LogViewerP
         return matchesText && matchesLevel && matchesCategory;
     });
 
+    const getLevelStyle = (level: string) => {
+        switch (level) {
+            case 'fatal':
+                return 'text-red-100 bg-red-900';
+            case 'error':
+                return 'text-destructive bg-destructive/10';
+            case 'warn':
+                return 'text-yellow-500 bg-yellow-500/10';
+            case 'info':
+                return 'text-primary bg-primary/10';
+            case 'debug':
+                return 'text-blue-400 bg-blue-400/10';
+            case 'trace':
+                return 'text-gray-400 bg-gray-400/10';
+            default:
+                return 'text-gray-500 bg-gray-500/10';
+        }
+    };
+
+    const getMessageStyle = (level: string) => {
+        switch (level) {
+            case 'fatal':
+            case 'error':
+                return 'text-red-300';
+            case 'warn':
+                return 'text-yellow-200';
+            case 'debug':
+            case 'trace':
+                return 'text-gray-400';
+            default:
+                return '';
+        }
+    };
+
     return (
         <div className="flex flex-col h-full border rounded-lg bg-card shadow-sm overflow-hidden">
             {/* Toolbar */}
@@ -64,45 +112,114 @@ export function LogViewer({ logs, onClear, isPaused, onTogglePause }: LogViewerP
 
                     <div className="flex items-center gap-1 border-l pl-2 ml-2">
                         <Filter className="w-3.5 h-3.5 text-muted-foreground mr-1" />
-                        {(['all', 'info', 'warn', 'error'] as const).map(level => (
-                            <Button
-                                key={level}
-                                variant={selectedLevel === level ? 'secondary' : 'ghost'}
-                                size="sm"
-                                onClick={() => setSelectedLevel(level)}
-                                className={cn(
-                                    "h-6 px-2 text-xs capitalize",
-                                    selectedLevel === level && level === 'error' && "bg-destructive/10 text-destructive hover:bg-destructive/20",
-                                    selectedLevel === level && level === 'warn' && "bg-muted/10 text-muted-foreground hover:bg-muted/20",
-                                )}
-                            >
-                                {level}
-                            </Button>
-                        ))}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs capitalize"
+                                >
+                                    {selectedLevel}
+                                    <ChevronDown className="ml-1 w-3 h-3" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                                {LOG_LEVELS.map(level => (
+                                    <DropdownMenuItem
+                                        key={level}
+                                        onClick={() => setSelectedLevel(level)}
+                                        className={cn(
+                                            "text-xs capitalize",
+                                            selectedLevel === level && "bg-accent"
+                                        )}
+                                    >
+                                        {level}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
 
                     {categories.length > 0 && (
-                        <div className="flex items-center gap-1 border-l pl-2 ml-2 overflow-x-auto max-w-[300px] no-scrollbar">
-                            {categories.map(cat => (
+                        <div className="flex items-center gap-1 border-l pl-2 ml-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 text-xs"
+                                    >
+                                        {selectedCategory || 'All Categories'}
+                                        <ChevronDown className="ml-1 w-3 h-3" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+                                    <DropdownMenuItem
+                                        onClick={() => setSelectedCategory(null)}
+                                        className={cn(
+                                            "text-xs",
+                                            selectedCategory === null && "bg-accent"
+                                        )}
+                                    >
+                                        All Categories
+                                    </DropdownMenuItem>
+                                    {categories.map(cat => (
+                                        <DropdownMenuItem
+                                            key={cat}
+                                            onClick={() => setSelectedCategory(cat)}
+                                            className={cn(
+                                                "text-xs",
+                                                selectedCategory === cat && "bg-accent"
+                                            )}
+                                        >
+                                            {cat}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            {selectedCategory && (
                                 <Badge
-                                    key={cat}
-                                    variant={selectedCategory === cat ? 'default' : 'outline'}
+                                    variant="default"
                                     className="cursor-pointer text-[10px] px-1.5 h-5 whitespace-nowrap"
-                                    onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+                                    onClick={() => setSelectedCategory(null)}
                                 >
-                                    {cat}
+                                    {selectedCategory} ×
                                 </Badge>
-                            ))}
+                            )}
                         </div>
                     )}
                 </div>
 
                 <div className="flex items-center gap-1">
+                    {onExport && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 px-2 text-muted-foreground"
+                                    title="Export logs"
+                                    disabled={logs.length === 0}
+                                >
+                                    <Download className="w-4 h-4 mr-1" />
+                                    <span className="text-xs">Export</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => onExport('json')}>
+                                    Export as JSON
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onExport('csv')}>
+                                    Export as CSV
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={onTogglePause}
-                        className={cn("h-8 w-8 p-0", isPaused && "text-muted-foreground")}
+                        className={cn("h-8 w-8 p-0", isPaused && "text-yellow-500")}
                         title={isPaused ? "Resume auto-scroll" : "Pause auto-scroll"}
                     >
                         {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
@@ -126,7 +243,7 @@ export function LogViewer({ logs, onClear, isPaused, onTogglePause }: LogViewerP
             >
                 {filteredLogs.length === 0 ? (
                     <div className="text-center text-muted-foreground py-10 italic">
-                        No logs found
+                        {logs.length === 0 ? 'No logs yet. Perform actions to see logs here.' : 'No logs match your filters'}
                     </div>
                 ) : (
                     filteredLogs.map((log) => (
@@ -136,21 +253,18 @@ export function LogViewer({ logs, onClear, isPaused, onTogglePause }: LogViewerP
                             </span>
                             <span className={cn(
                                 "uppercase font-bold w-12 shrink-0 select-none text-center rounded-[2px] text-[10px] leading-4 h-4 mt-0.5",
-                                log.level === 'info' && "text-primary bg-primary/10",
-                                log.level === 'warn' && "text-muted-foreground bg-muted",
-                                log.level === 'error' && "text-destructive bg-destructive/10",
+                                getLevelStyle(log.level)
                             )}>
                                 {log.level}
                             </span>
                             {log.category && (
-                                <span className="text-secondary-foreground font-semibold shrink-0">
+                                <span className="text-cyan-400 font-semibold shrink-0">
                                     [{log.category}]
                                 </span>
                             )}
                             <span className={cn(
                                 "break-all whitespace-pre-wrap",
-                                log.level === 'error' && "text-destructive-foreground",
-                                log.level === 'warn' && "text-muted-foreground",
+                                getMessageStyle(log.level)
                             )}>
                                 {log.message}
                             </span>
@@ -161,8 +275,13 @@ export function LogViewer({ logs, onClear, isPaused, onTogglePause }: LogViewerP
 
             {/* Status Bar */}
             <div className="bg-muted/50 border-t px-3 py-1 text-[10px] text-muted-foreground flex justify-between">
-                <span>Total: {logs.length} | Filtered: {filteredLogs.length}</span>
-                <span>{isPaused ? 'Paused' : 'Live'}</span>
+                <span>
+                    Total: {logs.length}
+                    {filteredLogs.length !== logs.length && ` | Filtered: ${filteredLogs.length}`}
+                </span>
+                <span className={cn(isPaused && "text-yellow-500")}>
+                    {isPaused ? '⏸ Paused' : '● Live'}
+                </span>
             </div>
         </div>
     );
