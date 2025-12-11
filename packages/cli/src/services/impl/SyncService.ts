@@ -220,11 +220,21 @@ export class SyncService implements ISyncService {
             if (item.disabled) continue;
             const def = defMap.get(item.serverId);
             if (def) {
-                masterMcpServers[def.name] = {
-                    command: def.command,
-                    args: def.args,
-                    env: def.env
-                };
+                // HTTP/SSE 타입과 stdio 타입 구분
+                if (def.type === 'http' || def.type === 'sse') {
+                    masterMcpServers[def.name] = {
+                        type: def.type,
+                        url: def.url,
+                        ...(def.env && Object.keys(def.env).length > 0 && { env: def.env })
+                    };
+                } else {
+                    // stdio 타입 (기본)
+                    masterMcpServers[def.name] = {
+                        command: def.command,
+                        args: def.args,
+                        ...(def.env && Object.keys(def.env).length > 0 && { env: def.env })
+                    };
+                }
             }
         }
 
