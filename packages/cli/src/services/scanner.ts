@@ -4,6 +4,7 @@ import os from 'os';
 import { KNOWN_TOOLS } from '../constants/tools.js';
 import { getConfigDir, getRegistryPath } from '../constants/paths.js';
 
+/** 스캔된 도구 설정 인터페이스 */
 export interface ToolConfig {
     id: string;
     name: string;
@@ -11,6 +12,11 @@ export interface ToolConfig {
     exists: boolean;
 }
 
+/**
+ * 설치된 AI 도구를 스캔한다.
+ * 설정 파일, 앱 번들, CLI 명령어 순으로 존재 여부를 확인한다.
+ * @returns ToolConfig 배열
+ */
 export async function scanForTools(): Promise<ToolConfig[]> {
     const results: ToolConfig[] = [];
     const { execSync } = await import('child_process');
@@ -66,6 +72,11 @@ export async function scanForTools(): Promise<ToolConfig[]> {
     return results;
 }
 
+/**
+ * 스캔된 도구 목록을 레지스트리 파일에 저장한다.
+ * @param tools - 저장할 ToolConfig 배열
+ * @returns 저장된 레지스트리 파일 경로
+ */
 export function saveRegistry(tools: ToolConfig[]) {
     const registryDir = getConfigDir();
     if (!fs.existsSync(registryDir)) {

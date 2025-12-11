@@ -2,7 +2,17 @@ import { Request, Response } from 'express';
 import { historyService, syncService } from '../container.js';
 import { LoggerService } from '@align-agents/cli';
 
+/**
+ * 동기화 통계 및 활동 로그 조회 컨트롤러
+ */
 export class StatsController {
+    /**
+     * 동기화 통계 요약을 조회한다.
+     * @param req - Express Request
+     * @param res - Express Response
+     * @returns 통계 요약 (totalSyncs, lastSync, successCount, errorCount 등)
+     * @throws 500 - 조회 실패
+     */
     async getSummary(req: Request, res: Response) {
         try {
             const logger = LoggerService.getInstance();
@@ -43,6 +53,13 @@ export class StatsController {
         }
     }
 
+    /**
+     * 최근 활동 로그를 조회한다.
+     * @param req - Express Request
+     * @param res - Express Response
+     * @returns 최근 50개 로그 (최신순 정렬)
+     * @throws 500 - 조회 실패
+     */
     async getActivity(req: Request, res: Response) {
         try {
             const logger = LoggerService.getInstance();
