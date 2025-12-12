@@ -411,7 +411,8 @@ export function ProjectsPage() {
                                         <SortMenu currentSort={sortMode} onSortChange={setSortMode} className="-mr-1" />
                                     </div>
                                 </div>
-                                <div className="relative">
+                                {/* Search Input - Hidden for now (RB-43) */}
+                                {/* <div className="relative">
                                     <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                                     <Input
                                         placeholder="Search..."
@@ -419,7 +420,7 @@ export function ProjectsPage() {
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                     />
-                                </div>
+                                </div> */}
                             </div>
 
                             <div className="p-3 flex-1 flex flex-col min-h-0">
