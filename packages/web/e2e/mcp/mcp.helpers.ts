@@ -363,6 +363,165 @@ export async function deleteMcpDef(page: Page, name: string): Promise<void> {
 }
 
 // ============================================================================
+// HTTP/SSE Type Helpers
+// ============================================================================
+
+/**
+ * MCP Server Type
+ */
+export type McpServerType = 'stdio' | 'http' | 'sse'
+
+/**
+ * HTTP/SSE 타입 MCP Definition 생성 (Library에서)
+ */
+export async function createHttpMcpDef(
+    page: Page,
+    name: string,
+    type: 'http' | 'sse',
+    url: string
+): Promise<string> {
+    // Library가 열려있지 않으면 열기
+    await openLibrary(page)
+
+    // New 버튼 클릭
+    await page.locator(SELECTORS.newMcpButton).click()
+
+    // Add MCP Definition 모달이 열릴 때까지 대기
+    const addMcpModal = page.getByRole('dialog', { name: 'Add MCP Definition' })
+    await expect(addMcpModal).toBeVisible({ timeout: TIMEOUTS.short })
+
+    // Name 입력
+    await addMcpModal.locator('input').first().fill(name)
+
+    // Type 선택 버튼 클릭
+    await addMcpModal.locator(`button:has-text("${type}")`).click()
+
+    // URL 입력 (type 버튼 클릭 후 URL 필드가 나타남)
+    const urlInput = addMcpModal.locator('input[placeholder*="http"]')
+    await expect(urlInput).toBeVisible({ timeout: TIMEOUTS.short })
+    await urlInput.fill(url)
+
+    // 저장
+    await addMcpModal.locator('button:has-text("Save")').click()
+
+    // 모달 닫힘 대기
+    await expect(addMcpModal).not.toBeVisible({ timeout: TIMEOUTS.medium })
+
+    return name
+}
+
+/**
+ * Import 모달 열기
+ */
+export async function openImportModal(page: Page): Promise<void> {
+    // Library가 열려있지 않으면 열기
+    await openLibrary(page)
+
+    // Import 버튼 클릭
+    await page.locator(SELECTORS.importButton).click()
+
+    // Import 모달 대기
+    await expect(page.locator(SELECTORS.importModal)).toBeVisible({ timeout: TIMEOUTS.short })
+}
+
+/**
+ * JSON Import 실행
+ */
+export async function importJson(page: Page, json: string): Promise<void> {
+    // JSON 입력
+    await page.locator(SELECTORS.jsonTextarea).fill(json)
+
+    // Import 버튼 클릭
+    await page.locator(SELECTORS.importConfirmButton).click()
+
+    // 토스트 확인
+    await expectToast(page, /imported|success/i)
+
+    // 모달 닫힘 대기
+    await expect(page.locator(SELECTORS.importModal)).not.toBeVisible({ timeout: TIMEOUTS.medium })
+}
+
+/**
+ * Library에서 MCP Definition 존재 확인
+ */
+export async function expectMcpDefInLibrary(
+    page: Page,
+    name: string,
+    shouldExist: boolean = true
+): Promise<void> {
+    // Library가 열려있지 않으면 열기
+    await openLibrary(page)
+
+    const librarySheet = page.locator('[data-state="open"].fixed.inset-y-0.right-0').first()
+    const mcpCard = librarySheet.locator(`h4:has-text("${name}")`).first()
+
+    if (shouldExist) {
+        await expect(mcpCard).toBeVisible({ timeout: TIMEOUTS.medium })
+    } else {
+        await expect(mcpCard).not.toBeVisible({ timeout: TIMEOUTS.short })
+    }
+}
+
+/**
+ * MCP Definition 모달의 타입 버튼 상태 확인
+ */
+export async function expectTypeButtonSelected(
+    page: Page,
+    type: McpServerType
+): Promise<void> {
+    const modal = page.getByRole('dialog', { name: /Add MCP Definition|Edit MCP Definition/ })
+    // 선택된 버튼은 default variant (배경색이 다름)
+    const typeButton = modal.locator(`button:has-text("${type === 'stdio' ? 'stdio' : type}")`)
+    // data-variant 또는 class로 확인 - default variant는 bg-primary를 가짐
+    await expect(typeButton).toHaveAttribute('data-variant', 'default').catch(async () => {
+        // fallback: class 기반 확인
+        const classList = await typeButton.getAttribute('class')
+        expect(classList).toContain('bg-primary')
+    })
+}
+
+/**
+ * MCP Definition 모달에서 필드 가시성 확인
+ */
+export async function expectFieldsVisibility(
+    page: Page,
+    options: {
+        commandVisible?: boolean
+        argsVisible?: boolean
+        urlVisible?: boolean
+    }
+): Promise<void> {
+    const modal = page.getByRole('dialog', { name: /Add MCP Definition|Edit MCP Definition/ })
+
+    if (options.commandVisible !== undefined) {
+        const commandInput = modal.locator('input[placeholder*="npx"]')
+        if (options.commandVisible) {
+            await expect(commandInput).toBeVisible()
+        } else {
+            await expect(commandInput).not.toBeVisible()
+        }
+    }
+
+    if (options.argsVisible !== undefined) {
+        const argsLabel = modal.locator('label:has-text("Arguments")')
+        if (options.argsVisible) {
+            await expect(argsLabel).toBeVisible()
+        } else {
+            await expect(argsLabel).not.toBeVisible()
+        }
+    }
+
+    if (options.urlVisible !== undefined) {
+        const urlInput = modal.locator('input[placeholder*="http"]')
+        if (options.urlVisible) {
+            await expect(urlInput).toBeVisible()
+        } else {
+            await expect(urlInput).not.toBeVisible()
+        }
+    }
+}
+
+// ============================================================================
 // API Helpers (Data Isolation)
 // ============================================================================
 
