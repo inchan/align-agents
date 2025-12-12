@@ -13,7 +13,7 @@ import { LoadingState } from '@/components/shared/loading-state'
 import { getErrorMessage, cn, getCommonSortableStyle } from '../lib/utils'
 import { EnvEditor } from '../components/mcp/EnvEditor'
 import {
-    Plus, Trash2, Server, GripVertical, Layers,
+    Plus, Trash2, Server, Layers,
     Box, Database, Folder, Search, MessageSquare, GitBranch, Globe,
     AlertTriangle, Import, Library, MoreVertical, Power, Edit, MinusCircle, Check, X,
     Eye, EyeOff
@@ -40,7 +40,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 
 import { SortMenu } from '../components/common/SortMenu'
 import { useSortableList } from '../hooks/useSortableList'
-import { useDebounce } from '../hooks/useDebounce'
+// import { useDebounce } from '../hooks/useDebounce' // Hidden for now (RB-43)
 
 // --- Components ---
 
@@ -90,26 +90,18 @@ function SortableMcpSetItem({ set, viewedSetId, setViewedSetId, handleDeleteClic
         <div
             ref={setNodeRef}
             style={style}
+            {...attributes}
+            {...listeners}
             onClick={() => setViewedSetId(set.id)}
             className={cn(
-                "group relative px-3 py-3 rounded-lg border transition-all duration-200 cursor-pointer max-w-full",
+                "group relative px-3 py-3 rounded-lg border transition-all duration-200 cursor-pointer max-w-full touch-none",
                 viewedSetId === set.id
                     ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
                     : "border-border bg-card hover:bg-muted/60 hover:border-primary/30 hover:shadow-sm"
-            )}>
+            )}
+        >
             <div className="flex items-center gap-2 overflow-hidden">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        className={cn(
-                            "current-color shrink-0 text-muted-foreground transition-colors",
-                            isDragEnabled ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-default opacity-50"
-                        )}
-                    >
-                        <GripVertical className="w-4 h-4" />
-                    </div>
-
                     <div className="flex-1 min-w-0 overflow-hidden">
                         <TruncateTooltip className={cn("font-medium text-sm transition-colors", viewedSetId === set.id ? "text-primary font-semibold" : "")}>
                             {set.name}
@@ -165,26 +157,19 @@ function SortableSetItem({ item, def, isDragEnabled, onToggle, onRemove, onEdit 
     const isEnabled = !item.disabled
 
     return (
-        <div ref={setNodeRef} style={style} className={cn(
-            "group flex flex-col gap-2 p-3 rounded-lg border transition-all",
-            item.disabled
-                ? "bg-muted/20 border-border/50 opacity-60 grayscale-[0.8]"
-                : "bg-card hover:bg-muted/50 border-border hover:shadow-sm"
-        )}>
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            className={cn(
+                "group flex flex-col gap-2 p-3 rounded-lg border transition-all touch-none",
+                item.disabled
+                    ? "bg-muted/20 border-border/50 opacity-60 grayscale-[0.8]"
+                    : "bg-card hover:bg-muted/50 border-border hover:shadow-sm"
+            )}
+        >
             <div className="flex items-start gap-2">
-                <div
-                    {...attributes}
-                    {...listeners}
-                    className={cn(
-                        "mt-1 mr-1 shrink-0 transition-colors",
-                        isDragEnabled
-                            ? "cursor-grab active:cursor-grabbing hover:text-foreground"
-                            : "cursor-default opacity-20",
-                        item.disabled ? "text-muted-foreground/50" : "text-muted-foreground"
-                    )}
-                >
-                    <GripVertical className="w-4 h-4" />
-                </div>
                 <div className={cn(
                     "mt-0.5 shrink-0 w-8 h-8 rounded flex items-center justify-center transition-colors",
                     item.disabled ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
@@ -270,21 +255,17 @@ function SortableLibraryItem({ def, isDragEnabled, selectedSetId, searchQuery = 
     const style = getCommonSortableStyle(transform, transition, isDragging)
 
     return (
-        <div ref={setNodeRef} style={style} className={cn(
-            "group flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors",
-            def.isAssigned ? "opacity-50" : ""
-        )}>
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            className={cn(
+                "group flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors touch-none",
+                def.isAssigned ? "opacity-50" : ""
+            )}
+        >
             <div className="flex items-start gap-2">
-                <div
-                    {...attributes}
-                    {...listeners}
-                    className={cn(
-                        "mt-1 mr-1 shrink-0 text-muted-foreground transition-colors",
-                        isDragEnabled ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-default opacity-20"
-                    )}
-                >
-                    <GripVertical className="w-4 h-4" />
-                </div>
                 {selectedSetId && (
                     <Button
                         size="icon"
@@ -454,17 +435,18 @@ export function McpPage() {
     // Toggle for Library assigned items
     const [showAssigned, setShowAssigned] = useState(false);
 
-    // Search state for Library
-    const [searchQuery, setSearchQuery] = useState(() => {
-        // Load from localStorage on initial mount
-        try {
-            return localStorage.getItem('mcp-library-search') || ''
-        } catch {
-            return ''
-        }
-    })
+    // Search state for Library - Hidden for now (RB-43)
+    // const [searchQuery, setSearchQuery] = useState(() => {
+    //     // Load from localStorage on initial mount
+    //     try {
+    //         return localStorage.getItem('mcp-library-search') || ''
+    //     } catch {
+    //         return ''
+    //     }
+    // })
+    const searchQuery = '' // Placeholder until search is re-enabled (RB-43)
     const searchInputRef = useRef<HTMLInputElement>(null)
-    const debouncedSearchQuery = useDebounce(searchQuery, 300)
+    const debouncedSearchQuery = searchQuery // useDebounce disabled (RB-43)
 
     // --- Sorting & Drag-Drop: Sets (Left) ---
     const {

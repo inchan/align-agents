@@ -18,7 +18,7 @@ import { cn, getErrorMessage, getCommonSortableStyle } from '../lib/utils'
 import {
     Briefcase,
     Plus,
-    Search,
+    // Search, // Hidden for now (RB-43)
     Folder,
     Trash2,
     Edit,
@@ -30,8 +30,7 @@ import {
     FolderOpen,
     Settings,
     FileJson,
-    Box,
-    GripVertical
+    Box
 } from 'lucide-react'
 
 // Shared Components
@@ -123,9 +122,11 @@ function SortableProjectItem({
         <div
             ref={setNodeRef}
             style={style}
+            {...attributes}
+            {...listeners}
             onClick={() => setSelectedProjectId(project.id)}
             className={cn(
-                "group relative px-3 py-3 rounded-lg border transition-all duration-200 cursor-pointer",
+                "group relative px-3 py-3 rounded-lg border transition-all duration-200 cursor-pointer touch-none",
                 selectedProjectId === project.id
                     ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
                     : "border-border bg-card hover:bg-accent/50 hover:border-primary/30"
@@ -133,17 +134,6 @@ function SortableProjectItem({
         >
             <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        className={cn(
-                            "group/handle shrink-0 text-muted-foreground transition-colors",
-                            isDragEnabled ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-default opacity-50"
-                        )}
-                    >
-                        <GripVertical className="w-4 h-4" />
-                    </div>
-
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                         {getSourceIcon(project.source)}
                     </div>
@@ -197,7 +187,8 @@ export function ProjectsPage() {
 
     // --- State ---
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>('global')
-    const [searchQuery, setSearchQuery] = useState('')
+    // const [searchQuery, setSearchQuery] = useState('') // Hidden for now (RB-43)
+    const searchQuery = '' // Placeholder until search is re-enabled (RB-43)
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [projectToEdit, setProjectToEdit] = useState<UserProject | null>(null)
