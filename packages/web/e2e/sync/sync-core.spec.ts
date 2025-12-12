@@ -57,6 +57,14 @@ test.describe('Sync Core - P0 @priority-p0', () => {
         await navigateToSyncPage(page)
     })
 
+    // 테스트 후 시딩된 도구 정리 (프로덕션 registry 오염 방지)
+    test.afterEach(async ({ request }) => {
+        const testToolIds = ['cli-tool', 'desktop-tool'];
+        for (const id of testToolIds) {
+            await request.delete(`/api/tools/${id}`).catch(() => {});
+        }
+    })
+
     // ========================================================================
     // S-001: Sync 페이지 진입 및 초기 상태 확인
     // ========================================================================
