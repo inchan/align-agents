@@ -173,6 +173,10 @@ export function useGlobalSync() {
                 }
             }
 
+            // 동기화 실행 정책:
+            // - Rules와 MCP는 독립적으로 실행 (한쪽 실패해도 다른 쪽 계속 진행)
+            // - 부분 성공 시 사용자에게 명확히 표시
+
             // Execute Rules sync
             if (rulesPromises.length > 0) {
                 try {
@@ -182,10 +186,11 @@ export function useGlobalSync() {
                 } catch (error) {
                     result.rules = { success: false, message: getErrorMessage(error) }
                     debugLog('Rules sync failed', { error: getErrorMessage(error) })
+                    // Rules 실패해도 MCP 동기화는 계속 진행 (독립 실행 정책)
                 }
             }
 
-            // Execute MCP sync
+            // Execute MCP sync (Rules 결과와 무관하게 실행)
             if (mcpPromises.length > 0) {
                 try {
                     await Promise.all(mcpPromises)
@@ -200,26 +205,41 @@ export function useGlobalSync() {
             return result
         },
         onSuccess: (result) => {
-            // Rules 결과 토스트
-            if (result.rules) {
-                if (result.rules.skipped) {
-                    // 스킵된 경우는 토스트 표시 안함 (선택 안됨)
-                } else if (result.rules.success) {
-                    toast.success('Rules 동기화 완료')
-                } else {
-                    toast.error(`Rules 동기화 실패: ${result.rules.message}`)
-                }
-            }
+            // 통합 토스트: Rules/MCP 결과를 하나로 표시
+            const rulesOk = result.rules?.success || result.rules?.skipped
+            const mcpOk = result.mcp?.success || result.mcp?.skipped
+            const rulesRan = result.rules && !result.rules.skipped
+            const mcpRan = result.mcp && !result.mcp.skipped
 
-            // MCP 결과 토스트
-            if (result.mcp) {
-                if (result.mcp.skipped) {
-                    // 스킵된 경우는 토스트 표시 안함 (선택 안됨)
-                } else if (result.mcp.success) {
-                    const toolInfo = result.mcp.toolCount ? ` (${result.mcp.toolCount} tools)` : ''
-                    toast.success(`MCP 동기화 완료${toolInfo}`)
-                } else {
-                    toast.error(`MCP 동기화 실패: ${result.mcp.message}`)
+            if (rulesOk && mcpOk) {
+                // 모두 성공 (또는 스킵)
+                const parts: string[] = []
+                if (rulesRan) parts.push('Rules')
+                if (mcpRan) {
+                    const toolInfo = result.mcp?.toolCount ? ` (${result.mcp.toolCount})` : ''
+                    parts.push(`MCP${toolInfo}`)
+                }
+                if (parts.length > 0) {
+                    toast.success(`동기화 완료: ${parts.join(', ')}`)
+                }
+            } else {
+                // 부분 또는 전체 실패
+                const failed: string[] = []
+                const succeeded: string[] = []
+
+                if (rulesRan) {
+                    if (result.rules?.success) succeeded.push('Rules')
+                    else failed.push(`Rules: ${result.rules?.message || 'failed'}`)
+                }
+                if (mcpRan) {
+                    if (result.mcp?.success) succeeded.push('MCP')
+                    else failed.push(`MCP: ${result.mcp?.message || 'failed'}`)
+                }
+
+                if (failed.length > 0 && succeeded.length > 0) {
+                    toast.warning(`부분 성공 - ${succeeded.join(', ')} ✓ / ${failed.join(', ')} ✗`)
+                } else if (failed.length > 0) {
+                    toast.error(`동기화 실패: ${failed.join(', ')}`)
                 }
             }
 
