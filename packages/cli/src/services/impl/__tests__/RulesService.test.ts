@@ -108,7 +108,7 @@ describe('RulesService', () => {
         });
 
         it('should delegate createRule to repository', async () => {
-            const newRule: Rule = { id: '2', name: 'New Rule', content: 'new content', isActive: false, createdAt: '', updatedAt: '' };
+            const newRule: Rule = { id: '2', name: 'New Rule', content: 'new content', isActive: true, createdAt: '', updatedAt: '' };
             mockRepo.createRule.mockResolvedValue(newRule);
 
             const result = await service.createRule('New Rule', 'new content');

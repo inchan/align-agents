@@ -221,7 +221,7 @@ export class RulesConfigRepository implements IRulesConfigRepository {
                 id: randomUUID(),
                 name,
                 content,
-                isActive: false,
+                isActive: true,
                 orderIndex: nextOrder,
                 createdAt: now,
                 updatedAt: now

@@ -17,47 +17,48 @@ export async function syncRoutes(server: FastifyInstance, syncService: SyncServi
         }
     });
 
-    server.post<{ Body: { toolId?: string; all?: boolean; sourceId?: string } }>('/api/mcp/sync', async (request, reply) => {
-        const { toolId, all, sourceId } = request.body;
+    /**
+     * MCP 동기화 API
+     * - toolId 지정: 해당 도구만 동기화
+     * - toolId 미지정: 전체 도구 동기화 (기본값)
+     */
+    server.post<{ Body: { toolId?: string; sourceId?: string } }>('/api/mcp/sync', async (request, reply) => {
+        const { toolId, sourceId } = request.body;
+
+        if (!sourceId) {
+            return reply.code(400).send({ error: 'Source ID (MCP Set ID) is required for sync' });
+        }
 
         try {
-            if (all) {
-                if (!sourceId) {
-                    return reply.code(400).send({ error: 'Source ID (MCP Set ID) is required for sync' });
-                }
+            // toolId 미지정 시 전체 도구 동기화
+            if (!toolId) {
                 const results = await syncService.syncAllTools(sourceId);
                 const success = results.every(r => r.status === 'success' || r.status === 'skipped');
                 const { StatsService } = await import('../../services/StatsService.js');
                 await StatsService.getInstance().recordSync(success, success ? 'All tools synced successfully' : 'Some tools failed to sync', { results });
                 return { success: true, message: 'All tools synced', results };
-            } else if (toolId) {
-                if (!sourceId) {
-                    return reply.code(400).send({ error: 'Source ID (MCP Set ID) is required for sync' });
-                }
-
-                const repo = ToolRepository.getInstance();
-                await repo.load();
-                const tool = repo.getTool(toolId);
-                if (!tool) {
-                    return reply.code(404).send({ error: 'Tool not found' });
-                }
-                // TOML check removed to support Codex
-
-                const syncConfig = await syncService.loadSyncConfig();
-                const toolSyncConfig = syncConfig[toolId];
-                if (!toolSyncConfig) {
-                    return reply.code(400).send({ error: 'Tool sync config not found' });
-                }
-                // Pass sourceId
-                const servers = await syncService.syncToolMcp(toolId, tool.configPath, toolSyncConfig.servers, 'overwrite', undefined, sourceId);
-
-                const { StatsService } = await import('../../services/StatsService.js');
-                await StatsService.getInstance().recordSync(true, `Tool ${toolId} synced successfully`, { toolId, servers });
-
-                return { success: true, message: `Tool ${toolId} synced` };
-            } else {
-                return reply.code(400).send({ error: 'Either toolId or all must be specified' });
             }
+
+            // toolId가 있으면 단일 도구 동기화
+            const repo = ToolRepository.getInstance();
+            await repo.load();
+            const tool = repo.getTool(toolId);
+            if (!tool) {
+                return reply.code(404).send({ error: 'Tool not found' });
+            }
+
+            const syncConfig = await syncService.loadSyncConfig();
+            const toolSyncConfig = syncConfig[toolId];
+            if (!toolSyncConfig) {
+                return reply.code(400).send({ error: 'Tool sync config not found' });
+            }
+
+            const servers = await syncService.syncToolMcp(toolId, tool.configPath, toolSyncConfig.servers, 'overwrite', undefined, sourceId);
+
+            const { StatsService } = await import('../../services/StatsService.js');
+            await StatsService.getInstance().recordSync(true, `Tool ${toolId} synced successfully`, { toolId, servers });
+
+            return { success: true, message: `Tool ${toolId} synced` };
         } catch (error: any) {
             console.error('[API] MCP Sync Error:', error);
             const { StatsService } = await import('../../services/StatsService.js');

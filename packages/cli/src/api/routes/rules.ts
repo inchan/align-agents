@@ -15,33 +15,37 @@ export async function rulesRoutes(server: FastifyInstance, rulesService: RulesSe
         }
     });
 
-    server.post<{ Body: { toolId?: string; projectPath?: string; all?: boolean; global?: boolean; sourceId?: string; strategy?: string } }>('/api/rules/sync', async (request, reply) => {
-        const { toolId, projectPath, all, global, sourceId, strategy } = request.body;
+    /**
+     * Rules 동기화 API
+     * - toolId 지정: 해당 도구만 동기화
+     * - toolId 미지정: 전체 도구 동기화 (기본값)
+     */
+    server.post<{ Body: { toolId?: string; projectPath?: string; global?: boolean; sourceId?: string; strategy?: string } }>('/api/rules/sync', async (request, reply) => {
+        const { toolId, projectPath, global, sourceId, strategy } = request.body;
         const syncStrategy = (strategy as any) || 'smart-update';
+
+        if (!sourceId) {
+            return reply.code(400).send({ error: 'Source ID is required for sync' });
+        }
 
         try {
             const { StatsService } = await import('../../services/StatsService.js');
-            if (all) {
+
+            // toolId 미지정 시 전체 도구 동기화
+            if (!toolId) {
                 if (!projectPath) {
                     return reply.code(400).send({ error: 'Project path is required for sync all' });
-                }
-                if (!sourceId) {
-                    return reply.code(400).send({ error: 'Source ID is required for sync' });
                 }
                 const results = await rulesService.syncAllToolsRules(projectPath, syncStrategy, sourceId);
                 const success = results.every(r => r.status === 'success' || r.status === 'skipped');
                 await StatsService.getInstance().recordSync(success, success ? 'All rules synced successfully' : 'Some rules failed to sync', { results, type: 'rules' });
                 return { success: true, message: 'All tools synced', results };
-            } else if (toolId) {
-                if (!sourceId) {
-                    return reply.code(400).send({ error: 'Source ID is required for sync' });
-                }
-                await rulesService.syncToolRules(toolId, projectPath || '', global !== undefined ? global : true, syncStrategy, undefined, sourceId);
-                await StatsService.getInstance().recordSync(true, `Rules for ${toolId} synced successfully`, { toolId, type: 'rules' });
-                return { success: true, message: `Tool ${toolId} synced` };
-            } else {
-                return reply.code(400).send({ error: 'Either toolId or all must be specified' });
             }
+
+            // toolId가 있으면 단일 도구 동기화
+            await rulesService.syncToolRules(toolId, projectPath || '', global !== undefined ? global : true, syncStrategy, undefined, sourceId);
+            await StatsService.getInstance().recordSync(true, `Rules for ${toolId} synced successfully`, { toolId, type: 'rules' });
+            return { success: true, message: `Tool ${toolId} synced` };
         } catch (error: any) {
             console.error(error);
             const { StatsService } = await import('../../services/StatsService.js');
