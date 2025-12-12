@@ -1491,8 +1491,8 @@ export function McpPage() {
                             </div>
                         </div>
 
-                        {/* Search Input */}
-                        <div className="relative">
+                        {/* Search Input - Hidden for now (RB-43) */}
+                        {/* <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
                             <Input
                                 ref={searchInputRef}
@@ -1519,7 +1519,7 @@ export function McpPage() {
                                     <X className="w-3 h-3" aria-hidden="true" />
                                 </Button>
                             )}
-                        </div>
+                        </div> */}
                     </div>
                     <ScrollArea className="flex-1">
                         <div className="p-3 space-y-2">
