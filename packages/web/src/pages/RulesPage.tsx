@@ -6,7 +6,7 @@ import Editor, { type EditorProps } from '@monaco-editor/react'
 import { toast } from 'sonner'
 import { Spinner } from '../components/ui/Spinner'
 import { getErrorMessage, cn, getCommonSortableStyle } from '../lib/utils'
-import { Plus, Trash2, Save, FileText, X, GripVertical } from 'lucide-react'
+import { Plus, Trash2, Save, FileText, X } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -53,12 +53,14 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
         <div
             ref={setNodeRef}
             style={style}
+            {...attributes}
+            {...listeners}
             onClick={() => {
                 setViewedRuleId(rule.id)
                 setIsEditing(false)
             }}
             className={cn(
-                "group relative px-3 py-2.5 rounded-lg border transition-all duration-200 cursor-pointer",
+                "group relative px-3 py-2.5 rounded-lg border transition-all duration-200 cursor-pointer touch-none",
                 viewedRuleId === rule.id
                     ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
                     : cn(
@@ -71,18 +73,6 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
         >
             <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        className={cn(
-                            "group/handle shrink-0 transition-colors",
-                            isDragEnabled ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-default opacity-50",
-                            !isActive ? "text-muted-foreground/50" : "text-muted-foreground"
-                        )}
-                    >
-                        <GripVertical className="w-4 h-4" />
-                    </div>
-
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                             <TruncateTooltip className={cn("font-medium text-sm transition-colors",

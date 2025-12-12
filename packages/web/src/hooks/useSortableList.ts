@@ -89,12 +89,23 @@ export function useSortableList<T extends SortableItem>({
     }, [localItems, sortMode, getName, getCreatedAt, getUpdatedAt, getOrderIndex]);
 
     // For drag and drop, we need sensors
+    // Long press activation: 300ms delay to distinguish from click/scroll
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                delay: 300,
+                tolerance: 5,
+            },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         }),
-        useSensor(TouchSensor) // Add TouchSensor for better mobile support if needed
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 300,
+                tolerance: 5,
+            },
+        })
     );
 
     const handleDragEnd = async (event: DragEndEvent) => {
