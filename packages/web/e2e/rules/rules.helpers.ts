@@ -31,7 +31,7 @@ export const SELECTORS = {
     // 생성 모달
     createModal: 'div[role="dialog"]:has-text("Create New Rule")',
     nameInput: 'input#ruleName',
-    contentTextarea: 'textarea#ruleContent',
+    contentTextarea: 'div[role="dialog"] .monaco-editor textarea.inputarea', // Monaco Editor
     createButton: 'button:has-text("Create")',
     modalCancelButton: 'div[role="dialog"] button:has-text("Cancel")',
 
@@ -42,7 +42,7 @@ export const SELECTORS = {
 
     // 편집 모드
     editNameInput: 'input#ruleName',
-    editContentTextarea: 'textarea',
+    editContentTextarea: 'div[role="region"][aria-label="Rule content editor"] .monaco-editor',
 
     // 토스트 메시지
     toast: '[data-sonner-toast], [role="status"]',
@@ -91,6 +91,30 @@ export async function navigateToRulesPage(page: Page): Promise<void> {
 }
 
 /**
+ * Monaco Editor에 텍스트 입력
+ * Monaco Editor는 일반 textarea가 아니므로 클릭 후 keyboard 입력 사용
+ * @param page Playwright Page
+ * @param container 에디터를 포함하는 컨테이너 셀렉터 (예: 'div[role="dialog"]')
+ * @param content 입력할 내용
+ * @param clear 기존 내용을 지울지 여부 (기본: false)
+ */
+export async function fillMonacoEditor(
+    page: Page,
+    container: string,
+    content: string,
+    clear: boolean = false
+): Promise<void> {
+    const editor = page.locator(`${container} .monaco-editor`)
+    await editor.click()
+    if (clear) {
+        // 기존 내용 전체 선택 후 삭제
+        await page.keyboard.press('Meta+a')
+        await page.keyboard.press('Backspace')
+    }
+    await page.keyboard.type(content, { delay: 0 })
+}
+
+/**
  * Rule 생성
  * @returns 생성된 Rule 이름
  */
@@ -105,7 +129,13 @@ export async function createRule(
 
     // 입력
     await page.fill(SELECTORS.nameInput, name)
-    await page.fill(SELECTORS.contentTextarea, content)
+
+    // Monaco Editor에 내용 입력
+    if (content) {
+        const monacoEditor = page.locator('div[role="dialog"] .monaco-editor')
+        await monacoEditor.click()
+        await page.keyboard.type(content, { delay: 0 })
+    }
 
     // 생성
     await page.locator(SELECTORS.createButton).click()

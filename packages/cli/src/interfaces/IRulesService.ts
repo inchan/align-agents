@@ -45,5 +45,6 @@ export interface IRulesService {
     updateRule(id: string, content: string, name?: string): Promise<Rule>;
     deleteRule(id: string): Promise<void>;
     setActiveRule(id: string): Promise<void>;
+    deactivateRule(id: string): Promise<void>;
     reorderRules(ids: string[]): Promise<void>;
 }

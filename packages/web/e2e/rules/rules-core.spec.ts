@@ -22,6 +22,7 @@ import {
     expectRuleInList,
     expectEditorContent,
     cleanupRule,
+    fillMonacoEditor,
 } from './rules.helpers'
 
 test.describe('Rules Core - P0 @priority-p0', () => {
@@ -74,7 +75,8 @@ test.describe('Rules Core - P0 @priority-p0', () => {
 
         // 입력 필드 확인
         await expect(page.locator(SELECTORS.nameInput)).toBeVisible()
-        await expect(page.locator(SELECTORS.contentTextarea)).toBeVisible()
+        // Monaco Editor 확인
+        await expect(page.locator('div[role="dialog"] .monaco-editor')).toBeVisible()
 
         // Cancel 클릭
         await page.locator(SELECTORS.modalCancelButton).click()
@@ -101,7 +103,7 @@ This is a test rule for validation.
 
         // 입력
         await page.fill(SELECTORS.nameInput, ruleName)
-        await page.fill(SELECTORS.contentTextarea, ruleContent)
+        await fillMonacoEditor(page, 'div[role="dialog"]', ruleContent)
 
         // Create 클릭
         await page.locator(SELECTORS.createButton).click()
@@ -175,10 +177,8 @@ This is a test rule for validation.
         await page.locator(SELECTORS.editNameInput).clear()
         await page.fill(SELECTORS.editNameInput, updatedName)
 
-        // 내용 수정
-        const contentTextarea = page.locator(SELECTORS.editContentTextarea).last()
-        await contentTextarea.clear()
-        await contentTextarea.fill(TEST_DATA.updatedContent)
+        // 내용 수정 (Monaco Editor 사용)
+        await fillMonacoEditor(page, 'div[role="region"][aria-label="Rule content editor"]', TEST_DATA.updatedContent, true)
 
         // 저장
         await saveEdit(page)
@@ -210,9 +210,7 @@ This is a test rule for validation.
         await enterEditMode(page)
 
         // 내용 수정 (저장하지 않음)
-        const contentTextarea = page.locator(SELECTORS.editContentTextarea).last()
-        await contentTextarea.clear()
-        await contentTextarea.fill('# This should be discarded')
+        await fillMonacoEditor(page, 'div[role="region"][aria-label="Rule content editor"]', '# This should be discarded', true)
 
         // 취소
         await cancelEdit(page)
@@ -301,5 +299,51 @@ This is a test rule for validation.
             // Rule이 이미 선택된 상태이면 Edit 버튼이 보여야 함
             await expect(page.locator(SELECTORS.editButton)).toBeVisible()
         }
+    })
+
+    // ========================================================================
+    // R-024: Rule Active/Inactive 토글
+    // ========================================================================
+    test('R-024: should toggle rule active/inactive state', async ({ page }) => {
+        // 테스트용 Rule 생성
+        const ruleName = generateUniqueName('R024')
+        await createRule(page, ruleName)
+
+        // Rule 선택
+        await selectRule(page, ruleName)
+
+        // Rule이 목록에서 활성 상태인지 확인 (Disabled 배지가 없어야 함)
+        const ruleItem = page.locator(SELECTORS.ruleItem(ruleName)).first()
+        await expect(ruleItem.locator('text=Disabled')).not.toBeVisible()
+
+        // 3점 메뉴 열기
+        await ruleItem.hover()
+        const moreButton = ruleItem.locator('button[title="More options"]')
+        await moreButton.click()
+
+        // Deactivate 클릭
+        await page.getByRole('menuitem', { name: 'Deactivate' }).click()
+
+        // 성공 토스트 확인
+        await expectToast(page, /deactivated/i)
+
+        // Disabled 배지가 나타나야 함
+        await expect(ruleItem.locator('text=Disabled')).toBeVisible()
+
+        // 다시 3점 메뉴 열기
+        await ruleItem.hover()
+        await moreButton.click()
+
+        // Activate 클릭
+        await page.getByRole('menuitem', { name: 'Activate' }).click()
+
+        // 성공 토스트 확인
+        await expectToast(page, /activated/i)
+
+        // Disabled 배지가 사라져야 함
+        await expect(ruleItem.locator('text=Disabled')).not.toBeVisible()
+
+        // Cleanup
+        await cleanupRule(page, ruleName)
     })
 })

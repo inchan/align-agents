@@ -192,4 +192,26 @@ export class RulesController {
             res.status(500).json({ error: 'Failed to set active rule' });
         }
     }
+
+    /**
+     * 특정 Rule을 비활성 상태로 설정한다.
+     * @param req - Express Request (params.id: Rule ID)
+     * @param res - Express Response
+     * @returns { success: true }
+     * @throws 404 - Rule 없음
+     * @throws 500 - 설정 실패
+     */
+    async deactivateRule(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            await rulesService.deactivateRule(id);
+            res.json({ success: true });
+        } catch (error: any) {
+            console.error('Error deactivating rule:', error);
+            if (error.message.includes('not found')) {
+                return res.status(404).json({ error: 'Rule not found' });
+            }
+            res.status(500).json({ error: 'Failed to deactivate rule' });
+        }
+    }
 }

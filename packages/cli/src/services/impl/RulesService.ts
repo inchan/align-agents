@@ -86,6 +86,11 @@ export class RulesService implements IRulesService {
         return this.repository.setActiveRule(id);
     }
 
+    /** 특정 Rule을 비활성 상태로 설정한다. */
+    async deactivateRule(id: string): Promise<void> {
+        return this.repository.deactivateRule(id);
+    }
+
     /** Rule 순서를 재정렬한다. */
     async reorderRules(ids: string[]): Promise<void> {
         return this.repository.reorderRules(ids);
