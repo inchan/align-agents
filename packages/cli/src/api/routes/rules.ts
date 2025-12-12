@@ -18,7 +18,7 @@ export async function rulesRoutes(server: FastifyInstance, rulesService: RulesSe
     /**
      * Rules 동기화 API
      * - toolId 지정: 해당 도구만 동기화
-     * - toolId 미지정: 전체 도구 동기화 (기본값)
+     * - toolId 미지정 (null, undefined, ''): 전체 도구 동기화 (기본값)
      */
     server.post<{ Body: { toolId?: string; projectPath?: string; global?: boolean; sourceId?: string; strategy?: string } }>('/api/rules/sync', async (request, reply) => {
         const { toolId, projectPath, global, sourceId, strategy } = request.body;

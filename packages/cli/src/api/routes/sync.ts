@@ -20,7 +20,7 @@ export async function syncRoutes(server: FastifyInstance, syncService: SyncServi
     /**
      * MCP 동기화 API
      * - toolId 지정: 해당 도구만 동기화
-     * - toolId 미지정: 전체 도구 동기화 (기본값)
+     * - toolId 미지정 (null, undefined, ''): 전체 도구 동기화 (기본값)
      */
     server.post<{ Body: { toolId?: string; sourceId?: string } }>('/api/mcp/sync', async (request, reply) => {
         const { toolId, sourceId } = request.body;
