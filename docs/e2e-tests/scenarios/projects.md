@@ -34,6 +34,9 @@
 - [접근성 시나리오](#접근성-시나리오)
   - [P-022: 키보드 네비게이션](#p-022-키보드-네비게이션)
   - [P-023: 긴 경로 Tooltip 확인](#p-023-긴-경로-tooltip-확인)
+- [추가 엣지 케이스](#추가-엣지-케이스)
+  - [P-024: 동시 편집/삭제 경쟁 조건](#p-024-동시-편집삭제-경쟁-조건)
+  - [P-025: 특수문자/이모지 Project 이름](#p-025-특수문자이모지-project-이름)
 - [테스트 데이터 Setup](#테스트-데이터-setup)
 - [테스트 실행 방법](#테스트-실행-방법)
 - [버전 이력](#버전-이력)
@@ -70,15 +73,19 @@
 | Project 목록 조회 | P-001 | P0 |
 | Global Settings 뷰 | P-002 | P0 |
 | Project 선택 및 상세 | P-003 | P0 |
-| Project 생성 | P-004, P-005, P-006 | P0 |
-| Project 편집 | P-007, P-008 | P0 |
+| Project 생성 | P-004, P-005 | P0 |
+| Project 생성 - Browse | P-006 | P1 |
+| Project 편집 - 모달 | P-007 | P1 |
+| Project 편집 - 저장 | P-008 | P0 |
 | Project 삭제 | P-009, P-010 | P0 |
 | Project 스캔 | P-011 | P1 |
 | 검색 필터링 | P-012 | P1 |
-| 유효성 검증 | P-013, P-014 | P0 |
+| 유효성 검증 | P-013, P-014 | P0, P1 |
 | 에러 처리 | P-015, P-016 | P1 |
 | 엣지 케이스 | P-017, P-018, P-019, P-020, P-021 | P1-P2 |
 | 접근성 | P-022, P-023 | P2 |
+| 동시성 | P-024 | P1 |
+| 유효성 검사 | P-025 | P1 |
 
 ---
 
@@ -235,13 +242,26 @@
 - [ ] 선택한 경로가 Path 필드에 입력됨
 - [ ] 빈 Name 필드에 폴더명 자동 채움
 
-**참고**: OS 레벨 다이얼로그는 Playwright에서 직접 제어 불가 - API Mock 또는 실제 환경 테스트 필요
+**Playwright 구현 참고**:
+```javascript
+// OS 파일 다이얼로그 대신 File Input Mocking 사용
+const [fileChooser] = await Promise.all([
+  page.waitForEvent('filechooser'),
+  page.click('[data-testid="browse-button"]')
+]);
+await fileChooser.setFiles('/path/to/project');
+
+// 또는 직접 input 값 설정
+await page.locator('input[type="file"]').setInputFiles('/path/to/project');
+```
+
+**대안**: 이 시나리오는 수동 테스트로 분류하고 자동화 테스트에서 제외 가능
 
 ---
 
 ### P-007: Project 편집 - 모달 열기
 
-**우선순위**: P0
+**우선순위**: P1
 **카테고리**: Core
 
 **목적**: Project 편집 모달이 정상적으로 열리는지 확인
@@ -313,6 +333,19 @@
 **예상 결과**:
 - [ ] 드롭다운에서 Delete 클릭 시 confirm 표시
 - [ ] Cancel 시 삭제 취소
+
+**Playwright 구현 참고**:
+```javascript
+// window.confirm() 처리
+page.on('dialog', async dialog => {
+  expect(dialog.type()).toBe('confirm');
+  expect(dialog.message()).toContain('삭제하시겠습니까');
+  await dialog.accept(); // 확인 클릭
+  // await dialog.dismiss(); // 취소 클릭
+});
+
+await page.click('[data-testid="delete-project"]');
+```
 
 **참고**: 현재 구현은 `window.confirm()` 사용 - 향후 커스텀 Dialog로 개선 권장
 
@@ -496,8 +529,9 @@
 
 ### P-018: 빈 상태 - Project 미선택
 
-**우선순위**: P1
-**카테고리**: Edge
+**우선순위**: P2
+**상태**: Skip - 현재 구현에서 도달 불가
+**카테고리**: Edge Case
 
 **목적**: Project가 선택되지 않았을 때 적절한 안내가 표시되는지 확인
 
@@ -510,7 +544,7 @@
 - [ ] FolderOpen 아이콘과 함께 안내 UI 표시
 - [ ] "Select a project from the list or create a new one to get started." 메시지
 
-**참고**: 현재 구현에서는 'global'이 기본 선택되므로 이 상태 도달이 어려움
+**참고**: 현재 구현에서는 'global'이 기본 선택되므로 이 상태에 도달할 수 없음. 향후 구현 변경 시 활성화.
 
 ---
 
@@ -622,6 +656,50 @@
 
 ---
 
+## 추가 엣지 케이스
+
+### P-024: 동시 편집/삭제 경쟁 조건
+
+**우선순위**: P1
+**카테고리**: Concurrency
+
+**목적**: 두 개의 탭에서 동일 Project를 동시에 편집/삭제 시 처리를 확인한다.
+
+**전제 조건**:
+- 동일 Project가 두 브라우저 탭에서 열려있어야 한다.
+
+**테스트 단계**:
+1. 탭A에서 Project 편집을 시작한다.
+2. 탭B에서 동일 Project를 삭제한다.
+3. 탭A에서 저장을 시도한다.
+
+**예상 결과**:
+- [ ] 탭A에서 "Project가 존재하지 않습니다" 에러 메시지가 표시된다.
+- [ ] 또는 충돌 해결 UI가 제공된다.
+
+---
+
+### P-025: 특수문자/이모지 Project 이름
+
+**우선순위**: P1
+**카테고리**: Validation
+
+**목적**: 특수문자, 이모지가 포함된 이름이 올바르게 처리되는지 확인한다.
+
+**전제 조건**:
+- 없음
+
+**테스트 단계**:
+1. Project 이름에 `🚀 My Project`를 입력한다.
+2. Project 이름에 `<script>alert(1)</script>`를 입력한다.
+3. 저장을 시도한다.
+
+**예상 결과**:
+- [ ] 이모지는 정상적으로 저장/표시된다.
+- [ ] XSS 시도는 이스케이프 처리되어 텍스트로만 표시된다.
+
+---
+
 ## 테스트 데이터 Setup
 
 테스트 실행 전 다음 데이터가 준비되어야 합니다:
@@ -679,3 +757,11 @@ npm run test:e2e:ui
 |     |            | - 엣지 케이스 (P-017 ~ P-021) |
 |     |            | - 접근성 (P-022, P-023) |
 |     |            | - 우선순위 체계 도입 (P0/P1/P2) |
+| 1.1 | 2025-12-12 | P0 축소 (P-006, P-007 → P1), Playwright 가이드 추가, P-024/P-025 추가 |
+|     |            | - P-006, P-007 우선순위 P0 → P1 하향 조정 |
+|     |            | - P-006에 Playwright 파일 선택 구현 가이드 추가 |
+|     |            | - P-009에 Dialog 핸들러 구현 가이드 추가 |
+|     |            | - P-018 상태 명확화 (Skip - 도달 불가) |
+|     |            | - P-024 (동시성 테스트) 추가 |
+|     |            | - P-025 (특수문자/XSS 검증) 추가 |
+|     |            | - 기능 매트릭스 업데이트 |

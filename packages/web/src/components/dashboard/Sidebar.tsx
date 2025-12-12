@@ -8,17 +8,14 @@ import {
   RefreshCw,
   ScrollText,
   Box,
-  Briefcase,
-  Layers
+  Briefcase
 } from 'lucide-react'
 
 const mainNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
   { icon: RefreshCw, label: 'Sync', href: '/sync' },
   { icon: FileText, label: 'Rules', href: '/rules' },
-  { icon: Layers, label: 'Rule Library', href: '/library/rules' },
   { icon: Server, label: 'MCP', href: '/mcp' },
-
   { icon: Briefcase, label: 'Projects', href: '/projects' },
 ]
 

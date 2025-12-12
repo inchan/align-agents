@@ -9,7 +9,6 @@ import { SyncDetailPage } from './pages/SyncDetailPage'
 import { SyncPage } from './pages/SyncPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 
-import { RuleLibraryPage } from './pages/RuleLibraryPage'
 import { Toaster } from 'sonner'
 
 const router = createBrowserRouter([
@@ -44,11 +43,6 @@ const router = createBrowserRouter([
       {
         path: 'mcp',
         element: <McpPage />,
-      },
-
-      {
-        path: 'library/rules',
-        element: <RuleLibraryPage />,
       },
       {
         path: '*',

@@ -13,7 +13,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
         return (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {[1, 2, 3, 4].map((i) => (
-                    <Card key={i}>
+                    <Card key={i} className="stats-card">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
                                 <Skeleton className="h-4 w-[100px]" />
@@ -40,7 +40,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
 
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
+            <Card className="stats-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Syncs</CardTitle>
                     <Activity className="h-4 w-4 text-muted-foreground" />
@@ -52,7 +52,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
                     </p>
                 </CardContent>
             </Card>
-            <Card>
+            <Card className="stats-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
                     <CheckCircle className="h-4 w-4 text-muted-foreground" />
@@ -64,7 +64,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
                     </p>
                 </CardContent>
             </Card>
-            <Card>
+            <Card className="stats-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Last Sync</CardTitle>
                     <Clock className="h-4 w-4 text-muted-foreground" />
@@ -78,7 +78,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
                     </p>
                 </CardContent>
             </Card>
-            <Card>
+            <Card className="stats-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Errors</CardTitle>
                     <AlertCircle className="h-4 w-4 text-muted-foreground" />
