@@ -13,6 +13,7 @@ import {
     cleanupRule,
     expectRuleInList,
     expectToast,
+    fillMonacoEditor,
 } from './rules.helpers'
 
 test.describe('Manual Scenario Test', () => {
@@ -30,7 +31,10 @@ test.describe('Manual Scenario Test', () => {
 
         // 입력
         await page.fill(SELECTORS.nameInput, '1234')
-        await page.fill(SELECTORS.contentTextarea, 'ㅁㄴㅇㄹ')
+        // Monaco Editor에 내용 입력
+        const monacoEditor = page.locator('div[role="dialog"] .monaco-editor')
+        await monacoEditor.click()
+        await page.keyboard.type('ㅁㄴㅇㄹ', { delay: 0 })
 
         // 생성
         await page.locator(SELECTORS.createButton).click()
@@ -61,10 +65,8 @@ test.describe('Manual Scenario Test', () => {
         await page.locator(SELECTORS.editNameInput).clear()
         await page.fill(SELECTORS.editNameInput, '5678')
 
-        // 내용 수정
-        const contentTextarea = page.locator(SELECTORS.editContentTextarea).last()
-        await contentTextarea.clear()
-        await contentTextarea.fill('ㅋㅌㅊㅍ')
+        // 내용 수정 (Monaco Editor 사용)
+        await fillMonacoEditor(page, 'div[role="region"][aria-label="Rule content editor"]', 'ㅋㅌㅊㅍ', true)
 
         // 저장
         await saveEdit(page)

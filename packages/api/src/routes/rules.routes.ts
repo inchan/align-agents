@@ -40,5 +40,9 @@ router.put('/:id/activate',
     validateRequest(RuleIdParamsSchema, 'params'),
     controller.setActiveRule.bind(controller)
 );
+router.put('/:id/deactivate',
+    validateRequest(RuleIdParamsSchema, 'params'),
+    controller.deactivateRule.bind(controller)
+);
 
 export default router;

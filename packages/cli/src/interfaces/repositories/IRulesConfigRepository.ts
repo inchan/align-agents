@@ -12,6 +12,7 @@ export interface IRulesConfigRepository {
     updateRule(id: string, content: string, name?: string): Promise<Rule>;
     deleteRule(id: string): Promise<void>;
     setActiveRule(id: string): Promise<void>;
+    deactivateRule(id: string): Promise<void>;
     getActiveRule(): Promise<Rule | null>;
     saveRulesList(rules: Rule[]): Promise<void>;
 }
