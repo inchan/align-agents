@@ -21,7 +21,8 @@ export const MOCK_DATA = {
         totalSyncs: 150,
         successCount: 140,
         errorCount: 10,
-        lastSync: new Date().toISOString()
+        lastSync: new Date().toISOString(),
+        historyCount: 150
     },
     tools: [
         { id: 'claude-desktop', name: 'Claude Desktop', exists: true, configPath: '/path/to/claude' },
@@ -38,7 +39,8 @@ export const MOCK_DATA_EMPTY = {
         totalSyncs: 0,
         successCount: 0,
         errorCount: 0,
-        lastSync: null
+        lastSync: null,
+        historyCount: 0
     },
     tools: [],
     activities: []

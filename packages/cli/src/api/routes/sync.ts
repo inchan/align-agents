@@ -89,6 +89,7 @@ export async function syncRoutes(server: FastifyInstance, syncService: SyncServi
         const fs = await import('fs');
         const path = await import('path');
         const os = await import('os');
+        const crypto = await import('crypto');
 
         const configDir = path.join(os.homedir(), '.align-agents');
         const masterDir = configDir;
@@ -96,7 +97,7 @@ export async function syncRoutes(server: FastifyInstance, syncService: SyncServi
         const rulesConfigPath = path.join(masterDir, 'rules-config.json');
         const syncConfigPath = path.join(masterDir, 'sync-config.json');
 
-        let rulesConfig = {};
+        let rulesConfig: Record<string, any> = {};
         let syncConfig = {};
 
         try {
@@ -110,6 +111,24 @@ export async function syncRoutes(server: FastifyInstance, syncService: SyncServi
                 syncConfig = JSON.parse(fs.readFileSync(syncConfigPath, 'utf-8'));
             }
         } catch (e) { console.warn('Failed to read sync-config', e); }
+
+        // Calculate content hash for each tool's rules file
+        for (const toolId of Object.keys(rulesConfig)) {
+            const toolConfig = rulesConfig[toolId];
+            if (toolConfig?.targetPath) {
+                try {
+                    if (fs.existsSync(toolConfig.targetPath)) {
+                        const content = fs.readFileSync(toolConfig.targetPath, 'utf-8');
+                        const hash = crypto.createHash('md5').update(content).digest('hex');
+                        rulesConfig[toolId].contentHash = hash;
+                    } else {
+                        rulesConfig[toolId].contentHash = null;
+                    }
+                } catch (e) {
+                    rulesConfig[toolId].contentHash = null;
+                }
+            }
+        }
 
         return {
             rules: rulesConfig,

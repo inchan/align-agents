@@ -8,7 +8,7 @@ test.describe('Tools Management E2E', () => {
         await resetDatabase(request)
 
         // Navigate to Tools page
-        await page.goto('http://localhost:5173/tools')
+        await page.goto('/tools')
         // Wait for hydration/loading
         await page.waitForTimeout(1000)
     })

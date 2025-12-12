@@ -24,13 +24,20 @@ SyncPage에서 Tool Set, Rules, MCP Set을 각각 독립적으로 선택해야 �
 #### 1. SyncPage.tsx (packages/web/src/pages/SyncPage.tsx)
 - 3컬럼 Kanban 보드 구조: Target Tools | Rules Source | MCP Server Set
 - `useTargetStore`를 통한 상태 관리
-- 현재 자동 선택 로직 (라인 207-253):
+- 현재 자동 선택 로직 (useEffect, 라인 ~239-295):
   ```typescript
-  // syncStatus 기반으로 첫 번째 도구의 설정을 참조
-  const firstToolMcp = syncStatus.mcp[targetTools[0]];
-  const firstToolRule = syncStatus.rules[targetTools[0]];
+  // Tool Set이 변경될 때만 실행 (useRef로 이전 값 추적)
+  const prevToolSetIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+      if (store.activeToolSetId === prevToolSetIdRef.current) return;
+      prevToolSetIdRef.current = store.activeToolSetId;
+      // ...syncStatus 기반 자동 선택
+  }, [store.activeToolSetId, syncStatus, ...]);
   ```
-  - 이는 "마지막 동기화 상태" 기반이며, 명시적 매핑이 아님
+  - 현재 로직은 "SyncStatus"(마지막 동기화 상태)를 기반으로 추론합니다.
+  - Tool Set 변경 시에만 실행됩니다 (폴링 제거됨, 사용자 수동 선택 유지).
+  - 명시적인 매핑(Tool Set -> Rule/MCP) 설정은 없습니다.
 
 #### 2. targetStore.ts (packages/web/src/store/targetStore.ts)
 ```typescript
@@ -38,7 +45,7 @@ interface TargetState {
     activeToolSetId: string
     selectedRuleId: string | null
     selectedMcpSetId: string | null
-    // ... 기타 필드
+    // ...
 }
 ```
 

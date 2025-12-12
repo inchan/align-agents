@@ -29,6 +29,16 @@ export function ToolStatusGrid({ tools, isLoading }: ToolStatusGridProps) {
         );
     }
 
+    if (tools.length === 0) {
+        return (
+            <div className="tool-grid min-h-[100px] flex items-center justify-center border rounded-lg bg-muted/20">
+                <div className="text-center text-muted-foreground">
+                    <p>No tools configured</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="tool-grid grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {tools.map((tool) => (

@@ -53,6 +53,7 @@ export interface RulesConfig {
         targetPath: string;
         global: boolean;
         ruleId?: string;
+        contentHash?: string | null;  // MD5 hash of rules file content
     };
 }
 
@@ -250,7 +251,7 @@ export async function executeRulesSync(toolId?: string, sourceId?: string, strat
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ toolId, sourceId, strategy, global, targetPath }),
+        body: JSON.stringify({ toolId, sourceId, strategy, global, projectPath: targetPath }),
     });
     if (!response.ok) {
         throw new Error('Failed to sync rules');

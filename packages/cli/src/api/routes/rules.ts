@@ -33,10 +33,9 @@ export async function rulesRoutes(server: FastifyInstance, rulesService: RulesSe
 
             // toolId 미지정 시 전체 도구 동기화
             if (!toolId) {
-                if (!projectPath) {
-                    return reply.code(400).send({ error: 'Project path is required for sync all' });
-                }
-                const results = await rulesService.syncAllToolsRules(projectPath, syncStrategy, sourceId);
+                // Global mode implies no project path, so we should allow empty string.
+                // rulesService.syncAllToolsRules handles empty string by defaulting to global if configured.
+                const results = await rulesService.syncAllToolsRules(projectPath || '', syncStrategy, sourceId);
                 const success = results.every(r => r.status === 'success' || r.status === 'skipped');
                 await StatsService.getInstance().recordSync(success, success ? 'All rules synced successfully' : 'Some rules failed to sync', { results, type: 'rules' });
                 return { success: true, message: 'All tools synced', results };

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchRulesList, createRule, updateRule, deleteRule, reorderRules, type Rule } from '../lib/api'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import Editor, { type EditorProps } from '@monaco-editor/react'
 
 import { toast } from 'sonner'
@@ -168,7 +168,7 @@ export function RulesPage() {
     const queryClient = useQueryClient()
     const { monacoTheme, getEditorOptions, loadingComponent } = useMonacoConfig()
 
-    const [viewedRuleId, setViewedRuleId] = useState<string | null>(null)
+    const [userSelectedRuleId, setUserSelectedRuleId] = useState<string | null>(null)
     const [isEditing, setIsEditing] = useState(false)
     const [editedContent, setEditedContent] = useState('')
     const [editedName, setEditedName] = useState('')
@@ -211,16 +211,21 @@ export function RulesPage() {
         storageKey: 'rules-list-sort'
     })
 
-    // Set default viewed rule
-    useEffect(() => {
-        if (sortedRules.length > 0 && !viewedRuleId) {
-            // Find active or first in sorted list
-            const active = sortedRules.find(r => r.isActive) || sortedRules[0]
-            if (active) {
-                setViewedRuleId(active.id)
-            }
+    // Derived state for the currently viewed rule
+    // If user has selected one (and it still exists), use that.
+    // Otherwise, default to the first active rule or simply the first rule.
+    const viewedRuleId = useMemo(() => {
+        if (userSelectedRuleId && sortedRules.some(r => r.id === userSelectedRuleId)) {
+            return userSelectedRuleId
         }
-    }, [sortedRules, viewedRuleId])
+        if (sortedRules.length > 0) {
+            return (sortedRules.find(r => r.isActive) || sortedRules[0]).id
+        }
+        return null
+    }, [userSelectedRuleId, sortedRules])
+
+    // Wrapper to maintain API compatibility with children
+    const setViewedRuleId = setUserSelectedRuleId
 
     const viewedRule = rulesList.find(r => r.id === viewedRuleId) || null
 

@@ -58,8 +58,9 @@ export class SyncConfigRepository implements ISyncConfigRepository {
 
             // Validate all tool IDs
             for (const toolId of Object.keys(validatedConfig)) {
-                const known = KNOWN_TOOLS.find(t => t.id === toolId);
-                if (!known) {
+                // Allow if metadata exists (even if not in static KNOWN_TOOLS)
+                const meta = getToolMetadata(toolId);
+                if (!meta) {
                     throw new Error(`Unknown tool in sync-config: ${toolId}`);
                 }
             }

@@ -18,9 +18,11 @@ export const factories = {
             CREATE TABLE IF NOT EXISTS mcp_definitions (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
-                command TEXT NOT NULL,
-                args TEXT NOT NULL,
+                command TEXT,
+                args TEXT,
                 cwd TEXT,
+                type TEXT,
+                url TEXT,
                 description TEXT,
                 env TEXT,
                 is_archived INTEGER NOT NULL DEFAULT 0,

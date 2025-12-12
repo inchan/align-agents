@@ -172,63 +172,24 @@ await expect(page.locator('.stats-card').nth(1).locator('.text-2xl')).toContainT
 
 ---
 
-### D-005: 자동 갱신 동작 확인
+### D-005: 수동 새로고침 동작 확인
 
-**우선순위**: P1
-**카테고리**: Feature / Real-time
+**우선순위**: P2
+**카테고리**: Feature / UX
 
-**목적**: 설정된 주기에 따라 데이터가 자동으로 갱신되는지 확인
+**목적**: 페이지 새로고침 또는 네비게이션 시 데이터가 정상적으로 갱신되는지 확인
 
-**전제 조건**:
-- StatsCards: 30초 주기
-- ActivityFeed: 10초 주기
-- 테스트 시 시간을 가속하거나 타이머 Mocking 필요
+> **Note**: 자동 폴링은 제거되었습니다. 데이터 갱신은 동기화 완료 후 `invalidateQueries`를 통해 이루어집니다.
 
 **테스트 단계**:
 1. 대시보드 페이지 접속 (초기 데이터 로드)
-2. API 응답 데이터 변경 (Mock Handler 업데이트)
-3. 10초 대기 (ActivityFeed 갱신 주기)
-4. ActivityFeed에 새로운 데이터가 반영되었는지 확인
-5. 20초 추가 대기 (총 30초, Stats 갱신 주기)
-6. StatsCards 수치가 갱신되었는지 확인
+2. 다른 페이지로 이동 후 대시보드 복귀
+3. 데이터가 정상적으로 다시 로드되는지 확인
+4. 브라우저 새로고침 후 데이터 로드 확인
 
 **예상 결과**:
-- [ ] 페이지 새로고침 없이 ActivityFeed 데이터 갱신 확인
-- [ ] 페이지 새로고침 없이 Stats 수치 갱신 확인
-
-**Playwright 구현 참고**:
-```javascript
-// 타이머 가속화 방법
-await page.clock.install({ time: new Date() });
-
-// 첫 렌더링 확인
-await expect(page.locator('.stats-card').first()).toBeVisible();
-const initialSyncs = await page.locator('.stats-card').nth(0).locator('.text-2xl').textContent();
-
-// API Mock 데이터 업데이트 준비
-let statsCallCount = 0;
-await page.route('**/api/stats', async route => {
-  statsCallCount++;
-  route.fulfill({
-    status: 200,
-    body: JSON.stringify({
-      totalSyncs: 150 + statsCallCount,
-      successCount: 140,
-      errorCount: 10,
-      lastSync: new Date().toISOString(),
-      historyCount: 150 + statsCallCount
-    })
-  });
-});
-
-// 30초 진행
-await page.clock.fastForward(30000);
-
-// 데이터 갱신 확인 (API 재호출)
-await expect(page.locator('.stats-card').nth(0).locator('.text-2xl')).not.toContainText(initialSyncs);
-```
-
-**주의**: 실제 서버 연동 시 Mock 데이터 갱신 로직 필요
+- [ ] 페이지 네비게이션 후 데이터 정상 로드
+- [ ] 브라우저 새로고침 후 데이터 정상 로드
 
 ---
 

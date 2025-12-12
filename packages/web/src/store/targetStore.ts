@@ -24,11 +24,12 @@ interface TargetState {
     removeCustomProject: (path: string) => void
     activeToolSetId: string
     setActiveToolSetId: (id: string) => void
+    validateAndClearSelection: (validMcpSetIds: string[], validRuleIds?: string[]) => void
 }
 
 export const useTargetStore = create<TargetState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             mode: 'global',
             projectPath: null,
             projectName: null,
@@ -54,6 +55,28 @@ export const useTargetStore = create<TargetState>()(
             setSelectedToolIds: (ids) => set({ selectedToolIds: ids }),
             setSelectedRuleId: (id) => set({ selectedRuleId: id }),
             setSelectedMcpSetId: (id) => set({ selectedMcpSetId: id }),
+            validateAndClearSelection: (validMcpSetIds, validRuleIds) => {
+                const { selectedMcpSetId, selectedRuleId } = get()
+
+                // Validate MCP Set
+                if (selectedMcpSetId && validMcpSetIds.length > 0) {
+                    const isValid = validMcpSetIds.includes(selectedMcpSetId)
+                    if (!isValid) {
+                        console.warn('[Store] Invalid MCP Set ID detected, clearing:', selectedMcpSetId)
+                        set({ selectedMcpSetId: null })
+                    }
+                }
+
+                // Validate Rule
+                if (selectedRuleId && validRuleIds && validRuleIds.length > 0) {
+                    const isValid = validRuleIds.includes(selectedRuleId)
+                    if (!isValid) {
+                        console.warn('[Store] Invalid Rule ID detected, clearing:', selectedRuleId)
+                        set({ selectedRuleId: null })
+                    }
+                }
+            },
+
             setActiveToolSetId: (id) => set({ activeToolSetId: id }),
 
             addCustomProject: (path, name) => set((state) => {

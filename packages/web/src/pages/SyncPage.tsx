@@ -226,35 +226,37 @@ export function SyncPage() {
     // Auto-selection of Rules and MCPs based on Tool Set (Last Successful Sync)
     // --- Effects ---
 
-    // Fetch Sync Status
+    // Fetch Sync Status (no polling - refreshed via invalidateQueries after sync)
     const { data: syncStatus } = useQuery<SyncStatus>({
         queryKey: ['syncStatus'],
         queryFn: fetchSyncStatus,
-        refetchInterval: 5000 // Poll every 5s for updates
     })
 
     // --- Unified Sync State Derivation ---
-    // Priority: Data Integrity (Validation) > Auto-Detection > Persistence (Store)
+    // Restores Rule/MCP selection from last sync status when Tool Set changes
+    const prevToolSetIdRef = useRef<string | null>(null);
 
     useEffect(() => {
+        // Only run when Tool Set actually changes (not on every syncStatus update)
+        if (store.activeToolSetId === prevToolSetIdRef.current) return;
+        prevToolSetIdRef.current = store.activeToolSetId;
+
         if (!syncStatus || !activeSet || !rules.length || !mcpSets.length || isMcpSetsLoading) return;
 
         const targetTools = activeSet.toolIds;
         if (targetTools.length === 0) return;
 
         // --- MCP Set Selection Logic ---
-        // Priority 1: Check for explicit mcpSetId in the first tool's config
         const firstToolMcp = syncStatus.mcp[targetTools[0]];
         let activeMcpSetId: string | null = null;
 
         if (firstToolMcp?.mcpSetId) {
-            // If ID is persisted, verify it exists in loaded sets
             if (mcpSets.some(s => s.id === firstToolMcp.mcpSetId)) {
                 activeMcpSetId = firstToolMcp.mcpSetId;
             }
         }
 
-        // Priority 2: Fallback to auto-detection (Legacy) if no explicit ID
+        // Fallback to auto-detection (Legacy) if no explicit ID
         if (!activeMcpSetId && firstToolMcp?.servers) {
             const commonServers = firstToolMcp.servers;
             if (commonServers) {
@@ -267,36 +269,41 @@ export function SyncPage() {
 
                 if (allMatch) {
                     const matchingSet = mcpSets.find(set => {
-                        const getNames = (items: any[]) => items.map(i => (typeof i === 'string' ? i : i.name));
-                        const setItems = getNames(set.items);
-                        return setItems.length === commonServers.length && setItems.every(s => commonServers.includes(s));
+                        // set.items is McpSetItem[], we need to compare serverIds
+                        const setServerIds = set.items.map(i => i.serverId);
+                        return setServerIds.length === commonServers.length &&
+                            setServerIds.every(id => commonServers.includes(id));
                     });
                     if (matchingSet) activeMcpSetId = matchingSet.id;
                 }
             }
         }
 
-        // Apply MCP Set Selection
         store.setSelectedMcpSetId(activeMcpSetId);
 
-
         // --- Rule Selection Logic ---
-        // Priority 1: Check for explicit ruleId in the first tool's config
-        // Note: Rules are usually 1:1, but here we pick for the "Set" based on the first tool
-        // Assumption: User syncs the same rule to the whole set usually.
+        // Auto-select rule if ALL tools have the same content hash (file-based comparison)
         const firstToolRule = syncStatus.rules[targetTools[0]];
         let activeRuleId: string | null = null;
 
-        if (firstToolRule?.ruleId) {
-            if (rules.some(r => r.id === firstToolRule.ruleId)) {
-                activeRuleId = firstToolRule.ruleId;
+        if (firstToolRule?.contentHash) {
+            // Check if all tools have the same content hash
+            const allToolsHaveSameContent = targetTools.every(toolId => {
+                const toolRule = syncStatus.rules[toolId];
+                return toolRule?.contentHash === firstToolRule.contentHash;
+            });
+
+            if (allToolsHaveSameContent) {
+                // Find matching rule by ruleId (if available) or leave as null
+                if (firstToolRule.ruleId && rules.some(r => r.id === firstToolRule.ruleId)) {
+                    activeRuleId = firstToolRule.ruleId;
+                }
             }
         }
 
-        // Apply Rule Selection (or None if not found)
         store.setSelectedRuleId(activeRuleId);
 
-    }, [store.activeToolSetId, syncStatus, rules, mcpSets, isMcpSetsLoading, activeSet]);
+    }, [store.activeToolSetId, syncStatus, rules, mcpSets, isMcpSetsLoading, activeSet, store]);
 
     // Placeholder for watchMode and isSyncing, handleSync, setWatchMode
 
