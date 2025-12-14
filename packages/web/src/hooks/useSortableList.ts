@@ -26,7 +26,6 @@ interface UseSortableListProps<T extends SortableItem> {
     getUpdatedAt?: (item: T) => string;
     getOrderIndex?: (item: T) => number | undefined;
     initialSort?: SortMode;
-    storageKey?: string;
 }
 
 export function useSortableList<T extends SortableItem>({
@@ -37,24 +36,8 @@ export function useSortableList<T extends SortableItem>({
     getUpdatedAt = (item) => (item as any).updatedAt || '',
     getOrderIndex = (item) => (item as any).orderIndex,
     initialSort = 'created',
-    storageKey,
 }: UseSortableListProps<T>) {
-    const [sortMode, setSortModeState] = useState<SortMode>(() => {
-        if (storageKey) {
-            const saved = localStorage.getItem(storageKey);
-            if (saved && ['a-z', 'created', 'updated', 'custom'].includes(saved)) {
-                return saved as SortMode;
-            }
-        }
-        return initialSort;
-    });
-
-    const setSortMode = (mode: SortMode) => {
-        setSortModeState(mode);
-        if (storageKey) {
-            localStorage.setItem(storageKey, mode);
-        }
-    }
+    const [sortMode, setSortMode] = useState<SortMode>(initialSort);
 
     const [localItems, setLocalItems] = useState<T[]>(items);
 
