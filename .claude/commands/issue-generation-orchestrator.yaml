@@ -42,6 +42,7 @@ workflow: |
 
   6. Linear 이슈 등록:
      - 사용자가 승인하면 `mcp__linear__create_issue`를 호출하여 각 이슈를 Linear에 등록한다.
+     - 프로젝트 결정: `--project` 옵션이 있으면 사용, 없으면 `list_projects` 조회 후 사용자에게 선택 요청
      - 생성된 이슈 ID 목록을 반환한다.
 
 loop_rules: |

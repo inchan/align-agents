@@ -1,13 +1,18 @@
 ---
 description: 자연어 요구사항을 Linear/GitHub 이슈로 변환 (issue-orchestrator 파이프라인)
-argument-hint: <요구사항 설명>
+argument-hint: [--project=프로젝트명] <요구사항 설명>
 ---
 
 # Issue Orchestrator Pipeline
 
-## 요구사항
+## 입력
 
 $ARGUMENTS
+
+## 프로젝트 결정
+
+1. `--project=<프로젝트명>` 옵션이 있으면 사용
+2. 없으면 `list_projects` 조회 후 사용자에게 선택 요청
 
 ## 지시문
 
