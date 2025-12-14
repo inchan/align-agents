@@ -234,7 +234,6 @@ export function RulesPage() {
         getCreatedAt: (item) => item.createdAt || new Date().toISOString(),
         getUpdatedAt: (item) => item.updatedAt || new Date().toISOString(),
         getOrderIndex: (item) => item.orderIndex,
-        storageKey: 'rules-list-sort'
     })
 
     // Derived state for the currently viewed rule

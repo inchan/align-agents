@@ -466,7 +466,6 @@ export function McpPage() {
         getCreatedAt: (item) => item.createdAt,
         getUpdatedAt: (item) => item.updatedAt,
         getOrderIndex: (item) => item.orderIndex,
-        storageKey: 'mcp-sets-sort'
     })
 
     // --- Sorting & Drag-Drop: Set Items (Center) ---
@@ -506,7 +505,6 @@ export function McpPage() {
         getName: (item) => item.name,
         getCreatedAt: (item) => item.createdAt,
         getUpdatedAt: (item) => item.updatedAt,
-        storageKey: 'mcp-set-items-sort'
     })
 
     // --- Sorting & Drag-Drop: Library (Right) ---
