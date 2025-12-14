@@ -13,6 +13,13 @@ import { SyncLogger } from '../../utils/logger.js';
 import { ChecksumService } from './ChecksumService.js';
 import { StateService } from './StateService.js';
 import { getDatabase } from '../../infrastructure/database.js';
+import {
+    ToolNotFoundError,
+    NotFoundError,
+    ValidationError,
+    RulesSyncError,
+    FileSystemError,
+} from '@align-agents/errors';
 
 
 /**
@@ -79,6 +86,11 @@ export class RulesService implements IRulesService {
         return this.repository.setActiveRule(id);
     }
 
+    /** 특정 Rule을 비활성 상태로 설정한다. */
+    async deactivateRule(id: string): Promise<void> {
+        return this.repository.deactivateRule(id);
+    }
+
     /** Rule 순서를 재정렬한다. */
     async reorderRules(ids: string[]): Promise<void> {
         return this.repository.reorderRules(ids);
@@ -99,7 +111,7 @@ export class RulesService implements IRulesService {
 
         Object.keys(validatedConfig).forEach(toolId => {
             if (!this.getToolRulesFilename(toolId)) {
-                throw new Error(`Unknown tool in rules-config: ${toolId}`);
+                throw new ToolNotFoundError(toolId);
             }
         });
 
@@ -125,7 +137,7 @@ export class RulesService implements IRulesService {
     async syncToolRules(toolId: string, targetPath: string, global: boolean = true, strategy: SyncStrategy = 'overwrite', backupOptions?: { maxBackups?: number; skipBackup?: boolean }, sourceId?: string): Promise<void> {
         const meta = getToolMetadata(toolId);
         if (!meta) {
-            throw new Error(`Unknown tool: ${toolId}`);
+            throw new ToolNotFoundError(toolId);
         }
 
         let masterRules: string;
@@ -133,12 +145,12 @@ export class RulesService implements IRulesService {
         if (sourceId) {
             const rule = await this.getRule(sourceId);
             if (!rule) {
-                throw new Error(`Rule not found with ID: ${sourceId}`);
+                throw new NotFoundError('Rule', sourceId);
             }
             masterRules = rule.content;
             console.log(`[CLI] Syncing specific rule: ${rule.name} (${rule.id})`);
         } else {
-            throw new Error('[CLI] Source ID (Rule ID) is required for synchronization.');
+            throw new ValidationError('Source ID (Rule ID) is required for synchronization');
         }
 
         const filename = this.getToolRulesFilename(toolId);
@@ -154,7 +166,7 @@ export class RulesService implements IRulesService {
             const meta = getToolMetadata(toolId);
             const globalDir = meta?.globalRulesDir;
             if (!globalDir) {
-                throw new Error(`Tool ${toolId} does not support global rules`);
+                throw new RulesSyncError(toolId, 'Tool does not support global rules');
             }
             if (!this.fs.exists(globalDir)) {
                 this.fs.mkdir(globalDir);
@@ -163,10 +175,10 @@ export class RulesService implements IRulesService {
             console.log(`[CLI] 동기화 경로 결정됨: 도구 ID=${toolId}, 전역 룰=true, 최종 경로=${fullPath}`);
         } else {
             if (!targetPath) {
-                throw new Error('Target path is required for project-level rules');
+                throw new ValidationError('Target path is required for project-level rules');
             }
             if (!this.fs.exists(targetPath)) {
-                throw new Error(`Target path does not exist: ${targetPath}`);
+                throw new FileSystemError(`Target path does not exist: ${targetPath}`, targetPath);
             }
             fullPath = this.fs.join(targetPath, filename);
             console.log(`[CLI] 동기화 경로 결정됨: 도구 ID=${toolId}, 전역 룰=false, 최종 경로=${fullPath}`);

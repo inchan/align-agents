@@ -10,6 +10,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 /**
  * LogEntry - API 응답 타입
@@ -215,24 +216,36 @@ export function LogViewer({ logs, onClear, isPaused, onTogglePause, onExport }: 
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onTogglePause}
-                        className={cn("h-8 w-8 p-0", isPaused && "text-yellow-500")}
-                        title={isPaused ? "Resume auto-scroll" : "Pause auto-scroll"}
-                    >
-                        {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onClear}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                        title="Clear logs"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={onTogglePause}
+                                    className={cn("h-8 w-8 p-0", isPaused && "text-yellow-500")}
+                                >
+                                    {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{isPaused ? "자동 스크롤 재개" : "자동 스크롤 일시정지"}</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={onClear}
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>로그 삭제</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
             </div>
 

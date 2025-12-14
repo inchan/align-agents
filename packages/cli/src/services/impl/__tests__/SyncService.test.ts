@@ -229,7 +229,7 @@ describe('SyncService', () => {
         it('should throw error for unknown tool', async () => {
             const config = { unknown_tool: { enabled: true, servers: null } };
 
-            await expect(service.saveSyncConfig(config)).rejects.toThrow('Unknown tool');
+            await expect(service.saveSyncConfig(config)).rejects.toThrow("Tool with id 'unknown_tool' not found");
         });
     });
 
@@ -386,7 +386,7 @@ describe('SyncService', () => {
 
         await expect(
             service.syncToolMcp('claude', '/path/config.json', null, 'overwrite', undefined, 'nonexistent')
-        ).rejects.toThrow('MCP Set not found');
+        ).rejects.toThrow("MCP Set with id 'nonexistent' not found");
     });
 
     it('should apply smart-update strategy', async () => {

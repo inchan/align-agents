@@ -53,6 +53,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export function SyncPage() {
     const store = useTargetStore()
@@ -396,12 +397,19 @@ export function SyncPage() {
                             <Monitor className="w-4 h-4 text-muted-foreground" />
                             Target Tools
                         </h3>
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => {
-                            setNewSetTools([])
-                            setIsCreateSetOpen(true)
-                        }}>
-                            <Plus className="w-4 h-4" />
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => {
+                                        setNewSetTools([])
+                                        setIsCreateSetOpen(true)
+                                    }}>
+                                        <Plus className="w-4 h-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>새 Tool Set 생성</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                     <ScrollArea className="flex-1">
                         <div className="p-4 space-y-3">
@@ -449,54 +457,70 @@ export function SyncPage() {
                                         </div>
                                     </div>
                                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                    }}
-                                                >
-                                                    <Eye className="w-3 h-3" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-80" align="start" onClick={(e) => e.stopPropagation()}>
-                                                <div className="space-y-3">
-                                                    <div>
-                                                        <h4 className="font-medium leading-none mb-1">{set.name}</h4>
-                                                        <p className="text-sm text-muted-foreground">{set.description}</p>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <div className="text-xs font-medium text-muted-foreground uppercase">Included Tools ({set.toolIds.length})</div>
-                                                        <div className="max-h-[200px] overflow-y-auto space-y-1 p-2 bg-muted/50 rounded-md border text-sm">
-                                                            {set.toolIds.map(id => {
-                                                                const tool = tools.find(t => t.id === id)
-                                                                return (
-                                                                    <div key={id} className="flex items-center gap-2">
-                                                                        <div className="w-1 h-1 rounded-full bg-primary/50" />
-                                                                        <span className="truncate">{tool?.name || id}</span>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                    }}
+                                                                >
+                                                                    <Eye className="w-3 h-3" />
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-80" align="start" onClick={(e) => e.stopPropagation()}>
+                                                                <div className="space-y-3">
+                                                                    <div>
+                                                                        <h4 className="font-medium leading-none mb-1">{set.name}</h4>
+                                                                        <p className="text-sm text-muted-foreground">{set.description}</p>
                                                                     </div>
-                                                                )
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
+                                                                    <div className="space-y-1">
+                                                                        <div className="text-xs font-medium text-muted-foreground uppercase">Included Tools ({set.toolIds.length})</div>
+                                                                        <div className="max-h-[200px] overflow-y-auto space-y-1 p-2 bg-muted/50 rounded-md border text-sm">
+                                                                            {set.toolIds.map(id => {
+                                                                                const tool = tools.find(t => t.id === id)
+                                                                                return (
+                                                                                    <div key={id} className="flex items-center gap-2">
+                                                                                        <div className="w-1 h-1 rounded-full bg-primary/50" />
+                                                                                        <span className="truncate">{tool?.name || id}</span>
+                                                                                    </div>
+                                                                                )
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>상세 보기</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                         {!set.isDefault && (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    handleDeleteSet(set.id)
-                                                }}
-                                            >
-                                                <Trash2 className="w-3 h-3" />
-                                            </Button>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handleDeleteSet(set.id)
+                                                            }}
+                                                        >
+                                                            <Trash2 className="w-3 h-3" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>삭제</TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
                                         )}
                                     </div>
                                 </div>
@@ -566,39 +590,48 @@ export function SyncPage() {
                                         <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2 pr-6">{rule.content.slice(0, 60)}...</div>
                                     </div>
                                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                    }}
-                                                >
-                                                    <Eye className="w-3 h-3" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-96" align="end" onClick={(e) => e.stopPropagation()}>
-                                                <div className="space-y-3">
-                                                    <div>
-                                                        <h4 className="font-medium leading-none mb-1">{rule.name}</h4>
-                                                        <div className="flex gap-2 text-xs text-muted-foreground font-mono mt-1">
-                                                            <span className="bg-muted px-1.5 py-0.5 rounded">ID: {rule.id}</span>
-                                                            <span className="bg-muted px-1.5 py-0.5 rounded">Last Modified: {new Date().toLocaleDateString()}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <div className="text-xs font-medium text-muted-foreground uppercase">Rule Content</div>
-                                                        <ScrollArea className="h-[300px] w-full rounded-md border bg-muted/50 p-4">
-                                                            <pre className="text-xs font-mono whitespace-pre-wrap leading-relaxed">
-                                                                {rule.content}
-                                                            </pre>
-                                                        </ScrollArea>
-                                                    </div>
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                    }}
+                                                                >
+                                                                    <Eye className="w-3 h-3" />
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-96" align="end" onClick={(e) => e.stopPropagation()}>
+                                                                <div className="space-y-3">
+                                                                    <div>
+                                                                        <h4 className="font-medium leading-none mb-1">{rule.name}</h4>
+                                                                        <div className="flex gap-2 text-xs text-muted-foreground font-mono mt-1">
+                                                                            <span className="bg-muted px-1.5 py-0.5 rounded">ID: {rule.id}</span>
+                                                                            <span className="bg-muted px-1.5 py-0.5 rounded">Last Modified: {new Date().toLocaleDateString()}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <div className="text-xs font-medium text-muted-foreground uppercase">Rule Content</div>
+                                                                        <ScrollArea className="h-[300px] w-full rounded-md border bg-muted/50 p-4">
+                                                                            <pre className="text-xs font-mono whitespace-pre-wrap leading-relaxed">
+                                                                                {rule.content}
+                                                                            </pre>
+                                                                        </ScrollArea>
+                                                                    </div>
+                                                                </div>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>상세 보기</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                     </div>
                                 </div>
                             ))}
@@ -677,44 +710,53 @@ export function SyncPage() {
                                         </div>
                                     </div>
                                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                    }}
-                                                >
-                                                    <Eye className="w-3 h-3" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-80" align="end" onClick={(e) => e.stopPropagation()}>
-                                                <div className="space-y-3">
-                                                    <div>
-                                                        <h4 className="font-medium leading-none mb-1">{set.name}</h4>
-                                                        <div className="flex gap-2 text-xs text-muted-foreground font-mono mt-1">
-                                                            <span className="bg-muted px-1.5 py-0.5 rounded">ID: {set.id}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <div className="text-xs font-medium text-muted-foreground uppercase">Included Servers ({set.items.length})</div>
-                                                        <div className="max-h-[200px] overflow-y-auto space-y-1 p-2 bg-muted/50 rounded-md border text-sm">
-                                                            {set.items.map((item, idx) => {
-                                                                const server = mcpPool.find(s => s.id === item.serverId)
-                                                                return (
-                                                                    <div key={idx} className="flex items-center gap-2 font-mono text-xs">
-                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
-                                                                        <span className="truncate">{server?.name || item.serverId}</span>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                    }}
+                                                                >
+                                                                    <Eye className="w-3 h-3" />
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-80" align="end" onClick={(e) => e.stopPropagation()}>
+                                                                <div className="space-y-3">
+                                                                    <div>
+                                                                        <h4 className="font-medium leading-none mb-1">{set.name}</h4>
+                                                                        <div className="flex gap-2 text-xs text-muted-foreground font-mono mt-1">
+                                                                            <span className="bg-muted px-1.5 py-0.5 rounded">ID: {set.id}</span>
+                                                                        </div>
                                                                     </div>
-                                                                )
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
+                                                                    <div className="space-y-1">
+                                                                        <div className="text-xs font-medium text-muted-foreground uppercase">Included Servers ({set.items.length})</div>
+                                                                        <div className="max-h-[200px] overflow-y-auto space-y-1 p-2 bg-muted/50 rounded-md border text-sm">
+                                                                            {set.items.map((item, idx) => {
+                                                                                const server = mcpPool.find(s => s.id === item.serverId)
+                                                                                return (
+                                                                                    <div key={idx} className="flex items-center gap-2 font-mono text-xs">
+                                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
+                                                                                        <span className="truncate">{server?.name || item.serverId}</span>
+                                                                                    </div>
+                                                                                )
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>상세 보기</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                     </div>
                                 </div>
                             ))}

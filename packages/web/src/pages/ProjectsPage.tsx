@@ -18,7 +18,7 @@ import { cn, getErrorMessage, getCommonSortableStyle } from '../lib/utils'
 import {
     Briefcase,
     Plus,
-    Search,
+    // Search, // Hidden for now (RB-43)
     Folder,
     Trash2,
     Edit,
@@ -30,8 +30,7 @@ import {
     FolderOpen,
     Settings,
     FileJson,
-    Box,
-    GripVertical
+    Box
 } from 'lucide-react'
 
 // Shared Components
@@ -69,6 +68,7 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { TruncateTooltip } from '@/components/ui/truncate-tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { DndContext, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
@@ -122,9 +122,11 @@ function SortableProjectItem({
         <div
             ref={setNodeRef}
             style={style}
+            {...attributes}
+            {...listeners}
             onClick={() => setSelectedProjectId(project.id)}
             className={cn(
-                "group relative px-3 py-3 rounded-lg border transition-all duration-200 cursor-pointer",
+                "group relative px-3 py-3 rounded-lg border transition-all duration-200 cursor-pointer touch-none",
                 selectedProjectId === project.id
                     ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
                     : "border-border bg-card hover:bg-accent/50 hover:border-primary/30"
@@ -132,17 +134,6 @@ function SortableProjectItem({
         >
             <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        className={cn(
-                            "group/handle shrink-0 text-muted-foreground transition-colors",
-                            isDragEnabled ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-default opacity-50"
-                        )}
-                    >
-                        <GripVertical className="w-4 h-4" />
-                    </div>
-
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                         {getSourceIcon(project.source)}
                     </div>
@@ -158,11 +149,18 @@ function SortableProjectItem({
                 </div>
                 <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity flex items-center", selectedProjectId === project.id ? "opacity-100" : "")}>
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                                <MoreVertical className="w-3.5 h-3.5" />
-                            </Button>
-                        </DropdownMenuTrigger>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+                                            <MoreVertical className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>더보기</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditModal(project) }}>
                                 <Edit className="w-4 h-4 mr-2" /> Edit
@@ -189,7 +187,8 @@ export function ProjectsPage() {
 
     // --- State ---
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>('global')
-    const [searchQuery, setSearchQuery] = useState('')
+    // const [searchQuery, setSearchQuery] = useState('') // Hidden for now (RB-43)
+    const searchQuery = '' // Placeholder until search is re-enabled (RB-43)
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [projectToEdit, setProjectToEdit] = useState<UserProject | null>(null)
@@ -380,16 +379,31 @@ export function ProjectsPage() {
                                         <Briefcase className="w-4 h-4" /> Projects
                                     </h3>
                                     <div className="flex gap-1 items-center">
-                                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => scanMutation.mutate()} title="Scan Projects">
-                                            <RefreshCw className={cn("w-3.5 h-3.5", scanMutation.isPending && "animate-spin")} />
-                                        </Button>
-                                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => { resetForm(); setIsCreateOpen(true) }} title="Add Project">
-                                            <Plus className="w-4 h-4" />
-                                        </Button>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => scanMutation.mutate()}>
+                                                        <RefreshCw className={cn("w-3.5 h-3.5", scanMutation.isPending && "animate-spin")} />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>프로젝트 스캔</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => { resetForm(); setIsCreateOpen(true) }}>
+                                                        <Plus className="w-4 h-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>프로젝트 추가</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                         <SortMenu currentSort={sortMode} onSortChange={setSortMode} className="-mr-1" />
                                     </div>
                                 </div>
-                                <div className="relative">
+                                {/* Search Input - Hidden for now (RB-43) */}
+                                {/* <div className="relative">
                                     <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                                     <Input
                                         placeholder="Search..."
@@ -397,7 +411,7 @@ export function ProjectsPage() {
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                     />
-                                </div>
+                                </div> */}
                             </div>
 
                             <div className="p-3 flex-1 flex flex-col min-h-0">

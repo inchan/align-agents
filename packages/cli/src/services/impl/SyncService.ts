@@ -34,6 +34,13 @@ import { GlobalConfigRepository } from '../../infrastructure/repositories/Global
 
 import { ChecksumService } from './ChecksumService.js';
 import { StateService } from './StateService.js';
+import {
+    ToolNotFoundError,
+    NotFoundError,
+    ValidationError,
+    McpSyncError,
+    FileReadError,
+} from '@align-agents/errors';
 
 export class SyncService implements ISyncService {
     private mcpRepository: McpRepository;
@@ -186,7 +193,7 @@ export class SyncService implements ISyncService {
         for (const toolId of Object.keys(validatedConfig)) {
             const meta = getToolMetadata(toolId);
             if (!meta) {
-                throw new Error(`Unknown tool in sync-config: ${toolId}`);
+                throw new ToolNotFoundError(toolId);
             }
         }
         return this.syncConfigRepository.save(validatedConfig);
@@ -233,12 +240,12 @@ export class SyncService implements ISyncService {
         debugLog(`syncToolMcp started`, { toolId, toolConfigPath, strategy, sourceId });
 
         if (!sourceId) {
-            throw new Error('[CLI] Source ID (MCP Set ID) is required for synchronization.');
+            throw new ValidationError('Source ID (MCP Set ID) is required for synchronization');
         }
 
         const mcpSet = await this.mcpRepository.getSet(sourceId);
         if (!mcpSet) {
-            throw new Error(`MCP Set not found with ID: ${sourceId}`);
+            throw new NotFoundError('MCP Set', sourceId);
         }
         debugLog(`MCP Set found`, { name: mcpSet.name, id: mcpSet.id, itemCount: mcpSet.items?.length || 0 });
 
@@ -300,7 +307,7 @@ export class SyncService implements ISyncService {
                 toolConfig = format === 'toml' ? TOML.parse(raw) : JSON.parse(raw);
             } catch (error) {
                 const label = format === 'toml' ? 'TOML' : 'JSON';
-                throw new Error(`${label}으로 파싱할 수 없는 설정 파일: ${toolConfigPath}`);
+                throw new FileReadError(toolConfigPath, `Cannot parse as ${label}`);
             }
         }
 

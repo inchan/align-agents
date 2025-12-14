@@ -24,6 +24,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { toast } from 'sonner'
 import { getErrorMessage } from '../lib/utils'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip'
 import { Spinner } from '../components/ui/Spinner'
 
 const isCustomTool = (tool: ToolConfig) => {
@@ -285,11 +286,18 @@ export function ToolsPage() {
                                 <div className={`w-3 h-3 rounded-full ${tool.exists ? 'bg-primary' : 'bg-muted'}`}
                                     title={tool.exists ? '설치됨' : '미설치'} />
                                 <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                            </TooltipTrigger>
+                                            <TooltipContent>옵션</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                     <DropdownMenuContent align="end">
                                         {tool.configPath && (
                                             <DropdownMenuItem onClick={() => handleEditConfig(tool)}>

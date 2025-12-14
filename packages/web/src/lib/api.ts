@@ -365,6 +365,15 @@ export async function setActiveRule(id: string): Promise<void> {
     return text ? JSON.parse(text) : undefined;
 }
 
+export async function deactivateRule(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/rules/${id}/deactivate`, {
+        method: 'PUT',
+    });
+    if (!response.ok) throw new Error('Failed to deactivate rule');
+    const text = await response.text();
+    return text ? JSON.parse(text) : undefined;
+}
+
 export async function reorderRules(ids: string[]): Promise<void> {
     const response = await fetch(`${API_BASE}/rules/reorder`, {
         method: 'PUT',

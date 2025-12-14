@@ -12,9 +12,11 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts ui --port 3001 --no-open",
-    "test": "vitest"
+    "test": "vitest",
+    "lint": "eslint src/"
   },
   "dependencies": {
+    "@align-agents/errors": "*",
     "@align-agents/logger": "*",
     "@fastify/cors": "^8.5.0",
     "@fastify/static": "^7.0.1",
@@ -30,12 +32,16 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@eslint/js": "^9.28.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/inquirer": "^9.0.7",
     "@types/node": "^20.11.20",
     "@types/uuid": "^10.0.0",
+    "eslint": "^9.28.0",
+    "globals": "^16.2.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.33.1"
   },
   "mcpServers": {
     "linear": {

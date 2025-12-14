@@ -19,6 +19,7 @@ import {
     cleanupRule,
     expectEditorContent,
     expectRuleInList,
+    fillMonacoEditor,
 } from './rules.helpers'
 
 test.describe('Rules Edge Cases - P1 @priority-p1', () => {
@@ -45,7 +46,7 @@ test.describe('Rules Edge Cases - P1 @priority-p1', () => {
         // 입력
         const ruleName = generateUniqueName('R011-Error')
         await page.fill(SELECTORS.nameInput, ruleName)
-        await page.fill(SELECTORS.contentTextarea, 'Content')
+        await fillMonacoEditor(page, 'div[role="dialog"]', 'Content')
 
         // Create 클릭
         await page.locator(SELECTORS.createButton).click()
@@ -88,10 +89,8 @@ test.describe('Rules Edge Cases - P1 @priority-p1', () => {
             }
         })
 
-        // 내용 수정
-        const contentTextarea = page.locator(SELECTORS.editContentTextarea).last()
-        await contentTextarea.clear()
-        await contentTextarea.fill('Modified content')
+        // 내용 수정 (Monaco Editor 사용)
+        await fillMonacoEditor(page, 'div[role="region"][aria-label="Rule content editor"]', 'Modified content', true)
 
         // 저장 시도
         await page.locator(SELECTORS.saveButton).click()

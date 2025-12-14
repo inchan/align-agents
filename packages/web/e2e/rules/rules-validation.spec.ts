@@ -17,6 +17,7 @@ import {
     enterEditMode,
     cancelEdit,
     cleanupRule,
+    fillMonacoEditor,
 } from './rules.helpers'
 
 test.describe('Rules Validation - P0 @priority-p0', () => {
@@ -33,7 +34,7 @@ test.describe('Rules Validation - P0 @priority-p0', () => {
         await expect(page.locator(SELECTORS.createModal)).toBeVisible()
 
         // Content만 입력 (이름은 비워둠)
-        await page.fill(SELECTORS.contentTextarea, TEST_DATA.defaultContent)
+        await fillMonacoEditor(page, 'div[role="dialog"]', TEST_DATA.defaultContent)
 
         // Create 버튼이 비활성화되어 있는지 확인
         const createButton = page.locator(SELECTORS.createButton)
@@ -54,7 +55,7 @@ test.describe('Rules Validation - P0 @priority-p0', () => {
         // 같은 이름으로 두 번째 Rule 생성 시도
         await page.locator(SELECTORS.addButton).click()
         await page.fill(SELECTORS.nameInput, ruleName)
-        await page.fill(SELECTORS.contentTextarea, 'Second rule content')
+        await fillMonacoEditor(page, 'div[role="dialog"]', 'Second rule content')
         await page.locator(SELECTORS.createButton).click()
 
         // 잠시 대기하여 API 응답 확인
@@ -85,7 +86,7 @@ test.describe('Rules Validation - P0 @priority-p0', () => {
 
         // Case 1: 공백만 입력
         await page.fill(SELECTORS.nameInput, '   ')
-        await page.fill(SELECTORS.contentTextarea, 'Content')
+        await fillMonacoEditor(page, 'div[role="dialog"]', 'Content')
 
         // Create 버튼 상태 확인 (비활성화 또는 에러)
         const createButton = page.locator(SELECTORS.createButton)
@@ -99,11 +100,10 @@ test.describe('Rules Validation - P0 @priority-p0', () => {
 
         // 입력 필드 초기화
         await page.locator(SELECTORS.nameInput).clear()
-        await page.fill(SELECTORS.contentTextarea, '')
 
         // Case 2: 특수문자만 입력 (허용될 수 있음)
         await page.fill(SELECTORS.nameInput, TEST_DATA.specialChars)
-        await page.fill(SELECTORS.contentTextarea, 'Content')
+        await fillMonacoEditor(page, 'div[role="dialog"]', 'Content', true)
 
         // 버튼 상태 확인 - 특수문자는 보통 허용됨
         await expect(createButton).toBeEnabled()
@@ -114,7 +114,7 @@ test.describe('Rules Validation - P0 @priority-p0', () => {
 
         // 스크립트가 실행되지 않아야 함 (페이지가 정상이면 통과)
         // 실제로 생성해서 XSS가 실행되는지 확인
-        await page.fill(SELECTORS.contentTextarea, 'XSS Test')
+        await fillMonacoEditor(page, 'div[role="dialog"]', 'XSS Test', true)
 
         // 모달 닫기
         await page.locator(SELECTORS.modalCancelButton).click()
@@ -136,9 +136,7 @@ test.describe('Rules Validation - P0 @priority-p0', () => {
         await enterEditMode(page)
 
         // 내용 수정 (저장하지 않음)
-        const contentTextarea = page.locator(SELECTORS.editContentTextarea).last()
-        await contentTextarea.clear()
-        await contentTextarea.fill('# Modified but not saved')
+        await fillMonacoEditor(page, 'div[role="region"][aria-label="Rule content editor"]', '# Modified but not saved', true)
 
         // Rule B 클릭 (미저장 상태에서 전환)
         await page.locator(SELECTORS.ruleItem(ruleB)).first().click()

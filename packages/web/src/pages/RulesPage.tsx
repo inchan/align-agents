@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchRulesList, createRule, updateRule, deleteRule, reorderRules, type Rule } from '../lib/api'
+import { fetchRulesList, createRule, updateRule, deleteRule, reorderRules, setActiveRule, deactivateRule, type Rule } from '../lib/api'
 import { useState, useMemo } from 'react'
 import Editor, { type EditorProps } from '@monaco-editor/react'
 
 import { toast } from 'sonner'
 import { Spinner } from '../components/ui/Spinner'
 import { getErrorMessage, cn, getCommonSortableStyle } from '../lib/utils'
-import { Plus, Trash2, Save, FileText, X, GripVertical } from 'lucide-react'
+import { Plus, Trash2, Save, FileText, X, GripVertical, MoreVertical, Power, PowerOff } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -14,8 +14,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DndContext, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu'
 
 import { TruncateTooltip } from '@/components/ui/truncate-tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { SortMenu } from '../components/common/SortMenu'
 import { useSortableList } from '../hooks/useSortableList'
 import { Badge } from '@/components/ui/badge'
@@ -28,10 +30,11 @@ interface SortableRuleItemProps {
     setViewedRuleId: (id: string) => void
     setIsEditing: (editing: boolean) => void
     handleDeleteClick: (id: string, name: string) => void
+    handleToggleActive: (id: string, currentIsActive: boolean) => void
     isDragEnabled?: boolean
 }
 
-function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, handleDeleteClick, isDragEnabled }: SortableRuleItemProps) {
+function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, handleDeleteClick, handleToggleActive, isDragEnabled }: SortableRuleItemProps) {
     const {
         attributes,
         listeners,
@@ -52,12 +55,14 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
         <div
             ref={setNodeRef}
             style={style}
+            {...attributes}
+            {...listeners}
             onClick={() => {
                 setViewedRuleId(rule.id)
                 setIsEditing(false)
             }}
             className={cn(
-                "group relative px-3 py-2.5 rounded-lg border transition-all duration-200 cursor-pointer",
+                "group relative px-3 py-2.5 rounded-lg border transition-all duration-200 cursor-pointer touch-none",
                 viewedRuleId === rule.id
                     ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
                     : cn(
@@ -70,18 +75,6 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
         >
             <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        className={cn(
-                            "group/handle shrink-0 transition-colors",
-                            isDragEnabled ? "cursor-grab active:cursor-grabbing hover:text-foreground" : "cursor-default opacity-50",
-                            !isActive ? "text-muted-foreground/50" : "text-muted-foreground"
-                        )}
-                    >
-                        <GripVertical className="w-4 h-4" />
-                    </div>
-
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                             <TruncateTooltip className={cn("font-medium text-sm transition-colors",
@@ -102,7 +95,40 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
                     </div>
                 </div>
 
-                <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity", viewedRuleId === rule.id ? "opacity-100" : "")}>
+                <div className={cn("flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity", viewedRuleId === rule.id ? "opacity-100" : "")}>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                onClick={(e) => e.stopPropagation()}
+                                title="More options"
+                            >
+                                <MoreVertical className="w-3.5 h-3.5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleToggleActive(rule.id, isActive)
+                                }}
+                            >
+                                {isActive ? (
+                                    <>
+                                        <PowerOff className="w-4 h-4 mr-2" />
+                                        Deactivate
+                                    </>
+                                ) : (
+                                    <>
+                                        <Power className="w-4 h-4 mr-2" />
+                                        Activate
+                                    </>
+                                )}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                         variant="ghost"
                         size="icon"
@@ -271,6 +297,25 @@ export function RulesPage() {
         }
     })
 
+    const toggleActiveMutation = useMutation({
+        mutationFn: async ({ id, currentIsActive }: { id: string; currentIsActive: boolean }) => {
+            if (currentIsActive) {
+                return deactivateRule(id)
+            } else {
+                return setActiveRule(id)
+            }
+        },
+        onSuccess: (_, { currentIsActive }) => {
+            queryClient.invalidateQueries({ queryKey: ['rulesList'] })
+            toast.success(currentIsActive ? 'Rule deactivated' : 'Rule activated')
+        },
+        onError: (error) => toast.error(`Failed to toggle: ${getErrorMessage(error)}`)
+    })
+
+    const handleToggleActive = (id: string, currentIsActive: boolean) => {
+        toggleActiveMutation.mutate({ id, currentIsActive })
+    }
+
     const handleCreate = () => {
         if (!newRuleName.trim()) return
         createMutation.mutate({ name: newRuleName, content: newRuleContent })
@@ -317,9 +362,16 @@ export function RulesPage() {
                             <div className="p-4 border-b bg-muted/40 flex items-center justify-between shrink-0">
                                 <h3 className="font-semibold text-sm">Rules</h3>
                                 <div className="flex items-center gap-1">
-                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsCreateModalOpen(true)}>
-                                        <Plus className="w-4 h-4" />
-                                    </Button>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setIsCreateModalOpen(true)}>
+                                                    <Plus className="w-4 h-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>새 규칙 생성</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                     <SortMenu currentSort={sortMode} onSortChange={setSortMode} className="-mr-1" />
                                 </div>
                             </div>
@@ -342,6 +394,7 @@ export function RulesPage() {
                                                     setViewedRuleId={setViewedRuleId}
                                                     setIsEditing={setIsEditing}
                                                     handleDeleteClick={handleDeleteClick}
+                                                    handleToggleActive={handleToggleActive}
                                                     isDragEnabled={isDragEnabled}
                                                 />
                                             ))}

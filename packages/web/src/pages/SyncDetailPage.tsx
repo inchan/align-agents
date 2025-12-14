@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle, AlertTriangle, ArrowLeft, Clock } from 'lucide-r
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip'
 import type { SyncResultItem } from '../lib/api'
 
 export function SyncDetailPage() {
@@ -44,13 +45,20 @@ export function SyncDetailPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigate(-1)}
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => navigate(-1)}
+                                >
+                                    <ArrowLeft className="w-4 h-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>뒤로 가기</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                     <div>
                         <h1 className="text-2xl font-bold">동기화 결과</h1>
                         <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
