@@ -7,6 +7,7 @@ import {
     KeyboardSensor,
     TouchSensor,
     type DragEndEvent,
+    type DragStartEvent,
 } from '@dnd-kit/core';
 import {
     sortableKeyboardCoordinates,
@@ -41,9 +42,9 @@ export function useSortableList<T extends SortableItem>({
     initialSort = DEFAULT_SORT,
     enableDragDrop = false,
 }: UseSortableListProps<T>) {
-    const [sortMode, setSortMode] = useState<SortMode>(initialSort);
-
+    const [sortMode, setSortMode] = useState<SortMode | null>(initialSort);
     const [localItems, setLocalItems] = useState<T[]>(items);
+    const [activeId, setActiveId] = useState<string | null>(null);
 
     // Sync local items with props items
     useEffect(() => {
@@ -53,6 +54,12 @@ export function useSortableList<T extends SortableItem>({
     const sortedItems = useMemo(() => {
         // Create a copy to sort
         const list = [...localItems];
+
+        // If sortMode is null (after drag reorder), return items as-is
+        if (!sortMode) {
+            return list;
+        }
+
         const { type, direction } = sortMode;
         const multiplier = direction === 'asc' ? 1 : -1;
 
@@ -75,11 +82,11 @@ export function useSortableList<T extends SortableItem>({
     }, [localItems, sortMode, getName, getCreatedAt, getUpdatedAt]);
 
     // For drag and drop, we need sensors
-    // Long press activation: 300ms delay to distinguish from click/scroll
+    // Long press activation: 150ms delay to distinguish from click/scroll
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                delay: 300,
+                delay: 150,
                 tolerance: 5,
             },
         }),
@@ -88,40 +95,73 @@ export function useSortableList<T extends SortableItem>({
         }),
         useSensor(TouchSensor, {
             activationConstraint: {
-                delay: 300,
+                delay: 150,
                 tolerance: 5,
             },
         })
     );
 
+    const handleDragStart = (event: DragStartEvent) => {
+        setActiveId(event.active.id as string);
+    };
+
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
+
+        setActiveId(null);
 
         if (!enableDragDrop) return;
         if (!over) return;
 
         if (active.id !== over.id) {
-            setLocalItems((items) => {
-                const oldIndex = items.findIndex((item) => item.id === active.id);
-                const newIndex = items.findIndex((item) => item.id === over.id);
-                const newItems = arrayMove(items, oldIndex, newIndex);
+            // Use sortedItems for index calculation (matches what's displayed on screen)
+            const oldIndex = sortedItems.findIndex((item) => item.id === active.id);
+            const newIndex = sortedItems.findIndex((item) => item.id === over.id);
+            const newItems = arrayMove([...sortedItems], oldIndex, newIndex);
 
-                // Trigger callback
-                if (onReorder) {
-                    onReorder(newItems.map(item => item.id));
+            // Save previous state for rollback
+            const prevItems = [...localItems];
+            const prevSortMode = sortMode;
+
+            // Clear sort mode to preserve user-defined order
+            setSortMode(null);
+
+            // Update local state (optimistic update)
+            setLocalItems(newItems);
+
+            // Trigger callback with rollback on error
+            if (onReorder) {
+                try {
+                    await onReorder(newItems.map(item => item.id));
+                } catch {
+                    // Rollback on error
+                    setLocalItems(prevItems);
+                    setSortMode(prevSortMode);
                 }
-
-                return newItems;
-            });
+            }
         }
     };
+
+    const handleDragCancel = () => {
+        setActiveId(null);
+    };
+
+    // Get the currently dragged item for DragOverlay
+    const activeItem = useMemo(() => {
+        if (!activeId) return null;
+        return sortedItems.find(item => item.id === activeId) || null;
+    }, [activeId, sortedItems]);
 
     return {
         sortMode,
         setSortMode,
         sortedItems,
+        handleDragStart,
         handleDragEnd,
+        handleDragCancel,
         sensors,
-        isDragEnabled: enableDragDrop
+        isDragEnabled: enableDragDrop,
+        activeId,
+        activeItem,
     };
 }

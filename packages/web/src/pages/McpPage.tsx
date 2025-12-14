@@ -35,7 +35,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { TruncateTooltip } from "@/components/ui/truncate-tooltip"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { DndContext, closestCenter } from '@dnd-kit/core'
+import { DndContext, closestCenter, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 
 import { SortMenu } from '../components/common/SortMenu'
@@ -453,9 +453,13 @@ export function McpPage() {
         sortMode: setsSortMode,
         setSortMode: setSetsSortMode,
         sortedItems: sortedMcpSets,
+        handleDragStart: handleSetsDragStart,
         handleDragEnd: handleSetsDragEnd,
+        handleDragCancel: handleSetsDragCancel,
         sensors: setsSensors,
-        isDragEnabled: isSetsDragEnabled
+        isDragEnabled: isSetsDragEnabled,
+        activeId: setsActiveId,
+        activeItem: setsActiveItem,
     } = useSortableList<McpSet>({
         items: mcpSets,
         onReorder: async (ids) => {
@@ -466,6 +470,7 @@ export function McpPage() {
         getCreatedAt: (item) => item.createdAt,
         getUpdatedAt: (item) => item.updatedAt,
         getOrderIndex: (item) => item.orderIndex,
+        enableDragDrop: true,
     })
 
     // --- Sorting & Drag-Drop: Set Items (Center) ---
@@ -487,9 +492,13 @@ export function McpPage() {
         sortMode: itemsSortMode,
         setSortMode: setItemsSortMode,
         sortedItems: sortedSetItems,
+        handleDragStart: handleItemsDragStart,
         handleDragEnd: handleItemsDragEnd,
+        handleDragCancel: handleItemsDragCancel,
         sensors: itemsSensors,
-        isDragEnabled: isItemsDragEnabled
+        isDragEnabled: isItemsDragEnabled,
+        activeId: itemsActiveId,
+        activeItem: itemsActiveItem,
     } = useSortableList({
         items: setItemsEnriched,
         onReorder: async (ids) => {
@@ -563,15 +572,20 @@ export function McpPage() {
         sortMode: librarySortMode,
         setSortMode: setLibrarySortMode,
         sortedItems: sortedLibraryItems,
+        handleDragStart: handleLibraryDragStart,
         handleDragEnd: handleLibraryDragEnd,
+        handleDragCancel: handleLibraryDragCancel,
         sensors: librarySensors,
-        isDragEnabled: isLibraryDragEnabled
+        isDragEnabled: isLibraryDragEnabled,
+        activeId: libraryActiveId,
+        activeItem: libraryActiveItem,
     } = useSortableList({
         items: libraryItemsEnriched,
         initialSort: { type: 'a-z', direction: 'asc' },
         getName: (item) => item.name,
         getCreatedAt: (item) => item.createdAt,
         getUpdatedAt: (item) => item.updatedAt,
+        enableDragDrop: true,
     })
 
 
@@ -1303,7 +1317,9 @@ export function McpPage() {
                             <DndContext
                                 sensors={setsSensors}
                                 collisionDetection={closestCenter}
+                                onDragStart={handleSetsDragStart}
                                 onDragEnd={handleSetsDragEnd}
+                                onDragCancel={handleSetsDragCancel}
                             >
                                 <SortableContext
                                     items={sortedMcpSets.map(s => s.id)}
@@ -1320,6 +1336,25 @@ export function McpPage() {
                                         />
                                     ))}
                                 </SortableContext>
+                                <DragOverlay dropAnimation={{ duration: 200, easing: 'ease-out' }}>
+                                    {setsActiveItem ? (
+                                        <div className="px-3 py-3 rounded-lg border border-primary/30 bg-muted/60 shadow-sm">
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                    <div className="flex-1 min-w-0 overflow-hidden">
+                                                        <span className="font-medium text-sm text-primary font-semibold">{setsActiveItem.name}</span>
+                                                        {setsActiveItem.description && (
+                                                            <p className="text-xs text-muted-foreground mt-0.5 truncate">{setsActiveItem.description}</p>
+                                                        )}
+                                                        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                                                            <Badge variant="outline" className="text-[10px] h-4 px-1">{setsActiveItem.items.length} Configured</Badge>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </DragOverlay>
                             </DndContext>
                             {mcpSets.length === 0 && (
                                 <EmptyState
@@ -1398,7 +1433,9 @@ export function McpPage() {
                                     <DndContext
                                         sensors={itemsSensors}
                                         collisionDetection={closestCenter}
+                                        onDragStart={handleItemsDragStart}
                                         onDragEnd={handleItemsDragEnd}
+                                        onDragCancel={handleItemsDragCancel}
                                     >
                                         <SortableContext
                                             items={sortedSetItems.map(i => i.id)}
@@ -1426,6 +1463,25 @@ export function McpPage() {
                                                 )
                                             })}
                                         </SortableContext>
+                                        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease-out' }}>
+                                            {itemsActiveItem ? (() => {
+                                                const def = mcpPool.find(p => p.id === itemsActiveItem.serverId);
+                                                if (!def) return null;
+                                                return (
+                                                    <div className="p-3 rounded-lg border border-primary/30 bg-muted/60 shadow-sm">
+                                                        <div className="flex items-start gap-2">
+                                                            <div className="mt-0.5 shrink-0 w-8 h-8 rounded flex items-center justify-center bg-primary/10 text-primary">
+                                                                <McpIcon def={def} className="w-5 h-5" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <span className="font-medium text-sm">{def.name}</span>
+                                                                <p className="text-xs font-mono text-muted-foreground mt-1 truncate">{getMcpDefDisplayString(def)}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })() : null}
+                                        </DragOverlay>
                                     </DndContext>
                                 )
                             ) : (
@@ -1507,7 +1563,9 @@ export function McpPage() {
                             <DndContext
                                 sensors={librarySensors}
                                 collisionDetection={closestCenter}
+                                onDragStart={handleLibraryDragStart}
                                 onDragEnd={handleLibraryDragEnd}
+                                onDragCancel={handleLibraryDragCancel}
                             >
                                 <SortableContext
                                     items={sortedLibraryItems.map(i => i.id)}
@@ -1536,6 +1594,21 @@ export function McpPage() {
                                         ))
                                     )}
                                 </SortableContext>
+                                <DragOverlay dropAnimation={{ duration: 200, easing: 'ease-out' }}>
+                                    {libraryActiveItem ? (
+                                        <div className="p-3 rounded-lg border border-primary/30 bg-muted/60 shadow-sm">
+                                            <div className="flex items-start gap-2">
+                                                <div className="mt-0.5 shrink-0 w-8 h-8 rounded bg-muted flex items-center justify-center text-primary">
+                                                    <McpIcon def={libraryActiveItem} className="w-5 h-5" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <span className="font-medium text-sm">{libraryActiveItem.name}</span>
+                                                    <p className="text-xs font-mono text-muted-foreground mt-1 truncate">{getMcpDefDisplayString(libraryActiveItem)}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </DragOverlay>
                             </DndContext>
                         </div>
                     </ScrollArea>

@@ -38,7 +38,7 @@ export function getCommonSortableStyle(transform: Transform | null, transition: 
     return {
         transform: CSS.Translate.toString(transform),
         transition,
-        opacity: isDragging ? 0.4 : 1,
+        opacity: isDragging ? 0 : 1,
         zIndex: isDragging ? 999 : 'auto',
         position: 'relative' as const,
         touchAction: 'none'

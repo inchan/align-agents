@@ -18,8 +18,8 @@ export interface SortMode {
 }
 
 interface SortMenuProps {
-    currentSort: SortMode;
-    onSortChange: (mode: SortMode) => void;
+    currentSort: SortMode | null;
+    onSortChange: (mode: SortMode | null) => void;
     className?: string;
 }
 
@@ -32,7 +32,7 @@ export function SortMenu({ currentSort, onSortChange, className }: SortMenuProps
     };
 
     const handleSortClick = (type: SortType) => {
-        if (currentSort.type === type) {
+        if (currentSort?.type === type) {
             // Toggle direction
             onSortChange({
                 type,
@@ -45,7 +45,7 @@ export function SortMenu({ currentSort, onSortChange, className }: SortMenuProps
     };
 
     const DirectionIcon = ({ type }: { type: SortType }) => {
-        if (currentSort.type !== type) return null;
+        if (!currentSort || currentSort.type !== type) return null;
         return currentSort.direction === 'asc'
             ? <ArrowUp className="w-3 h-3 ml-auto" />
             : <ArrowDown className="w-3 h-3 ml-auto" />;
@@ -56,13 +56,13 @@ export function SortMenu({ currentSort, onSortChange, className }: SortMenuProps
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className={cn("h-8 w-8", className)}>
                     <ListFilter className="w-4 h-4" />
-                    <span className="sr-only">정렬: {labelMap[currentSort.type]}</span>
+                    <span className="sr-only">정렬: {currentSort ? labelMap[currentSort.type] : '사용자 지정'}</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuItem
                     onClick={() => handleSortClick('created')}
-                    className={cn(currentSort.type === 'created' && "bg-accent")}
+                    className={cn(currentSort?.type === 'created' && "bg-accent")}
                 >
                     <Calendar className="w-4 h-4 mr-2" />
                     <span>생성일</span>
@@ -70,7 +70,7 @@ export function SortMenu({ currentSort, onSortChange, className }: SortMenuProps
                 </DropdownMenuItem>
                 <DropdownMenuItem
                     onClick={() => handleSortClick('updated')}
-                    className={cn(currentSort.type === 'updated' && "bg-accent")}
+                    className={cn(currentSort?.type === 'updated' && "bg-accent")}
                 >
                     <Clock className="w-4 h-4 mr-2" />
                     <span>수정일</span>
@@ -78,7 +78,7 @@ export function SortMenu({ currentSort, onSortChange, className }: SortMenuProps
                 </DropdownMenuItem>
                 <DropdownMenuItem
                     onClick={() => handleSortClick('a-z')}
-                    className={cn(currentSort.type === 'a-z' && "bg-accent")}
+                    className={cn(currentSort?.type === 'a-z' && "bg-accent")}
                 >
                     <ArrowDownAZ className="w-4 h-4 mr-2" />
                     <span>A-Z</span>
