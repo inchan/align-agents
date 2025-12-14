@@ -25,7 +25,7 @@ test.describe('Sync Workflow E2E', () => {
             ]
         })
 
-        await page.goto('http://localhost:5173/sync')
+        await page.goto('/sync')
         await page.waitForTimeout(1000)
     })
 

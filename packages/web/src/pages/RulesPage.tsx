@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchRulesList, createRule, updateRule, deleteRule, reorderRules, setActiveRule, deactivateRule, type Rule } from '../lib/api'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import Editor, { type EditorProps } from '@monaco-editor/react'
 
 import { toast } from 'sonner'
@@ -12,7 +12,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DndContext, closestCenter } from '@dnd-kit/core'
+import { DndContext, closestCenter, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu'
 
@@ -194,7 +194,7 @@ export function RulesPage() {
     const queryClient = useQueryClient()
     const { monacoTheme, getEditorOptions, loadingComponent } = useMonacoConfig()
 
-    const [viewedRuleId, setViewedRuleId] = useState<string | null>(null)
+    const [userSelectedRuleId, setUserSelectedRuleId] = useState<string | null>(null)
     const [isEditing, setIsEditing] = useState(false)
     const [editedContent, setEditedContent] = useState('')
     const [editedName, setEditedName] = useState('')
@@ -221,9 +221,13 @@ export function RulesPage() {
         sortMode,
         setSortMode,
         sortedItems: sortedRules,
+        handleDragStart,
         handleDragEnd,
+        handleDragCancel,
         sensors,
-        isDragEnabled
+        isDragEnabled,
+        activeId,
+        activeItem,
     } = useSortableList<Rule>({
         items: rulesList,
         onReorder: async (ids) => {
@@ -234,19 +238,24 @@ export function RulesPage() {
         getCreatedAt: (item) => item.createdAt || new Date().toISOString(),
         getUpdatedAt: (item) => item.updatedAt || new Date().toISOString(),
         getOrderIndex: (item) => item.orderIndex,
-        storageKey: 'rules-list-sort'
+        enableDragDrop: true,
     })
 
-    // Set default viewed rule
-    useEffect(() => {
-        if (sortedRules.length > 0 && !viewedRuleId) {
-            // Find active or first in sorted list
-            const active = sortedRules.find(r => r.isActive) || sortedRules[0]
-            if (active) {
-                setViewedRuleId(active.id)
-            }
+    // Derived state for the currently viewed rule
+    // If user has selected one (and it still exists), use that.
+    // Otherwise, default to the first active rule or simply the first rule.
+    const viewedRuleId = useMemo(() => {
+        if (userSelectedRuleId && sortedRules.some(r => r.id === userSelectedRuleId)) {
+            return userSelectedRuleId
         }
-    }, [sortedRules, viewedRuleId])
+        if (sortedRules.length > 0) {
+            return (sortedRules.find(r => r.isActive) || sortedRules[0]).id
+        }
+        return null
+    }, [userSelectedRuleId, sortedRules])
+
+    // Wrapper to maintain API compatibility with children
+    const setViewedRuleId = setUserSelectedRuleId
 
     const viewedRule = rulesList.find(r => r.id === viewedRuleId) || null
 
@@ -374,7 +383,9 @@ export function RulesPage() {
                                 <DndContext
                                     sensors={sensors}
                                     collisionDetection={closestCenter}
+                                    onDragStart={handleDragStart}
                                     onDragEnd={handleDragEnd}
+                                    onDragCancel={handleDragCancel}
                                 >
                                     <SortableContext
                                         items={sortedRules.map(r => r.id)}
@@ -402,6 +413,31 @@ export function RulesPage() {
                                             )}
                                         </div>
                                     </SortableContext>
+                                    <DragOverlay dropAnimation={{ duration: 200, easing: 'ease-out' }}>
+                                        {activeItem ? (
+                                            <div className="px-3 py-2.5 rounded-lg border border-primary/30 bg-muted/60 shadow-sm">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={cn("font-medium text-sm text-primary font-semibold", !activeItem.isActive && "text-muted-foreground line-through decoration-muted-foreground/50")}>
+                                                                    {activeItem.name}
+                                                                </span>
+                                                                {!activeItem.isActive && (
+                                                                    <Badge variant="outline" className="h-4 px-1 text-[9px] text-muted-foreground bg-muted/50 border-muted-foreground/20 font-normal">
+                                                                        Disabled
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground mt-0.5">
+                                                                {new Date(activeItem.updatedAt).toLocaleDateString()}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </DragOverlay>
                                 </DndContext>
                             </div>
                         </div>

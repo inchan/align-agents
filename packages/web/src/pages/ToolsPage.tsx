@@ -3,7 +3,7 @@ import {
     fetchTools, addTool, deleteTool, checkToolHelp,
     type ToolConfig
 } from '../lib/api' // Added ToolConfig
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Skeleton } from '../components/ui/Skeleton'
 import { ConfigEditorModal } from '../components/ConfigEditorModal'
 import {
@@ -39,7 +39,7 @@ function AddToolModal({
 }: {
     open: boolean,
     onOpenChange: (open: boolean) => void,
-    onAdd: (tool: any) => void,
+    onAdd: (tool: { name: string, configPath: string, rulesPath: string, mcpPath: string, description: string }) => void,
     isSubmitting: boolean
 }) {
     const [name, setName] = useState('')
@@ -54,20 +54,7 @@ function AddToolModal({
     // But if it stays mounted, we should reset.
     // The lint error is complaining about setState in effect causing immediate re-render.
     // We can just rely on the parent to unmount it, or check for `open` transition.
-    useEffect(() => {
-        if (open) {
-            // These updates are batched in React 18, so it's mostly fine, but the linter is strict.
-            // We can check if it's already empty to avoid redundant updates?
-            // Or better: Just do nothing if the values are already default.
-            if (name || configPath || rulesPath || mcpPath || description) {
-                setName('')
-                setConfigPath('')
-                setRulesPath('')
-                setMcpPath('')
-                setDescription('')
-            }
-        }
-    }, [open])
+    // State reset is handled by the parent re-mounting this component using the `key` prop.
 
     const handleSubmit = () => {
         onAdd({ name, configPath, rulesPath, mcpPath, description })
@@ -251,6 +238,7 @@ export function ToolsPage() {
     return (
         <div>
             <AddToolModal
+                key={isAddOpen ? 'open' : 'closed'}
                 open={isAddOpen}
                 onOpenChange={setIsAddOpen}
                 onAdd={addMutation.mutate}

@@ -1,46 +1,77 @@
 {
-    "name": "@align-agents/cli",
-    "version": "0.1.0",
-    "description": "CLI for align-agents",
-    "type": "module",
-    "main": "dist/lib.js",
-    "types": "dist/lib.d.ts",
-    "bin": {
-        "acs": "./bin/acs"
+  "name": "@align-agents/cli",
+  "version": "0.1.0",
+  "description": "CLI for align-agents",
+  "type": "module",
+  "main": "dist/lib.js",
+  "types": "dist/lib.d.ts",
+  "bin": {
+    "acs": "./bin/acs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts ui --port 3001 --no-open",
+    "test": "vitest",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@align-agents/errors": "*",
+    "@align-agents/logger": "*",
+    "@fastify/cors": "^8.5.0",
+    "@fastify/static": "^7.0.1",
+    "@iarna/toml": "^2.2.5",
+    "better-sqlite3": "^12.5.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "fastify": "^4.26.1",
+    "inquirer": "^9.2.15",
+    "open": "^10.0.3",
+    "simple-git": "^3.30.0",
+    "uuid": "^13.0.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.11.20",
+    "@types/uuid": "^10.0.0",
+    "eslint": "^9.28.0",
+    "globals": "^16.2.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.33.1"
+  },
+  "mcpServers": {
+    "linear": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.linear.app/mcp"
+      ]
     },
-    "scripts": {
-        "build": "tsc",
-        "start": "node dist/index.js",
-        "dev": "tsx watch src/index.ts ui --port 3001 --no-open",
-        "test": "vitest",
-        "lint": "eslint src/"
+    "other-agents": {
+      "command": "/Users/chans/.local/bin/uvx",
+      "args": [
+        "other-agents-mcp"
+      ]
     },
-    "dependencies": {
-        "@align-agents/errors": "*",
-        "@align-agents/logger": "*",
-        "@fastify/cors": "^8.5.0",
-        "@fastify/static": "^7.0.1",
-        "@iarna/toml": "^2.2.5",
-        "better-sqlite3": "^12.5.0",
-        "chalk": "^5.3.0",
-        "commander": "^12.0.0",
-        "fastify": "^4.26.1",
-        "inquirer": "^9.2.15",
-        "open": "^10.0.3",
-        "simple-git": "^3.30.0",
-        "uuid": "^13.0.0",
-        "zod": "^3.25.76"
+    "desktop-commander": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@wonderwhy-er/desktop-commander@latest"
+      ]
     },
-    "devDependencies": {
-        "@eslint/js": "^9.28.0",
-        "@types/better-sqlite3": "^7.6.13",
-        "@types/inquirer": "^9.0.7",
-        "@types/node": "^20.11.20",
-        "@types/uuid": "^10.0.0",
-        "eslint": "^9.28.0",
-        "globals": "^16.2.0",
-        "tsx": "^4.21.0",
-        "typescript": "^5.3.3",
-        "typescript-eslint": "^8.33.1"
+    "obsidian": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "obsidian-mcp",
+        "~/Documents/Obsidian Vault"
+      ]
     }
+  }
 }

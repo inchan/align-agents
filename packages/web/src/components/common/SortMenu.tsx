@@ -6,24 +6,49 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { ArrowDownAZ, Calendar, Clock, GripVertical, ListFilter } from 'lucide-react';
+import { ArrowDownAZ, Calendar, Clock, ListFilter, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export type SortMode = 'a-z' | 'created' | 'updated' | 'custom';
+export type SortType = 'a-z' | 'created' | 'updated';
+export type SortDirection = 'asc' | 'desc';
+
+export interface SortMode {
+    type: SortType;
+    direction: SortDirection;
+}
 
 interface SortMenuProps {
-    currentSort: SortMode;
-    onSortChange: (mode: SortMode) => void;
+    currentSort: SortMode | null;
+    onSortChange: (mode: SortMode | null) => void;
     className?: string;
 }
 
 export function SortMenu({ currentSort, onSortChange, className }: SortMenuProps) {
 
-    const labelMap = {
+    const labelMap: Record<SortType, string> = {
         'a-z': 'A-Z',
         'created': '생성일',
         'updated': '수정일',
-        'custom': 'Custom',
+    };
+
+    const handleSortClick = (type: SortType) => {
+        if (currentSort?.type === type) {
+            // Toggle direction
+            onSortChange({
+                type,
+                direction: currentSort.direction === 'asc' ? 'desc' : 'asc'
+            });
+        } else {
+            // New type, default to desc
+            onSortChange({ type, direction: 'desc' });
+        }
+    };
+
+    const DirectionIcon = ({ type }: { type: SortType }) => {
+        if (!currentSort || currentSort.type !== type) return null;
+        return currentSort.direction === 'asc'
+            ? <ArrowUp className="w-3 h-3 ml-auto" />
+            : <ArrowDown className="w-3 h-3 ml-auto" />;
     };
 
     return (
@@ -31,25 +56,33 @@ export function SortMenu({ currentSort, onSortChange, className }: SortMenuProps
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className={cn("h-8 w-8", className)}>
                     <ListFilter className="w-4 h-4" />
-                    <span className="sr-only">정렬: {labelMap[currentSort]}</span>
+                    <span className="sr-only">정렬: {currentSort ? labelMap[currentSort.type] : '사용자 지정'}</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onSortChange('created')} className={cn(currentSort === 'created' && "bg-accent")}>
+                <DropdownMenuItem
+                    onClick={() => handleSortClick('created')}
+                    className={cn(currentSort?.type === 'created' && "bg-accent")}
+                >
                     <Calendar className="w-4 h-4 mr-2" />
                     <span>생성일</span>
+                    <DirectionIcon type="created" />
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSortChange('updated')} className={cn(currentSort === 'updated' && "bg-accent")}>
+                <DropdownMenuItem
+                    onClick={() => handleSortClick('updated')}
+                    className={cn(currentSort?.type === 'updated' && "bg-accent")}
+                >
                     <Clock className="w-4 h-4 mr-2" />
                     <span>수정일</span>
+                    <DirectionIcon type="updated" />
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSortChange('a-z')} className={cn(currentSort === 'a-z' && "bg-accent")}>
+                <DropdownMenuItem
+                    onClick={() => handleSortClick('a-z')}
+                    className={cn(currentSort?.type === 'a-z' && "bg-accent")}
+                >
                     <ArrowDownAZ className="w-4 h-4 mr-2" />
                     <span>A-Z</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSortChange('custom')} className={cn(currentSort === 'custom' && "bg-accent")}>
-                    <GripVertical className="w-4 h-4 mr-2" />
-                    <span>Custom</span>
+                    <DirectionIcon type="a-z" />
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

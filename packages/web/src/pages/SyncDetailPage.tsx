@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { CheckCircle2, XCircle, AlertTriangle, ArrowLeft, Clock } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
@@ -10,33 +10,17 @@ import type { SyncResultItem } from '../lib/api'
 export function SyncDetailPage() {
     const { syncId } = useParams<{ syncId: string }>()
     const navigate = useNavigate()
-    const [syncDetail, setSyncDetail] = useState<SyncResultItem[] | null>(() => {
-        // Initialize state lazily from sessionStorage
-        if (syncId) {
-            const stored = sessionStorage.getItem(`sync-${syncId}`)
-            if (stored) {
-                try {
-                    return JSON.parse(stored)
-                } catch (e) {
-                    console.error("Failed to parse sync details", e)
-                }
+    const syncDetail = useMemo(() => {
+        if (!syncId) return null;
+        const stored = sessionStorage.getItem(`sync-${syncId}`)
+        if (stored) {
+            try {
+                return JSON.parse(stored) as SyncResultItem[]
+            } catch (e) {
+                console.error("Failed to parse sync details", e)
             }
         }
         return null
-    })
-
-    useEffect(() => {
-        // If syncId changes and we don't have details (e.g. navigation), try to load again?
-        // Actually, the lazy initializer handles the mounting case.
-        // If syncId changes prop, we might need to reset/reload.
-        if (syncId) {
-            const stored = sessionStorage.getItem(`sync-${syncId}`)
-            if (stored) {
-                setSyncDetail(JSON.parse(stored))
-            } else {
-                setSyncDetail(null)
-            }
-        }
     }, [syncId])
 
     if (!syncDetail) {

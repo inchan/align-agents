@@ -13,13 +13,11 @@ export function DashboardPage() {
     const { data: stats, isLoading: statsLoading } = useQuery({
         queryKey: ['statsSummary'],
         queryFn: fetchStatsSummary,
-        refetchInterval: 30000, // Refresh every 30s
     })
 
     const { data: activities, isLoading: activitiesLoading } = useQuery({
         queryKey: ['activityFeed'],
         queryFn: fetchActivityFeed,
-        refetchInterval: 10000, // Refresh every 10s
     })
 
     return (

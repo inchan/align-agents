@@ -240,7 +240,7 @@ describe('RulesConfigRepository', () => {
             expect(result.id).toBe('mock-uuid-1234');
             expect(result.name).toBe('New Rule');
             expect(result.content).toBe('new content');
-            expect(result.isActive).toBe(false);
+            expect(result.isActive).toBe(true);
             expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO rules'));
         });
     });

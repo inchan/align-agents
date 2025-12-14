@@ -298,15 +298,81 @@ packages/cli/src/
 - 조회 시에는 `is_archived = 0` 필터를 적용하여 활성 데이터만 반환합니다.
 - 물리적 삭제(Hard Delete)는 특수한 경우(예: 개인정보 파기 요청, 시스템 정리 스크립트)를 제외하고는 수행하지 않습니다.
 
-## 9. 다음 단계
+## 9. Web UI Layer (2024-12 추가)
+
+### 9.1 기술 스택
+
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Drag & Drop**: @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities
+- **State Management**: TanStack Query (React Query)
+- **Routing**: React Router
+
+### 9.2 주요 컴포넌트 아키텍처
+
+```
+┌─────────────────────────────────────┐
+│         Pages (페이지 레이어)         │
+│  - McpPage, RulesPage, DashboardPage │
+└──────────────┬──────────────────────┘
+               │ uses
+┌──────────────▼──────────────────────┐
+│     Custom Hooks (상태 관리)          │
+│  - useSortableList                   │
+│  - useQuery / useMutation            │
+└──────────────┬──────────────────────┘
+               │ uses
+┌──────────────▼──────────────────────┐
+│     UI Components (재사용 컴포넌트)    │
+│  - SortMenu, DragOverlay             │
+│  - shadcn/ui components              │
+└──────────────┬──────────────────────┘
+               │ uses
+┌──────────────▼──────────────────────┐
+│     Utilities (유틸리티)              │
+│  - getCommonSortableStyle            │
+│  - cn (classname merge)              │
+└─────────────────────────────────────┘
+```
+
+### 9.3 드래그 앤 드롭 패턴
+
+`@dnd-kit` 라이브러리를 사용한 통합 드래그 앤 드롭 시스템:
+
+1. **useSortableList Hook**: 정렬 + 드래그 앤 드롭 통합
+   - `sortMode` nullable 패턴: 드래그 순서 변경 시 정렬 모드를 `null`로 설정
+   - Optimistic Update + Rollback: API 실패 시 이전 상태로 복원
+   - DragOverlay 지원: `activeItem`으로 드래그 중인 아이템 추적
+
+2. **DragOverlay**: 부드러운 드래그 애니메이션
+   - 원본 아이템: `opacity: 0` (숨김)
+   - 드래그 중인 아이템: 별도 레이어에서 렌더링
+   - 스타일: `border-primary/30 bg-muted/60 shadow-sm`
+
+3. **센서 설정**:
+   - PointerSensor: 150ms 딜레이 (클릭 vs 드래그 구분)
+   - TouchSensor: 모바일 지원
+   - KeyboardSensor: 접근성 지원
+
+### 9.4 상태 관리 전략
+
+- **서버 상태**: TanStack Query로 캐싱 및 자동 갱신
+- **UI 상태**: React useState/useReducer
+- **드래그 상태**: useSortableList 훅 내부에서 관리
+
+자세한 내용은 `packages/web/README.md` 참조
+
+## 10. 다음 단계
 
 1. **데이터베이스 마이그레이션 완료**
    - 나머지 Repository를 SQLite로 전환
    - JSON → SQLite 자동 마이그레이션 도구 제공
 
-2. **웹 UI 통합**
+2. ✅ **웹 UI 통합** (완료)
    - React 기반 웹 UI와 백엔드 API 연결
-   - system.css 레트로 디자인 적용 완료
+   - Tailwind CSS + shadcn/ui 디자인 적용
+   - 드래그 앤 드롭 순서 변경 기능 구현
 
 3. **문서화**
    - 사용자 가이드 작성

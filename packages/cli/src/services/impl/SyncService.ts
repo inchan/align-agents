@@ -15,6 +15,16 @@ import { saveVersion } from '../history.js';
 import { createTimestampedBackup } from '../../utils/backup.js';
 import * as TOML from '@iarna/toml';
 
+// Debug 모드 체크 (환경변수)
+const isDebugMode = () => process.env.DEBUG === 'true' || process.env.LOG_LEVEL === 'debug';
+
+const debugLog = (message: string, data?: any) => {
+    if (isDebugMode()) {
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] [SyncService:DEBUG] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+    }
+};
+
 import { McpRepository } from '../../infrastructure/repositories/McpRepository.js';
 import { McpService } from './McpService.js';
 import { RulesService } from './RulesService.js';
@@ -157,15 +167,32 @@ export class SyncService implements ISyncService {
     }
 
     async loadSyncConfig(): Promise<SyncConfig> {
-        return this.syncConfigRepository.load();
+        const repoConfig = await this.syncConfigRepository.load();
+
+        // Load all available tools (including custom ones)
+        const toolRepository = ToolRepository.getInstance();
+        await toolRepository.load();
+        const allTools = toolRepository.getTools();
+
+        // Merge defaults for any tool missing in the repo config
+        const mergedConfig: SyncConfig = { ...repoConfig };
+        for (const tool of allTools) {
+            if (!mergedConfig[tool.id]) {
+                const meta = getToolMetadata(tool.id);
+                const supportsMcp = meta?.supportsMcp ?? true;
+                mergedConfig[tool.id] = { enabled: supportsMcp, servers: null };
+            }
+        }
+
+        return mergedConfig;
     }
 
     async saveSyncConfig(config: SyncConfig): Promise<void> {
         const validatedConfig = validateData(SyncConfigSchema, config, 'Invalid sync config');
 
         for (const toolId of Object.keys(validatedConfig)) {
-            const known = KNOWN_TOOLS.find(t => t.id === toolId);
-            if (!known) {
+            const meta = getToolMetadata(toolId);
+            if (!meta) {
                 throw new ToolNotFoundError(toolId);
             }
         }
@@ -210,6 +237,8 @@ export class SyncService implements ISyncService {
     async syncToolMcp(toolId: string, toolConfigPath: string, serverNames: string[] | null, strategy: SyncStrategy = 'overwrite', backupOptions?: { maxBackups?: number; skipBackup?: boolean }, sourceId?: string): Promise<string[]> {
         let masterMcpServers: Record<string, any> = {};
 
+        debugLog(`syncToolMcp started`, { toolId, toolConfigPath, strategy, sourceId });
+
         if (!sourceId) {
             throw new ValidationError('Source ID (MCP Set ID) is required for synchronization');
         }
@@ -218,7 +247,7 @@ export class SyncService implements ISyncService {
         if (!mcpSet) {
             throw new NotFoundError('MCP Set', sourceId);
         }
-        console.log(`[CLI] Syncing specific MCP Set: ${mcpSet.name} (${mcpSet.id})`);
+        debugLog(`MCP Set found`, { name: mcpSet.name, id: mcpSet.id, itemCount: mcpSet.items?.length || 0 });
 
         const definitions = await this.mcpRepository.getDefinitions();
         const defMap = new Map(definitions.map(d => [d.id, d]));
@@ -400,15 +429,18 @@ export class SyncService implements ISyncService {
         if (deletedKeys.length > 0) {
             console.log(chalk.red(`    - Removed (${deletedKeys.length}): ${deletedKeys.join(', ')}`));
         }
+        // 변경사항이 없으면 스킵 (파일 쓰기 불필요)
         if (addedKeys.length === 0 && deletedKeys.length === 0) {
-            console.log(chalk.gray(`    (No changes made)`));
+            console.log(chalk.yellow(`    ⏭ Already synced - no changes needed`));
+            console.log('');
+            debugLog(`Skipping file write - no changes detected`, { toolId, toolConfigPath });
+            return Object.keys(newMcpServers);
         }
-        console.log(''); // Empty line for spacing
+        console.log('');
 
         const serialized = format === 'toml'
             ? TOML.stringify(toolConfig)
             : JSON.stringify(toolConfig, null, 2);
-
 
         // Drift Detection
         if (this.fs.exists(toolConfigPath)) {
@@ -421,17 +453,21 @@ export class SyncService implements ISyncService {
                     console.warn(`[CLI] ⚠️  WARNING: Drift detected in ${toolConfigPath}`);
                     console.warn(`[CLI]    The file has been modified externally since the last sync.`);
                     console.warn(`[CLI]    Your changes will be overwritten. (Backup created if enabled)`);
+                    debugLog(`Drift detected`, {
+                        toolConfigPath,
+                        currentHash,
+                        lastSyncHash: lastState.lastSyncHash
+                    });
                 }
             } catch (e) {
-                // Ignore read errors during drift check
+                debugLog(`Drift check failed`, { error: (e as Error).message });
             }
         }
 
         this.fs.writeFile(toolConfigPath, serialized);
+        debugLog(`File written`, { toolConfigPath, bytesWritten: serialized.length });
 
         const hash = this.checksumService.calculateStringChecksum(serialized);
-        this.stateService.updateState(toolConfigPath, hash);
-
         this.stateService.updateState(toolConfigPath, hash);
 
         // Save mcpSetId to config

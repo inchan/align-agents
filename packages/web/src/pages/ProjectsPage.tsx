@@ -240,7 +240,6 @@ export function ProjectsPage() {
         getCreatedAt: (item) => (item as any).createdAt || new Date().toISOString(),
         getUpdatedAt: (item) => (item as any).updatedAt || new Date().toISOString(),
         getOrderIndex: (item) => (item as any).orderIndex,
-        storageKey: 'projects-list-sort'
     })
 
     // --- Mutations ---

@@ -41,7 +41,7 @@ export function ActivityFeed({ activities, isLoading }: ActivityFeedProps) {
     };
 
     return (
-        <Card className="col-span-3 h-full flex flex-col">
+        <Card className="activity-feed col-span-3 h-full flex flex-col">
             <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
