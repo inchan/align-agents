@@ -26,7 +26,10 @@ interface UseSortableListProps<T extends SortableItem> {
     getUpdatedAt?: (item: T) => string;
     getOrderIndex?: (item: T) => number | undefined;
     initialSort?: SortMode;
+    enableDragDrop?: boolean;
 }
+
+const DEFAULT_SORT: SortMode = { type: 'created', direction: 'desc' };
 
 export function useSortableList<T extends SortableItem>({
     items,
@@ -35,7 +38,8 @@ export function useSortableList<T extends SortableItem>({
     getCreatedAt = (item) => (item as any).createdAt || '',
     getUpdatedAt = (item) => (item as any).updatedAt || '',
     getOrderIndex = (item) => (item as any).orderIndex,
-    initialSort = 'created',
+    initialSort = DEFAULT_SORT,
+    enableDragDrop = false,
 }: UseSortableListProps<T>) {
     const [sortMode, setSortMode] = useState<SortMode>(initialSort);
 
@@ -49,27 +53,26 @@ export function useSortableList<T extends SortableItem>({
     const sortedItems = useMemo(() => {
         // Create a copy to sort
         const list = [...localItems];
+        const { type, direction } = sortMode;
+        const multiplier = direction === 'asc' ? 1 : -1;
 
-        switch (sortMode) {
+        switch (type) {
             case 'a-z':
-                return list.sort((a, b) => getName(a).localeCompare(getName(b)));
+                return list.sort((a, b) =>
+                    multiplier * getName(a).localeCompare(getName(b))
+                );
             case 'created':
-                return list.sort((a, b) => new Date(getCreatedAt(b)).getTime() - new Date(getCreatedAt(a)).getTime());
+                return list.sort((a, b) =>
+                    multiplier * (new Date(getCreatedAt(a)).getTime() - new Date(getCreatedAt(b)).getTime())
+                );
             case 'updated':
-                return list.sort((a, b) => new Date(getUpdatedAt(b)).getTime() - new Date(getUpdatedAt(a)).getTime());
-            case 'custom':
-                // For custom sort, we rely on the order in localItems
-                // If the items initially came from backend, they might not be sorted by orderIndex unless we ensure it
-                // Ideally backend returns them sorted appropriately or we sort by orderIndex here if valid
-                return list.sort((a, b) => {
-                    const idxA = getOrderIndex(a) ?? Infinity;
-                    const idxB = getOrderIndex(b) ?? Infinity;
-                    return idxA - idxB;
-                });
+                return list.sort((a, b) =>
+                    multiplier * (new Date(getUpdatedAt(a)).getTime() - new Date(getUpdatedAt(b)).getTime())
+                );
             default:
                 return list;
         }
-    }, [localItems, sortMode, getName, getCreatedAt, getUpdatedAt, getOrderIndex]);
+    }, [localItems, sortMode, getName, getCreatedAt, getUpdatedAt]);
 
     // For drag and drop, we need sensors
     // Long press activation: 300ms delay to distinguish from click/scroll
@@ -94,7 +97,7 @@ export function useSortableList<T extends SortableItem>({
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
 
-        if (sortMode !== 'custom') return; // Should not happen if UI handles disabled state
+        if (!enableDragDrop) return;
         if (!over) return;
 
         if (active.id !== over.id) {
@@ -105,8 +108,6 @@ export function useSortableList<T extends SortableItem>({
 
                 // Trigger callback
                 if (onReorder) {
-                    // Update order indices locally if we want to reflect immediately (though array order is enough for UI)
-                    // The backend needs the list of IDs in the new order
                     onReorder(newItems.map(item => item.id));
                 }
 
@@ -121,6 +122,6 @@ export function useSortableList<T extends SortableItem>({
         sortedItems,
         handleDragEnd,
         sensors,
-        isDragEnabled: sortMode === 'custom'
+        isDragEnabled: enableDragDrop
     };
 }

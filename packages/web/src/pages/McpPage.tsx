@@ -501,10 +501,11 @@ export function McpPage() {
             await updateMcpSet(selectedSet.id, { items: newItems })
             queryClient.invalidateQueries({ queryKey: ['mcpSets'] })
         },
-        initialSort: 'custom',
+        initialSort: { type: 'created', direction: 'desc' },
         getName: (item) => item.name,
         getCreatedAt: (item) => item.createdAt,
         getUpdatedAt: (item) => item.updatedAt,
+        enableDragDrop: true,
     })
 
     // --- Sorting & Drag-Drop: Library (Right) ---
@@ -567,7 +568,7 @@ export function McpPage() {
         isDragEnabled: isLibraryDragEnabled
     } = useSortableList({
         items: libraryItemsEnriched,
-        initialSort: 'a-z',
+        initialSort: { type: 'a-z', direction: 'asc' },
         getName: (item) => item.name,
         getCreatedAt: (item) => item.createdAt,
         getUpdatedAt: (item) => item.updatedAt,
