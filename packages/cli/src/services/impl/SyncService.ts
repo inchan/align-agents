@@ -238,8 +238,7 @@ export class SyncService implements ISyncService {
 
         const mcpSet = await this.mcpRepository.getSet(sourceId);
         if (!mcpSet) {
-            console.warn(`[CLI] Warning: MCP Set not found with ID: ${sourceId}. Skipping MCP sync for this tool.`);
-            return [];
+            throw new Error(`MCP Set not found with ID: ${sourceId}`);
         }
         debugLog(`MCP Set found`, { name: mcpSet.name, id: mcpSet.id, itemCount: mcpSet.items?.length || 0 });
 

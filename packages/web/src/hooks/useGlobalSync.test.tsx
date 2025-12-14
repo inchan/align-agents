@@ -9,6 +9,7 @@ import { useTargetStore } from '../store/targetStore'
 vi.mock('../lib/api', () => ({
     fetchTools: vi.fn(),
     fetchMcpSets: vi.fn(),
+    fetchRulesList: vi.fn(),
     executeRulesSync: vi.fn(),
     executeMcpSync: vi.fn(),
     getErrorMessage: (e: any) => e.message

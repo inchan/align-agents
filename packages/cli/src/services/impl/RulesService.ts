@@ -133,8 +133,7 @@ export class RulesService implements IRulesService {
         if (sourceId) {
             const rule = await this.getRule(sourceId);
             if (!rule) {
-                console.warn(`[CLI] Warning: Rule not found with ID: ${sourceId}. Skipping rules sync for this tool.`);
-                return;
+                throw new Error(`Rule not found with ID: ${sourceId}`);
             }
             masterRules = rule.content;
             console.log(`[CLI] Syncing specific rule: ${rule.name} (${rule.id})`);

@@ -38,13 +38,6 @@
     "typescript": "^5.3.3"
   },
   "mcpServers": {
-    "context7": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp@latest"
-      ]
-    },
     "linear": {
       "command": "npx",
       "args": [
@@ -59,11 +52,11 @@
         "other-agents-mcp"
       ]
     },
-    "sequential-thinking": {
+    "desktop-commander": {
       "command": "npx",
       "args": [
         "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
+        "@wonderwhy-er/desktop-commander@latest"
       ]
     },
     "obsidian": {

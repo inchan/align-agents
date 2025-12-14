@@ -51,6 +51,15 @@ vi.mock('../../../infrastructure/repositories/SyncConfigRepository.js', () => ({
     }
 }));
 
+vi.mock('../../../repositories/ToolRepository.js', () => ({
+    ToolRepository: {
+        getInstance: vi.fn(() => ({
+            load: vi.fn(),
+            getTools: vi.fn().mockReturnValue([]),
+        })),
+    }
+}));
+
 // Note: McpService and RulesService are instantiated internally by SyncService
 // We need to mock their dependencies instead
 
