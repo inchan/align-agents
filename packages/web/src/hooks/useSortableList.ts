@@ -56,23 +56,37 @@ export function useSortableList<T extends SortableItem>({
         const { type, direction } = sortMode;
         const multiplier = direction === 'asc' ? 1 : -1;
 
+        // Helper: secondary sort by orderIndex when primary values are equal
+        const withOrderIndex = (primary: number, a: T, b: T): number => {
+            if (primary !== 0) return primary;
+            const idxA = getOrderIndex(a) ?? Infinity;
+            const idxB = getOrderIndex(b) ?? Infinity;
+            return idxA - idxB;
+        };
+
         switch (type) {
             case 'a-z':
                 return list.sort((a, b) =>
-                    multiplier * getName(a).localeCompare(getName(b))
+                    withOrderIndex(multiplier * getName(a).localeCompare(getName(b)), a, b)
                 );
             case 'created':
                 return list.sort((a, b) =>
-                    multiplier * (new Date(getCreatedAt(a)).getTime() - new Date(getCreatedAt(b)).getTime())
+                    withOrderIndex(
+                        multiplier * (new Date(getCreatedAt(a)).getTime() - new Date(getCreatedAt(b)).getTime()),
+                        a, b
+                    )
                 );
             case 'updated':
                 return list.sort((a, b) =>
-                    multiplier * (new Date(getUpdatedAt(a)).getTime() - new Date(getUpdatedAt(b)).getTime())
+                    withOrderIndex(
+                        multiplier * (new Date(getUpdatedAt(a)).getTime() - new Date(getUpdatedAt(b)).getTime()),
+                        a, b
+                    )
                 );
             default:
                 return list;
         }
-    }, [localItems, sortMode, getName, getCreatedAt, getUpdatedAt]);
+    }, [localItems, sortMode, getName, getCreatedAt, getUpdatedAt, getOrderIndex]);
 
     // For drag and drop, we need sensors
     // Long press activation: 300ms delay to distinguish from click/scroll
