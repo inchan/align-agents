@@ -46,7 +46,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { ScrollArea } from '../components/ui/scroll-area'
-// Card and Separator imports removed
 import { EmptyState } from '@/components/shared/empty-state'
 import { LoadingState } from '@/components/shared/loading-state'
 import { useTargetStore } from '../store/targetStore'
@@ -61,7 +60,7 @@ export function SyncPage() {
     const store = useTargetStore()
 
     // --- Data Fetching ---
-    const { data: tools = [], isLoading: isToolsLoading } = useQuery<ToolConfig[]>({
+    const { data: tools = [], isLoading: isToolsLoading, refetch: refetchTools } = useQuery<ToolConfig[]>({
         queryKey: ['tools'],
         queryFn: fetchTools,
     })
@@ -81,11 +80,6 @@ export function SyncPage() {
         queryFn: fetchMcpPool,
     })
 
-    const { refetch: refetchTools } = useQuery<ToolConfig[]>({
-        queryKey: ['tools'],
-        queryFn: fetchTools,
-    })
-
     // Loop protection
     const hasScannedRef = useRef(false);
 
@@ -102,7 +96,6 @@ export function SyncPage() {
         }
     }, [tools.length, isToolsLoading, refetchTools])
 
-    // Sort tools logic
     // --- Types & Constants ---
     interface ToolSet {
         id: string
@@ -150,22 +143,13 @@ export function SyncPage() {
     const [newSetDescription, setNewSetDescription] = useState('')
     const [newSetTools, setNewSetTools] = useState<string[]>([])
 
-    // Collapsible states - Tool Set 확장/축소 상태
-    const [expandedSetIds, setExpandedSetIds] = useState<Set<string>>(new Set())
+    // All Tools 확장/축소 상태
+    const [expandedSetId, setExpandedSetId] = useState<string | null>(null)
 
     const toggleSetExpanded = (setId: string) => {
-        setExpandedSetIds(prev => {
-            const next = new Set(prev)
-            if (next.has(setId)) {
-                next.delete(setId)
-            } else {
-                next.add(setId)
-            }
-            return next
-        })
+        setExpandedSetId(prev => prev === setId ? null : setId)
     }
 
-    // --- Computed Data ---
     // --- Computed Data ---
     const defaultSets: ToolSet[] = useMemo(() => [
         { id: 'all', name: 'All Tools', description: 'Sync with all available tools', isDefault: true, toolIds: tools.filter(t => t.exists).map(t => t.id), type: 'all' as const },
@@ -177,30 +161,30 @@ export function SyncPage() {
     const menuSets = useMemo(() => [...defaultSets, ...customSets], [defaultSets, customSets])
     const activeSet = useMemo(() => menuSets.find(s => s.id === store.activeToolSetId) || defaultSets[0], [menuSets, store.activeToolSetId, defaultSets])
 
-    // Initialize selection
-    // Initialize selection - ensure it runs only when menuSets becomes available/ready
-    // The previous code had `[menuSets.length]` which is odd but valid if we only care about length changes.
-    // Linter suggests adding `store` and `menuSets` entirely.
+    // activeToolSetId 유효성 검증 (삭제된 Set 등 처리)
     useEffect(() => {
+        if (store.activeToolSetId === '') return
         if (menuSets.length > 0 && !menuSets.find(s => s.id === store.activeToolSetId)) {
             store.setActiveToolSetId(menuSets[0]?.id || 'all')
         }
     }, [menuSets, store.activeToolSetId, store])
 
-    // Update global store when active set changes
+    // Set 선택 시 해당 Set의 도구들로 selectedToolIds 동기화
+    // 개별 선택 모드(activeToolSetId === '')에서는 skip
     useEffect(() => {
+        if (store.activeToolSetId === '') return
+
         if (activeSet) {
             const targetIds = activeSet.toolIds.length > 0 ? activeSet.toolIds : ['none']
-            // Deep check to prevent infinite loop
             const isSame = store.selectedToolIds.length === targetIds.length &&
                 store.selectedToolIds.every((id, idx) => id === targetIds[idx]) &&
-                targetIds.every((id, idx) => id === store.selectedToolIds[idx]);
+                targetIds.every((id, idx) => id === store.selectedToolIds[idx])
 
             if (!isSame) {
                 store.setSelectedToolIds(targetIds)
             }
         }
-    }, [activeSet, store.selectedToolIds, store])
+    }, [activeSet, store.selectedToolIds, store, store.activeToolSetId])
 
     // --- Handlers ---
     const handleCreateSet = () => {
@@ -228,14 +212,23 @@ export function SyncPage() {
         }
     }
 
-    // 개별 Tool 체크박스 토글 핸들러
+    // 도구 행 클릭 → 해당 도구만 선택 (exclusive)
+    const handleToolSelect = (toolId: string) => {
+        store.setSelectedToolIds([toolId])
+        store.setActiveToolSetId('')
+    }
+
+    // 체크박스 클릭 → 토글 (복수 선택)
     const handleToolToggle = (toolId: string, checked: boolean) => {
+        if (store.activeToolSetId !== '') {
+            store.setActiveToolSetId('')
+        }
+
         const current = store.selectedToolIds.filter(id => id !== 'all' && id !== 'none')
         const updated = checked
             ? [...current, toolId]
             : current.filter(id => id !== toolId)
         store.setSelectedToolIds(updated.length > 0 ? updated : ['none'])
-        store.setActiveToolSetId('') // Set 전체 선택 해제
     }
 
     const getSetIcon = (set: ToolSet) => {
@@ -330,9 +323,6 @@ export function SyncPage() {
 
     }, [store.activeToolSetId, syncStatus, rules, mcpSets, isMcpSetsLoading, activeSet, store]);
 
-    // Placeholder for watchMode and isSyncing, handleSync, setWatchMode
-
-
     const isLoading = isToolsLoading || isRulesLoading || isMcpSetsLoading
 
     if (isLoading) return <LoadingState text="Loading sync configuration..." />
@@ -414,12 +404,12 @@ export function SyncPage() {
 
             {/* Kanban Board */}
             <div className="flex-1 grid grid-cols-3 gap-6 min-h-0">
-                {/* Column 1: Target Tools */}
+                {/* Column 1: Tools */}
                 <div className="flex flex-col min-h-0 border rounded-xl overflow-hidden bg-card/50">
                     <div className="p-4 border-b bg-muted/40 flex items-center justify-between shrink-0">
                         <h3 className="font-semibold text-sm flex items-center gap-2">
                             <Monitor className="w-4 h-4 text-muted-foreground" />
-                            Target Tools
+                            Tools
                         </h3>
                         <TooltipProvider>
                             <Tooltip>
@@ -438,7 +428,7 @@ export function SyncPage() {
                     <ScrollArea className="flex-1">
                         <div className="p-4 space-y-3">
                             {menuSets.map(set => {
-                                const isExpanded = expandedSetIds.has(set.id)
+                                const isExpanded = expandedSetId === set.id
                                 return (
                                     <div
                                         key={set.id}
@@ -495,27 +485,34 @@ export function SyncPage() {
                                         </div>
                                         {/* 우측 상단 액션 버튼 영역 */}
                                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                            {/* 토글 버튼 */}
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                toggleSetExpanded(set.id)
-                                                            }}
-                                                        >
-                                                            {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>{isExpanded ? '접기' : '펼치기'}</TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
+                                            {/* 토글 버튼 - All Tools만 지원 */}
+                                            {set.id === 'all' && (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    // 확장 시 All Tools 선택 및 전체 도구 체크
+                                                                    if (!isExpanded) {
+                                                                        store.setActiveToolSetId('all')
+                                                                        store.setSelectedToolIds(set.toolIds)
+                                                                    }
+                                                                    toggleSetExpanded(set.id)
+                                                                }}
+                                                            >
+                                                                {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>{isExpanded ? '접기' : '펼치기'}</TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            )}
                                             {/* Eye 아이콘 - 확장 상태에서 숨김 */}
-                                            {!isExpanded && (
+                                            {!isExpanded && set.id !== 'all' && (
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
@@ -583,8 +580,8 @@ export function SyncPage() {
                                                 </TooltipProvider>
                                             )}
                                         </div>
-                                        {/* 확장된 Tool 리스트 영역 */}
-                                        {isExpanded && (
+                                        {/* 확장된 Tool 리스트 영역 - All Tools만 지원 */}
+                                        {isExpanded && set.id === 'all' && (
                                             <div className="border-t px-4 py-3 bg-muted/30 animate-in slide-in-from-top-1 duration-200">
                                                 <div className="text-xs font-medium text-muted-foreground uppercase mb-2">
                                                     Included Tools ({set.toolIds.length})
@@ -596,21 +593,22 @@ export function SyncPage() {
                                                         return (
                                                             <div
                                                                 key={id}
-                                                                className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 text-sm"
-                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 text-sm cursor-pointer"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    handleToolSelect(id)
+                                                                }}
                                                             >
                                                                 <Checkbox
                                                                     id={`tool-checkbox-${id}`}
                                                                     checked={isChecked}
                                                                     onCheckedChange={(checked) => handleToolToggle(id, checked === true)}
+                                                                    onClick={(e) => e.stopPropagation()}
                                                                     className="shrink-0"
                                                                 />
-                                                                <label
-                                                                    htmlFor={`tool-checkbox-${id}`}
-                                                                    className="flex-1 truncate cursor-pointer"
-                                                                >
+                                                                <span className="flex-1 truncate">
                                                                     {tool?.name || id}
-                                                                </label>
+                                                                </span>
                                                                 <span className="text-[10px] text-muted-foreground capitalize">
                                                                     {tool ? getToolType(tool) : ''}
                                                                 </span>
