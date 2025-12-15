@@ -26,7 +26,9 @@ import {
     Trash2,
     Eye,
     Box,
-    Layers
+    Layers,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react'
 
 import {
@@ -148,8 +150,20 @@ export function SyncPage() {
     const [newSetDescription, setNewSetDescription] = useState('')
     const [newSetTools, setNewSetTools] = useState<string[]>([])
 
-    // Collapsible states
+    // Collapsible states - Tool Set 확장/축소 상태
+    const [expandedSetIds, setExpandedSetIds] = useState<Set<string>>(new Set())
 
+    const toggleSetExpanded = (setId: string) => {
+        setExpandedSetIds(prev => {
+            const next = new Set(prev)
+            if (next.has(setId)) {
+                next.delete(setId)
+            } else {
+                next.add(setId)
+            }
+            return next
+        })
+    }
 
     // --- Computed Data ---
     // --- Computed Data ---
@@ -212,6 +226,16 @@ export function SyncPage() {
                 store.setActiveToolSetId('all')
             }
         }
+    }
+
+    // 개별 Tool 체크박스 토글 핸들러
+    const handleToolToggle = (toolId: string, checked: boolean) => {
+        const current = store.selectedToolIds.filter(id => id !== 'all' && id !== 'none')
+        const updated = checked
+            ? [...current, toolId]
+            : current.filter(id => id !== toolId)
+        store.setSelectedToolIds(updated.length > 0 ? updated : ['none'])
+        store.setActiveToolSetId('') // Set 전체 선택 해제
     }
 
     const getSetIcon = (set: ToolSet) => {
@@ -413,118 +437,192 @@ export function SyncPage() {
                     </div>
                     <ScrollArea className="flex-1">
                         <div className="p-4 space-y-3">
-                            {menuSets.map(set => (
-                                <div
-                                    key={set.id}
-                                    onClick={() => store.setActiveToolSetId(set.id)}
-                                    className={cn(
-                                        "group relative px-4 py-3 rounded-lg border transition-all duration-200 cursor-pointer",
-                                        store.activeToolSetId === set.id
-                                            ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
-                                            : "border-border bg-card hover:bg-muted/50 hover:border-primary/30 hover:shadow-sm"
-                                    )}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-center justify-center w-8 h-8 rounded-md bg-background border shadow-sm shrink-0 text-muted-foreground">
-                                            {getSetIcon(set)}
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className={cn("font-medium text-sm truncate", store.activeToolSetId === set.id && "font-semibold")}>
-                                                {set.name}
-                                            </div>
-                                            {set.description && (
-                                                <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                                    {set.description}
+                            {menuSets.map(set => {
+                                const isExpanded = expandedSetIds.has(set.id)
+                                return (
+                                    <div
+                                        key={set.id}
+                                        className={cn(
+                                            "group relative rounded-lg border transition-all duration-200",
+                                            store.activeToolSetId === set.id
+                                                ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                                                : "border-border bg-card hover:bg-muted/50 hover:border-primary/30 hover:shadow-sm"
+                                        )}
+                                    >
+                                        {/* 카드 헤더 영역 */}
+                                        <div
+                                            onClick={() => {
+                                                store.setActiveToolSetId(set.id)
+                                                if (isExpanded) {
+                                                    // 확장 상태일 때 모든 Tool 체크박스 선택
+                                                    store.setSelectedToolIds(set.toolIds)
+                                                }
+                                            }}
+                                            className="px-4 py-3 cursor-pointer"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex items-center justify-center w-8 h-8 rounded-md bg-background border shadow-sm shrink-0 text-muted-foreground">
+                                                    {getSetIcon(set)}
                                                 </div>
-                                            )}
-                                            <div className={cn("flex items-center gap-2", set.description ? "mt-2" : "mt-1")}>
-                                                <div className="relative group/tooltip">
-                                                    <Badge variant="secondary" className="text-[10px] px-1.5 h-5 font-normal bg-background/50 border-input cursor-help">
-                                                        {set.toolIds.length} tools
-                                                    </Badge>
-                                                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover/tooltip:block z-50 w-48 p-2 bg-popover text-popover-foreground text-xs rounded-md border shadow-md animate-in fade-in zoom-in-95 duration-200">
-                                                        <div className="font-semibold mb-1 pb-1 border-b">Included Tools:</div>
-                                                        <ul className="space-y-0.5 mt-1">
-                                                            {set.toolIds.slice(0, 5).map(id => {
-                                                                const tool = tools.find(t => t.id === id);
-                                                                return <li key={id} className="truncate text-muted-foreground">• {tool?.name || id}</li>
-                                                            })}
-                                                            {set.toolIds.length > 5 && <li className="text-muted-foreground italic pl-1">+{set.toolIds.length - 5} more...</li>}
-                                                        </ul>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className={cn("font-medium text-sm truncate", store.activeToolSetId === set.id && "font-semibold")}>
+                                                        {set.name}
+                                                    </div>
+                                                    {set.description && (
+                                                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                                            {set.description}
+                                                        </div>
+                                                    )}
+                                                    <div className={cn("flex items-center gap-2", set.description ? "mt-2" : "mt-1")}>
+                                                        <div className="relative group/tooltip">
+                                                            <Badge variant="secondary" className="text-[10px] px-1.5 h-5 font-normal bg-background/50 border-input cursor-help">
+                                                                {set.toolIds.length} tools
+                                                            </Badge>
+                                                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover/tooltip:block z-50 w-48 p-2 bg-popover text-popover-foreground text-xs rounded-md border shadow-md animate-in fade-in zoom-in-95 duration-200">
+                                                                <div className="font-semibold mb-1 pb-1 border-b">Included Tools:</div>
+                                                                <ul className="space-y-0.5 mt-1">
+                                                                    {set.toolIds.slice(0, 5).map(id => {
+                                                                        const tool = tools.find(t => t.id === id);
+                                                                        return <li key={id} className="truncate text-muted-foreground">• {tool?.name || id}</li>
+                                                                    })}
+                                                                    {set.toolIds.length > 5 && <li className="text-muted-foreground italic pl-1">+{set.toolIds.length - 5} more...</li>}
+                                                                </ul>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <span>
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation()
-                                                                    }}
-                                                                >
-                                                                    <Eye className="w-3 h-3" />
-                                                                </Button>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-80" align="start" onClick={(e) => e.stopPropagation()}>
-                                                                <div className="space-y-3">
-                                                                    <div>
-                                                                        <h4 className="font-medium leading-none mb-1">{set.name}</h4>
-                                                                        <p className="text-sm text-muted-foreground">{set.description}</p>
-                                                                    </div>
-                                                                    <div className="space-y-1">
-                                                                        <div className="text-xs font-medium text-muted-foreground uppercase">Included Tools ({set.toolIds.length})</div>
-                                                                        <div className="max-h-[200px] overflow-y-auto space-y-1 p-2 bg-muted/50 rounded-md border text-sm">
-                                                                            {set.toolIds.map(id => {
-                                                                                const tool = tools.find(t => t.id === id)
-                                                                                return (
-                                                                                    <div key={id} className="flex items-center gap-2">
-                                                                                        <div className="w-1 h-1 rounded-full bg-primary/50" />
-                                                                                        <span className="truncate">{tool?.name || id}</span>
-                                                                                    </div>
-                                                                                )
-                                                                            })}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                    </span>
-                                                </TooltipTrigger>
-                                                <TooltipContent>상세 보기</TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                        {!set.isDefault && (
+                                        {/* 우측 상단 액션 버튼 영역 */}
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                            {/* 토글 버튼 */}
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
                                                             onClick={(e) => {
                                                                 e.stopPropagation()
-                                                                handleDeleteSet(set.id)
+                                                                toggleSetExpanded(set.id)
                                                             }}
                                                         >
-                                                            <Trash2 className="w-3 h-3" />
+                                                            {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                                         </Button>
                                                     </TooltipTrigger>
-                                                    <TooltipContent>삭제</TooltipContent>
+                                                    <TooltipContent>{isExpanded ? '접기' : '펼치기'}</TooltipContent>
                                                 </Tooltip>
                                             </TooltipProvider>
+                                            {/* Eye 아이콘 - 확장 상태에서 숨김 */}
+                                            {!isExpanded && (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span>
+                                                                <Popover>
+                                                                    <PopoverTrigger asChild>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                            }}
+                                                                        >
+                                                                            <Eye className="w-3 h-3" />
+                                                                        </Button>
+                                                                    </PopoverTrigger>
+                                                                    <PopoverContent className="w-80" align="start" onClick={(e) => e.stopPropagation()}>
+                                                                        <div className="space-y-3">
+                                                                            <div>
+                                                                                <h4 className="font-medium leading-none mb-1">{set.name}</h4>
+                                                                                <p className="text-sm text-muted-foreground">{set.description}</p>
+                                                                            </div>
+                                                                            <div className="space-y-1">
+                                                                                <div className="text-xs font-medium text-muted-foreground uppercase">Included Tools ({set.toolIds.length})</div>
+                                                                                <div className="max-h-[200px] overflow-y-auto space-y-1 p-2 bg-muted/50 rounded-md border text-sm">
+                                                                                    {set.toolIds.map(id => {
+                                                                                        const tool = tools.find(t => t.id === id)
+                                                                                        return (
+                                                                                            <div key={id} className="flex items-center gap-2">
+                                                                                                <div className="w-1 h-1 rounded-full bg-primary/50" />
+                                                                                                <span className="truncate">{tool?.name || id}</span>
+                                                                                            </div>
+                                                                                        )
+                                                                                    })}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </PopoverContent>
+                                                                </Popover>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>상세 보기</TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            )}
+                                            {!set.isDefault && (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    handleDeleteSet(set.id)
+                                                                }}
+                                                            >
+                                                                <Trash2 className="w-3 h-3" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>삭제</TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            )}
+                                        </div>
+                                        {/* 확장된 Tool 리스트 영역 */}
+                                        {isExpanded && (
+                                            <div className="border-t px-4 py-3 bg-muted/30 animate-in slide-in-from-top-1 duration-200">
+                                                <div className="text-xs font-medium text-muted-foreground uppercase mb-2">
+                                                    Included Tools ({set.toolIds.length})
+                                                </div>
+                                                <div className="max-h-[200px] overflow-y-auto space-y-1">
+                                                    {set.toolIds.map(id => {
+                                                        const tool = tools.find(t => t.id === id)
+                                                        const isChecked = store.selectedToolIds.includes(id)
+                                                        return (
+                                                            <div
+                                                                key={id}
+                                                                className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 text-sm"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <Checkbox
+                                                                    id={`tool-checkbox-${id}`}
+                                                                    checked={isChecked}
+                                                                    onCheckedChange={(checked) => handleToolToggle(id, checked === true)}
+                                                                    className="shrink-0"
+                                                                />
+                                                                <label
+                                                                    htmlFor={`tool-checkbox-${id}`}
+                                                                    className="flex-1 truncate cursor-pointer"
+                                                                >
+                                                                    {tool?.name || id}
+                                                                </label>
+                                                                <span className="text-[10px] text-muted-foreground capitalize">
+                                                                    {tool ? getToolType(tool) : ''}
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                         {menuSets.length === 0 && (
                             <div className="h-full flex items-center justify-center p-4">

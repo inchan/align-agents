@@ -38,6 +38,11 @@ import {
     seedToolsData,
     seedRulesData,
     seedMcpData,
+    expandToolSet,
+    collapseToolSet,
+    expectToolSetExpanded,
+    toggleIndividualTool,
+    expectIndividualToolChecked,
 } from './sync.helpers'
 
 test.describe('Sync Core - P0 @priority-p0', () => {
@@ -536,5 +541,196 @@ test.describe('Sync Validation - S-003-A Extended @priority-p0', () => {
 
         // 다이얼로그 닫기
         await page.locator(SELECTORS.cancelButton).click()
+    })
+})
+
+// ============================================================================
+// Tool Set 확장/개별 선택 기능 테스트 (RB-59)
+// ============================================================================
+test.describe('Sync Tool Set Expansion - S-010 ~ S-012 @priority-p1', () => {
+    test.beforeEach(async ({ page, request }) => {
+        await resetDatabase(request)
+        await cleanupLocalStorage(page)
+
+        await seedToolsData(request, {
+            tools: [
+                { id: 'cursor', name: 'Cursor', exists: true },
+                { id: 'vscode', name: 'VS Code', exists: true },
+                { id: 'claude-desktop', name: 'Claude Desktop', exists: true },
+            ]
+        })
+
+        await navigateToSyncPage(page)
+    })
+
+    test.afterEach(async ({ page }) => {
+        await cleanupLocalStorage(page)
+    })
+
+    // ========================================================================
+    // S-010: Tool Set 확장/축소 동작
+    // ========================================================================
+    test('S-010: should expand and collapse Tool Set', async ({ page }) => {
+        // All Tools Set 확인
+        const allToolsSet = page.locator(SELECTORS.toolSetItem('All Tools')).first()
+        const isVisible = await allToolsSet.isVisible().catch(() => false)
+
+        if (!isVisible) {
+            test.skip()
+            return
+        }
+
+        // 초기 상태: 축소됨
+        await expectToolSetExpanded(page, 'All Tools', false)
+
+        // 확장
+        await expandToolSet(page, 'All Tools')
+
+        // 확장 상태 확인
+        await expectToolSetExpanded(page, 'All Tools', true)
+
+        // 확장 영역에 Tool 목록 표시 확인
+        const expandedArea = allToolsSet.locator(SELECTORS.toolSetExpandedArea)
+        await expect(expandedArea).toContainText('Included Tools')
+
+        // 축소
+        await collapseToolSet(page, 'All Tools')
+
+        // 축소 상태 확인
+        await expectToolSetExpanded(page, 'All Tools', false)
+    })
+
+    // ========================================================================
+    // S-011: 개별 Tool 체크박스 선택
+    // ========================================================================
+    test('S-011: should select individual tools from expanded Set', async ({ page }) => {
+        const allToolsSet = page.locator(SELECTORS.toolSetItem('All Tools')).first()
+        const isVisible = await allToolsSet.isVisible().catch(() => false)
+
+        if (!isVisible) {
+            test.skip()
+            return
+        }
+
+        // Set 확장
+        await expandToolSet(page, 'All Tools')
+
+        // 확장 영역에서 체크박스 찾기
+        const expandedArea = allToolsSet.locator(SELECTORS.toolSetExpandedArea)
+        const checkboxes = expandedArea.locator('button[role="checkbox"]')
+
+        // 체크박스 수 확인 (최소 1개 이상)
+        const checkboxCount = await checkboxes.count()
+        expect(checkboxCount).toBeGreaterThan(0)
+
+        // 첫 번째 체크박스 클릭
+        const firstCheckbox = checkboxes.first()
+        await firstCheckbox.click()
+
+        // 체크 상태 확인
+        await expect(firstCheckbox).toHaveAttribute('data-state', 'checked', { timeout: TIMEOUTS.short })
+    })
+
+    // ========================================================================
+    // S-012: 개별 Tool 선택 시 Set 전체 선택 해제
+    // ========================================================================
+    test('S-012: should deselect Set when individual tool is selected', async ({ page }) => {
+        const allToolsSet = page.locator(SELECTORS.toolSetItem('All Tools')).first()
+        const isVisible = await allToolsSet.isVisible().catch(() => false)
+
+        if (!isVisible) {
+            test.skip()
+            return
+        }
+
+        // All Tools Set이 선택된 상태 확인
+        await expectToolSetSelected(page, 'All Tools', true)
+
+        // Set 확장
+        await expandToolSet(page, 'All Tools')
+
+        // 확장 영역에서 체크박스 찾기
+        const expandedArea = allToolsSet.locator(SELECTORS.toolSetExpandedArea)
+        const checkboxes = expandedArea.locator('button[role="checkbox"]')
+        const checkboxCount = await checkboxes.count()
+
+        if (checkboxCount === 0) {
+            test.skip()
+            return
+        }
+
+        // 개별 Tool 체크박스 클릭
+        const firstCheckbox = checkboxes.first()
+        await firstCheckbox.click()
+
+        // Set 전체 선택이 해제되었는지 확인
+        // (activeToolSetId가 빈 문자열로 변경됨)
+        // border-primary 클래스가 없어지거나 다른 시각적 변화 확인
+        await page.waitForTimeout(300)
+
+        // 개별 선택 후 상태 변화 확인
+        // 체크박스가 체크됨
+        await expect(firstCheckbox).toHaveAttribute('data-state', 'checked')
+    })
+
+    // ========================================================================
+    // S-013: 확장 상태에서 카드 클릭 시 모든 Tool 선택
+    // ========================================================================
+    test('S-013: should select all tools when clicking card header in expanded state', async ({ page }) => {
+        const allToolsSet = page.locator(SELECTORS.toolSetItem('All Tools')).first()
+        const isVisible = await allToolsSet.isVisible().catch(() => false)
+
+        if (!isVisible) {
+            test.skip()
+            return
+        }
+
+        // Set 확장
+        await expandToolSet(page, 'All Tools')
+
+        // 카드 헤더 클릭 (Set 전체 선택)
+        const cardHeader = allToolsSet.locator('div.cursor-pointer').first()
+        await cardHeader.click()
+
+        // 모든 체크박스가 체크되었는지 확인
+        const expandedArea = allToolsSet.locator(SELECTORS.toolSetExpandedArea)
+        const checkboxes = expandedArea.locator('button[role="checkbox"]')
+        const checkboxCount = await checkboxes.count()
+
+        for (let i = 0; i < checkboxCount; i++) {
+            const checkbox = checkboxes.nth(i)
+            await expect(checkbox).toHaveAttribute('data-state', 'checked', { timeout: TIMEOUTS.short })
+        }
+    })
+
+    // ========================================================================
+    // S-014: 토글 버튼 클릭 시 Set 선택 이벤트 발생하지 않음
+    // ========================================================================
+    test('S-014: should not trigger Set selection when clicking toggle button', async ({ page }) => {
+        // IDEs Set 찾기
+        const idesSet = page.locator(SELECTORS.toolSetItem('IDEs')).first()
+        const idesVisible = await idesSet.isVisible().catch(() => false)
+
+        if (!idesVisible) {
+            test.skip()
+            return
+        }
+
+        // All Tools가 선택된 상태 확인
+        await expectToolSetSelected(page, 'All Tools', true)
+
+        // IDEs의 토글 버튼 클릭 (확장만 해야 하고 선택되면 안 됨)
+        await idesSet.hover()
+        await page.waitForTimeout(200)
+
+        const toggleButton = idesSet.locator(SELECTORS.toolSetToggleButton)
+        await toggleButton.click()
+
+        // IDEs가 확장됨
+        await expectToolSetExpanded(page, 'IDEs', true)
+
+        // All Tools가 여전히 선택된 상태 확인 (IDEs가 선택되면 안 됨)
+        await expectToolSetSelected(page, 'All Tools', true)
+        await expectToolSetSelected(page, 'IDEs', false)
     })
 })

@@ -30,6 +30,9 @@ export const SELECTORS = {
     toolSetItem: (name: string) => `div.group:has-text("${name}")`,
     toolSetDeleteButton: 'button:has(svg.lucide-trash-2)',
     toolSetEyeButton: 'button:has(svg.lucide-eye)',
+    toolSetToggleButton: 'button:has(svg.lucide-chevron-down), button:has(svg.lucide-chevron-up)',
+    toolSetExpandedArea: 'div.border-t:has-text("Included Tools")',
+    toolSetToolCheckbox: (toolName: string) => `label:has-text("${toolName}") ~ input[type="checkbox"], input[type="checkbox"] ~ label:has-text("${toolName}"), div:has(label:has-text("${toolName}")) input[type="checkbox"]`,
 
     // Rules Source 컬럼
     rulesSourceColumn: 'div.rounded-xl:has(h3:has-text("Rules Source"))',
@@ -335,6 +338,89 @@ export async function checkCustomSetExists(page: Page, name: string): Promise<bo
         const sets = JSON.parse(localStorage.getItem('custom-tool-sets') || '[]')
         return sets.some((s: { name: string }) => s.name === setName)
     }, name)
+}
+
+// ============================================================================
+// Tool Set 확장/축소 관련 헬퍼 함수
+// ============================================================================
+
+/**
+ * Tool Set 확장 (토글 버튼 클릭)
+ */
+export async function expandToolSet(page: Page, name: string): Promise<void> {
+    const setItem = page.locator(SELECTORS.toolSetItem(name)).first()
+    await setItem.hover()
+    await page.waitForTimeout(200)
+
+    const toggleButton = setItem.locator(SELECTORS.toolSetToggleButton)
+    await toggleButton.click()
+
+    // 확장 영역이 표시될 때까지 대기
+    await expect(setItem.locator(SELECTORS.toolSetExpandedArea)).toBeVisible({ timeout: TIMEOUTS.short })
+}
+
+/**
+ * Tool Set 축소 (토글 버튼 클릭)
+ */
+export async function collapseToolSet(page: Page, name: string): Promise<void> {
+    const setItem = page.locator(SELECTORS.toolSetItem(name)).first()
+    await setItem.hover()
+    await page.waitForTimeout(200)
+
+    const toggleButton = setItem.locator(SELECTORS.toolSetToggleButton)
+    await toggleButton.click()
+
+    // 확장 영역이 숨겨질 때까지 대기
+    await expect(setItem.locator(SELECTORS.toolSetExpandedArea)).not.toBeVisible({ timeout: TIMEOUTS.short })
+}
+
+/**
+ * Tool Set이 확장되었는지 확인
+ */
+export async function expectToolSetExpanded(page: Page, name: string, isExpanded: boolean = true): Promise<void> {
+    const setItem = page.locator(SELECTORS.toolSetItem(name)).first()
+    const expandedArea = setItem.locator(SELECTORS.toolSetExpandedArea)
+
+    if (isExpanded) {
+        await expect(expandedArea).toBeVisible({ timeout: TIMEOUTS.short })
+    } else {
+        await expect(expandedArea).not.toBeVisible({ timeout: TIMEOUTS.short })
+    }
+}
+
+/**
+ * 확장된 Tool Set 내에서 개별 Tool 체크박스 클릭
+ */
+export async function toggleIndividualTool(page: Page, setName: string, toolName: string): Promise<void> {
+    const setItem = page.locator(SELECTORS.toolSetItem(setName)).first()
+
+    // 확장된 영역 내의 체크박스 찾기
+    const checkbox = setItem.locator(`div.border-t label:has-text("${toolName}")`).locator('..').locator('input[type="checkbox"]')
+
+    // 체크박스가 없으면 label로 클릭
+    const checkboxVisible = await checkbox.isVisible().catch(() => false)
+    if (checkboxVisible) {
+        await checkbox.click()
+    } else {
+        // label 직접 클릭 시도
+        const label = setItem.locator(`div.border-t label:has-text("${toolName}")`)
+        await label.click()
+    }
+}
+
+/**
+ * 개별 Tool 체크박스가 체크되었는지 확인
+ */
+export async function expectIndividualToolChecked(page: Page, setName: string, toolName: string, isChecked: boolean = true): Promise<void> {
+    const setItem = page.locator(SELECTORS.toolSetItem(setName)).first()
+    const checkboxContainer = setItem.locator(`div.border-t div:has(label:has-text("${toolName}"))`)
+    const checkbox = checkboxContainer.locator('button[role="checkbox"], input[type="checkbox"]').first()
+
+    if (isChecked) {
+        await expect(checkbox).toHaveAttribute('data-state', 'checked', { timeout: TIMEOUTS.short })
+    } else {
+        await expect(checkbox).toHaveAttribute('data-state', 'unchecked', { timeout: TIMEOUTS.short })
+    }
 }
 
 // ============================================================================
