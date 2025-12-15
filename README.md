@@ -19,7 +19,7 @@ align-agents는 여러 AI 도구(Claude Desktop, Cursor, Gemini CLI 등)의 설�
 - ✅ **히스토리 관리**: 버전 관리 및 롤백 기능
 - ✅ **자동 초기화**: 첫 실행 시 자동으로 디렉토리 및 파일 생성
 - ✅ **스키마 검증**: Zod를 사용한 설정 파일 유효성 검증
-- ✅ **Web UI**: 브라우저에서 설정 관리 및 동기화 (React + Express)
+- **Web UI**: 브라우저에서 설정 관리 및 동기화 (React + Fastify/Express)
 - ✅ **Codex MCP/TOML 지원**: Codex 설정(`.toml`/`.json`)에 MCP 서버 동기화 가능, 전역 Rules는 `~/.codex/AGENTS.md`
 
 ## 📚 문서
@@ -88,6 +88,18 @@ align-agents는 첫 실행 시 자동으로 초기화됩니다!
 ```
 
 ## 📖 명령어 레퍼런스
+
+### `acs ui`
+
+Web UI를 로컬 서버로 실행합니다. (Fastify 기반)
+
+```bash
+# 기본 포트(3001)로 실행 및 브라우저 열기
+acs ui
+
+# 포트 지정 및 브라우저 열지 않기
+acs ui --port 4000 --no-open
+```
 
 ### `acs init`
 

@@ -49,7 +49,10 @@ export const useTargetStore = create<TargetState>()(
 
             setStrategy: (strategy) => set({ strategy }),
 
-            setSelectedToolIds: (ids) => set({ selectedToolIds: ids }),
+            setSelectedToolIds: (ids) => {
+                console.log('[Store] setSelectedToolIds called:', ids)
+                set({ selectedToolIds: ids })
+            },
             setSelectedRuleId: (id) => set({ selectedRuleId: id }),
             setSelectedMcpSetId: (id) => set({ selectedMcpSetId: id }),
             validateAndClearSelection: (validMcpSetIds, validRuleIds) => {
@@ -74,7 +77,10 @@ export const useTargetStore = create<TargetState>()(
                 }
             },
 
-            setActiveToolSetId: (id) => set({ activeToolSetId: id }),
+            setActiveToolSetId: (id) => {
+                console.log('[Store] setActiveToolSetId called:', id)
+                set({ activeToolSetId: id })
+            },
 
             addCustomProject: (path, name) => set((state) => {
                 // Prevent duplicates

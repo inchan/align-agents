@@ -28,6 +28,31 @@ acs init
 
 ---
 
+## `acs ui`
+
+Web UI를 로컬 서버로 실행합니다. (Fastify 기반)
+
+```bash
+acs ui [options]
+```
+
+**옵션:**
+
+- `--port, -p <number>`: 실행할 포트 번호 (기본값: 3001)
+- `--no-open`: 서버 실행 시 브라우저를 자동으로 열지 않음
+
+**예제:**
+
+```bash
+# 기본 포트(3001)로 실행 및 브라우저 열기
+acs ui
+
+# 4000번 포트로 실행하고 브라우저는 열지 않음
+acs ui -p 4000 --no-open
+```
+
+---
+
 ## `acs scan`
 
 설치된 AI 도구를 스캔하고 Registry를 업데이트합니다.

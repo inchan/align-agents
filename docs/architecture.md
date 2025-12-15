@@ -24,6 +24,8 @@ graph TD
         Git[Git]
         CLI[CLI Interface]
         Web[Web UI]
+        Express[Express Server (Dev/API)]
+        Fastify[Fastify Server (CLI Embedded)]
     end
 
     subgraph "Interface Adapters Layer"
@@ -45,7 +47,10 @@ graph TD
     end
 
     CLI --> Controllers
-    Web --> Controllers
+    Web --> Express
+    Web --> Fastify
+    Express --> Controllers
+    Fastify --> Controllers
     Controllers --> SyncUC
     Controllers --> BackupUC
     SyncUC --> Rules
@@ -302,14 +307,30 @@ packages/cli/src/
 
 ### 9.1 기술 스택
 
-- **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
+- **Frontend**: React 18 + TypeScript + Vite
 - **Styling**: Tailwind CSS + shadcn/ui
-- **Drag & Drop**: @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities
 - **State Management**: TanStack Query (React Query)
-- **Routing**: React Router
+- **Backend Runtime (Dual Mode)**:
+  - **Development / Standalone API**: Express.js (`packages/api`)
+  - **CLI Embedded**: Fastify (`packages/cli` via `acs ui` command)
+- **Drag & Drop**: @dnd-kit
 
-### 9.2 주요 컴포넌트 아키텍처
+### 9.2 런타임 아키텍처 (Dual Runtime)
+
+Web UI는 두 가지 방식으로 실행될 수 있습니다:
+
+1.  **Standalone Mode (`acs ui`)**:
+    - 일반 사용자를 위한 모드입니다.
+    - CLI 패키지 내부에 **Fastify** 서버가 내장되어 있습니다.
+    - 정적 빌드된 Frontend 파일(`packages/web/dist`)을 서빙하고 API 요청을 처리합니다.
+    - 별도의 백엔드 프로세스 없이 단일 명령어로 실행됩니다.
+
+2.  **Development Mode**:
+    - 개발자를 위한 모드입니다.
+    - **Express** 서버(`packages/api`)가 API를 담당하고, **Vite**가 Frontend를 서빙합니다.
+    - HMR(Hot Module Replacement) 등 개발 편의 기능을 활용할 수 있습니다.
+
+### 9.3 주요 컴포넌트 아키텍처
 
 ```
 ┌─────────────────────────────────────┐
