@@ -301,24 +301,6 @@ describe('RulesConfigRepository', () => {
         });
     });
 
-    describe('setActiveRule', () => {
-        it('should activate specified rule and deactivate others', async () => {
-            const mockRun = vi.fn().mockReturnValue({ changes: 1, lastInsertRowid: 0 });
-            mockDb.prepare.mockImplementation(() => ({
-                run: mockRun,
-                get: vi.fn(),
-                all: vi.fn(),
-            }));
-
-            await repository.setActiveRule('2');
-
-            expect(mockDb.transaction).toHaveBeenCalled();
-            const prepareCalls = mockDb.prepare.mock.calls.map((c: [string]) => c[0]);
-            expect(prepareCalls.some((sql: string) => sql.includes('is_active = 0'))).toBe(true);
-            expect(prepareCalls.some((sql: string) => sql.includes('is_active = 1'))).toBe(true);
-        });
-    });
-
     describe('getActiveRule', () => {
         it('should return active rule', async () => {
             const mockRow = { id: '1', name: 'Active Rule', content: 'content', is_active: 1, created_at: '', updated_at: '' };

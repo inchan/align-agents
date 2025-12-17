@@ -36,13 +36,5 @@ router.delete('/:id',
     validateRequest(RuleIdParamsSchema, 'params'),
     controller.deleteRule.bind(controller)
 );
-router.put('/:id/activate',
-    validateRequest(RuleIdParamsSchema, 'params'),
-    controller.setActiveRule.bind(controller)
-);
-router.put('/:id/deactivate',
-    validateRequest(RuleIdParamsSchema, 'params'),
-    controller.deactivateRule.bind(controller)
-);
 
 export default router;

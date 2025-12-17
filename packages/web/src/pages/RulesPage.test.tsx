@@ -12,7 +12,6 @@ vi.mock('../lib/api', () => ({
     createRule: vi.fn(),
     updateRule: vi.fn(),
     deleteRule: vi.fn(),
-    setActiveRule: vi.fn(),
     executeRulesSync: vi.fn(),
     fetchTools: vi.fn()
 }))
@@ -100,27 +99,6 @@ describe.skip('RulesPage Integration', () => {
         await waitFor(() => {
             expect(screen.getByText('Test Rule 1')).toBeInTheDocument()
             expect(screen.getByText('Test Rule 2')).toBeInTheDocument()
-        })
-    })
-
-    it('should show Master badge for active rule', async () => {
-        const mockRules = [
-            {
-                id: '1',
-                name: 'Active Rule',
-                content: '# Content',
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            }
-        ]
-
-        vi.mocked(api.fetchRulesList).mockResolvedValue(mockRules)
-
-        render(<RulesPage />, { wrapper: createWrapper() })
-
-        await waitFor(() => {
-            expect(screen.getByText('Master')).toBeInTheDocument()
         })
     })
 

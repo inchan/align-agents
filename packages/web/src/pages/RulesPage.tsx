@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchRulesList, createRule, updateRule, deleteRule, reorderRules, setActiveRule, deactivateRule, type Rule } from '../lib/api'
+import { fetchRulesList, createRule, updateRule, deleteRule, reorderRules, type Rule } from '../lib/api'
 import { useState, useMemo } from 'react'
 import Editor, { type EditorProps } from '@monaco-editor/react'
 
 import { toast } from 'sonner'
 import { Spinner } from '../components/ui/Spinner'
 import { getErrorMessage, cn, getCommonSortableStyle } from '../lib/utils'
-import { Plus, Trash2, Save, FileText, X, GripVertical, MoreVertical, Power, PowerOff } from 'lucide-react'
+import { Plus, Trash2, Save, FileText, X, GripVertical } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -14,13 +14,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DndContext, closestCenter, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu'
 
 import { TruncateTooltip } from '@/components/ui/truncate-tooltip'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { SortMenu } from '../components/common/SortMenu'
 import { useSortableList } from '../hooks/useSortableList'
-import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/shared/empty-state'
 import { useTheme } from '../components/theme-provider'
 
@@ -30,11 +28,10 @@ interface SortableRuleItemProps {
     setViewedRuleId: (id: string) => void
     setIsEditing: (editing: boolean) => void
     handleDeleteClick: (id: string, name: string) => void
-    handleToggleActive: (id: string, currentIsActive: boolean) => void
     isDragEnabled?: boolean
 }
 
-function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, handleDeleteClick, handleToggleActive, isDragEnabled }: SortableRuleItemProps) {
+function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, handleDeleteClick, isDragEnabled }: SortableRuleItemProps) {
     const {
         attributes,
         listeners,
@@ -48,8 +45,6 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
     })
 
     const style = getCommonSortableStyle(transform, transition, isDragging)
-
-    const isActive = rule.isActive;
 
     return (
         <div
@@ -65,30 +60,17 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
                 "group relative px-3 py-2.5 rounded-lg border transition-all duration-200 cursor-pointer touch-none",
                 viewedRuleId === rule.id
                     ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
-                    : cn(
-                        "border-border hover:shadow-sm",
-                        !isActive
-                            ? "bg-muted/20 hover:bg-muted/40 opacity-70 grayscale-[0.5]"
-                            : "bg-muted/40 hover:bg-muted/60 hover:border-primary/30"
-                    )
+                    : "border-border hover:shadow-sm bg-muted/40 hover:bg-muted/60 hover:border-primary/30"
             )}
         >
             <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                            <TruncateTooltip className={cn("font-medium text-sm transition-colors",
-                                viewedRuleId === rule.id ? "text-primary font-semibold" : "",
-                                !isActive && "text-muted-foreground line-through decoration-muted-foreground/50"
-                            )}>
-                                {rule.name}
-                            </TruncateTooltip>
-                            {!isActive && (
-                                <Badge variant="outline" className="h-4 px-1 text-[9px] text-muted-foreground bg-muted/50 border-muted-foreground/20 font-normal">
-                                    Disabled
-                                </Badge>
-                            )}
-                        </div>
+                        <TruncateTooltip className={cn("font-medium text-sm transition-colors",
+                            viewedRuleId === rule.id ? "text-primary font-semibold" : ""
+                        )}>
+                            {rule.name}
+                        </TruncateTooltip>
                         <div className="text-xs text-muted-foreground mt-0.5">
                             {new Date(rule.updatedAt).toLocaleDateString()}
                         </div>
@@ -96,39 +78,6 @@ function SortableRuleItem({ rule, viewedRuleId, setViewedRuleId, setIsEditing, h
                 </div>
 
                 <div className={cn("flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity", viewedRuleId === rule.id ? "opacity-100" : "")}>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                onClick={(e) => e.stopPropagation()}
-                                title="More options"
-                            >
-                                <MoreVertical className="w-3.5 h-3.5" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleToggleActive(rule.id, isActive)
-                                }}
-                            >
-                                {isActive ? (
-                                    <>
-                                        <PowerOff className="w-4 h-4 mr-2" />
-                                        Deactivate
-                                    </>
-                                ) : (
-                                    <>
-                                        <Power className="w-4 h-4 mr-2" />
-                                        Activate
-                                    </>
-                                )}
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                     <Button
                         variant="ghost"
                         size="icon"
@@ -301,25 +250,6 @@ export function RulesPage() {
         }
     })
 
-    const toggleActiveMutation = useMutation({
-        mutationFn: async ({ id, currentIsActive }: { id: string; currentIsActive: boolean }) => {
-            if (currentIsActive) {
-                return deactivateRule(id)
-            } else {
-                return setActiveRule(id)
-            }
-        },
-        onSuccess: (_, { currentIsActive }) => {
-            queryClient.invalidateQueries({ queryKey: ['rulesList'] })
-            toast.success(currentIsActive ? 'Rule deactivated' : 'Rule activated')
-        },
-        onError: (error) => toast.error(`Failed to toggle: ${getErrorMessage(error)}`)
-    })
-
-    const handleToggleActive = (id: string, currentIsActive: boolean) => {
-        toggleActiveMutation.mutate({ id, currentIsActive })
-    }
-
     const handleCreate = () => {
         if (!newRuleName.trim()) return
         createMutation.mutate({ name: newRuleName, content: newRuleContent })
@@ -400,7 +330,6 @@ export function RulesPage() {
                                                     setViewedRuleId={setViewedRuleId}
                                                     setIsEditing={setIsEditing}
                                                     handleDeleteClick={handleDeleteClick}
-                                                    handleToggleActive={handleToggleActive}
                                                     isDragEnabled={isDragEnabled}
                                                 />
                                             ))}
@@ -419,16 +348,9 @@ export function RulesPage() {
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                                         <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={cn("font-medium text-sm text-primary font-semibold", !activeItem.isActive && "text-muted-foreground line-through decoration-muted-foreground/50")}>
-                                                                    {activeItem.name}
-                                                                </span>
-                                                                {!activeItem.isActive && (
-                                                                    <Badge variant="outline" className="h-4 px-1 text-[9px] text-muted-foreground bg-muted/50 border-muted-foreground/20 font-normal">
-                                                                        Disabled
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
+                                                            <span className="font-medium text-sm text-primary font-semibold">
+                                                                {activeItem.name}
+                                                            </span>
                                                             <div className="text-xs text-muted-foreground mt-0.5">
                                                                 {new Date(activeItem.updatedAt).toLocaleDateString()}
                                                             </div>

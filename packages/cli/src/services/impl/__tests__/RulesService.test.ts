@@ -11,7 +11,6 @@ const { mockRepo, mockSyncLogger } = vi.hoisted(() => ({
         createRule: vi.fn(),
         updateRule: vi.fn(),
         deleteRule: vi.fn(),
-        setActiveRule: vi.fn(),
         load: vi.fn(),
         save: vi.fn(),
         init: vi.fn(),
@@ -133,14 +132,6 @@ describe('RulesService', () => {
             await service.deleteRule('1');
 
             expect(mockRepo.deleteRule).toHaveBeenCalledWith('1');
-        });
-
-        it('should delegate setActiveRule to repository', async () => {
-            mockRepo.setActiveRule.mockResolvedValue(undefined);
-
-            await service.setActiveRule('1');
-
-            expect(mockRepo.setActiveRule).toHaveBeenCalledWith('1');
         });
     });
 
