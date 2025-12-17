@@ -310,9 +310,10 @@ export class McpRepository {
                 throw new Error(`MCP Set not found: ${id}`);
             }
 
-            if (set.is_active) {
-                throw new Error('Cannot delete active MCP set');
-            }
+            // Allow deleting active set (it will be deactivated)
+            // if (set.is_active) {
+            //     throw new Error('Cannot delete active MCP set');
+            // }
 
             // Soft Delete: Archive and deactivate
             const now = new Date().toISOString();
@@ -363,6 +364,7 @@ export class McpRepository {
     }
 
     private insertSetItems(setId: string, items: McpSetItem[]): void {
+        if (!items || !Array.isArray(items)) return;
         const stmt = this.db.prepare(`
             INSERT INTO mcp_set_items (id, set_id, server_id, disabled, order_index, created_at)
             VALUES (?, ?, ?, ?, ?, ?)

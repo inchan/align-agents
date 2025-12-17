@@ -13,8 +13,25 @@ tools: Read, Grep, Glob
 [QUALITY CRITERIA]
 - 원자성: 하나의 책임/기능만 포함해야 한다.
 - 명확성: 모호한 표현이 없어야 한다. (예: 빠르게/좋게/X → 구체 수치/조건으로)
-- 실행 가능성: 구현자가 “다음 액션”을 바로 떠올릴 수 있어야 한다.
+- 실행 가능성: 구현자가 "다음 액션"을 바로 떠올릴 수 있어야 한다.
 - 테스트 가능성: 최소 한 개 이상의 명시적 acceptance criteria가 있어야 한다.
+
+[STRUCTURE DECISION]
+정제 단계에서 이슈 구조를 자동으로 결정한다.
+
+1. Parent-Child 구조 (hierarchical) 조건 - 하나라도 해당 시:
+   - 이슈가 3개 이상 && 동일한 상위 목표/컴포넌트를 공유
+   - targets[].path가 동일한 파일을 2개 이상 이슈가 공유
+   - 모든 이슈가 동일한 파일/모듈 영향 범위를 공유 (suspected_scope 기반)
+   - 사용자 요구사항이 단일 기능 개선/구현을 명시
+
+2. Flat 구조 조건:
+   - 이슈가 2개 이하
+   - 이슈 간 독립적 (targets가 겹치지 않음)
+   - 서로 다른 도메인/컴포넌트 대상 (suspected_scope가 다름)
+   - 사용자가 명시적으로 독립 이슈 생성 요청
+
+3. 구조 결정 시 structure_reason에 판단 근거를 명시한다.
 
 [INPUT]
 - Code Context Mapper 출력(JSON): `issues[]` 배열, 각 이슈에는 `targets[]` 포함 가능
@@ -39,17 +56,39 @@ tools: Read, Grep, Glob
 각 이슈를 정제된 형태로 구조화한다.
 설명 문장은 출력하지 말고 JSON만 출력한다.
 
+상위 에이전트(analyzer, mapper)의 필드를 보존하면서 정제 필드를 추가한다.
+
 {
-"issues": [
-{
-"id": "ISSUE_TMP_1",
-"title": "[분류] 제목",
-"description": "## 📋 배경 (Context)\n...\n\n## 🎯 목표 (Objective)\n...\n\n## 🛠️ 기술 명세 (Technical Specs)\n...\n\n## ✅ 완료 조건 (Acceptance Criteria)\n- [ ] ...",
-"related_files": ["src/api/products.ts"],
-"open_questions": ["..."]
+  "structure": "hierarchical" | "flat",
+  "structure_reason": "구조 결정 이유 (예: '3개 이상 이슈가 동일한 RulesPage.tsx 대상, 단일 기능 개선 목표')",
+  "parent_issue": {
+    "title": "[컴포넌트] 상위 목표 제목",
+    "description": "## 📋 배경\n...\n## 🎯 목표\n...\n## ✅ 완료 조건\n- [ ] 모든 sub-issue 완료",
+    "labels": ["feature"]
+  },
+  "issues": [
+    {
+      "id": "ISSUE_TMP_1",
+      "title": "[분류] 제목 (정제됨)",
+      "description": "## 📋 배경 (Context)\n...\n\n## 🎯 목표 (Objective)\n...\n\n## 🛠️ 기술 명세 (Technical Specs)\n...\n\n## ✅ 완료 조건 (Acceptance Criteria)\n- [ ] ...",
+      "targets": [{ "path": "src/api/products.ts", "reason": "..." }],
+      "suspected_scope": ["backend/api"],
+      "priority": "high" | "medium" | "low",
+      "labels": ["feature", "UX"],
+      "open_questions": ["... (원본 questions 필드 내용 포함)"]
+    }
+  ]
 }
-]
-}
+
+필드 매핑 규칙:
+- targets: code-mapper 출력 그대로 보존
+- suspected_scope: issue-analyzer 출력 그대로 보존
+- questions → open_questions: 이름 변경하여 보존
+- rationale: description에 통합 (별도 필드로 유지 안 함)
+
+참고:
+- structure가 "flat"이면 parent_issue는 null 또는 생략
+- structure가 "hierarchical"이면 parent_issue 필수, issues는 sub-issues로 처리됨
 
 
 [COMMON LOOP PATTERN]

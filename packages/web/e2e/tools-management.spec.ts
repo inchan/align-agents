@@ -1,12 +1,8 @@
 import { test, expect } from '@playwright/test'
-import { TIMEOUTS, expectToast, generateUniqueName } from './mcp/mcp.helpers'
+import { TIMEOUTS, expectToast, generateUniqueName } from './tools/tools.helpers'
 
 test.describe('Tools Management E2E', () => {
-    test.beforeEach(async ({ page, request }) => {
-        // Reset DB to ensure clean state
-        const { resetDatabase } = await import('./mcp/mcp.helpers')
-        await resetDatabase(request)
-
+    test.beforeEach(async ({ page }) => {
         // Navigate to Tools page
         await page.goto('/tools')
         // Wait for hydration/loading

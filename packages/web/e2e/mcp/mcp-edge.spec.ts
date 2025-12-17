@@ -54,7 +54,7 @@ test.describe('MCP Edge Cases - P2 @priority-p2', () => {
     // ========================================================================
     test('M-021: should handle long server names with truncation', async ({ page }) => {
         // 테스트용 Set 생성 및 선택
-        const setName = generateUniqueName('M021-Set')
+        const setName = generateUniqueName('Test-M021-Set')
         await createSet(page, setName)
         await selectSet(page, setName)
 
@@ -71,12 +71,13 @@ test.describe('MCP Edge Cases - P2 @priority-p2', () => {
 
         // UI에서 이름이 truncate 되어 표시되는지 확인
         // truncate 클래스가 적용된 요소 확인
-        const mcpNameElement = page.locator(`h4:has-text("${longMcpName.substring(0, 20)}")`).first()
+        // UI에서 이름이 truncate 되어 표시되는지 확인
+        const mcpNameElement = page.locator(`[data-testid="library-item-${longMcpName}"]`).first()
         await expect(mcpNameElement).toBeVisible()
 
         // Cleanup
         await openLibrary(page)
-        await deleteMcpDef(page, longMcpName).catch(() => {})
+        await deleteMcpDef(page, longMcpName).catch(() => { })
         await page.keyboard.press('Escape')
         await cleanupSet(page, setName)
     })
@@ -86,12 +87,12 @@ test.describe('MCP Edge Cases - P2 @priority-p2', () => {
     // ========================================================================
     test('M-022: should handle multiple arguments correctly', async ({ page }) => {
         // 테스트용 Set 생성 및 선택
-        const setName = generateUniqueName('M022-Set')
+        const setName = generateUniqueName('Test-M022-Set')
         await createSet(page, setName)
         await selectSet(page, setName)
 
         // 많은 args를 가진 MCP 생성
-        const mcpName = generateUniqueName('M022-MCP')
+        const mcpName = generateUniqueName('Test-M022-MCP')
         const manyArgs = '-y @mcp/server --port 3000 --host localhost --debug --verbose --timeout 30000'
         await createMcpDef(page, mcpName, 'npx', manyArgs)
 
@@ -103,7 +104,7 @@ test.describe('MCP Edge Cases - P2 @priority-p2', () => {
         await page.waitForTimeout(500)
 
         // args가 표시되는지 확인 (truncate 될 수 있음)
-        const argsDisplay = page.locator(`div:has(h4:text("${mcpName}")) span`).filter({ hasText: /--/ })
+        const argsDisplay = page.locator(`[data-testid="library-item-${mcpName}"] span`).filter({ hasText: /--/ })
         await expect(argsDisplay.first()).toBeVisible()
 
         // Cleanup
@@ -118,7 +119,7 @@ test.describe('MCP Edge Cases - P2 @priority-p2', () => {
     // ========================================================================
     test('M-023: should handle special characters in server name', async ({ page }) => {
         // 테스트용 Set 생성 및 선택
-        const setName = generateUniqueName('M023-Set')
+        const setName = generateUniqueName('Test-M023-Set')
         await createSet(page, setName)
         await selectSet(page, setName)
 
@@ -181,7 +182,7 @@ test.describe('MCP Error Handling - P1 @priority-p1', () => {
         // 이 테스트는 네트워크 에러를 시뮬레이션하기 어려우므로
         // 에러 처리 UI가 존재하는지만 확인
 
-        const setName = generateUniqueName('M017-Set')
+        const setName = generateUniqueName('Test-M017-Set')
         await createSet(page, setName)
         await selectSet(page, setName)
 
@@ -192,7 +193,8 @@ test.describe('MCP Error Handling - P1 @priority-p1', () => {
         await page.locator(SELECTORS.newMcpButton).click()
 
         // Add New MCP 모달 대기
-        const addMcpModal = page.getByRole('dialog', { name: 'Add New MCP' })
+        // Add New MCP 모달 대기
+        const addMcpModal = page.locator(SELECTORS.mcpModal)
         await expect(addMcpModal).toBeVisible()
 
         // Cancel 버튼이 있어서 에러 시 복구 가능한지 확인
@@ -209,7 +211,7 @@ test.describe('MCP Error Handling - P1 @priority-p1', () => {
     // ========================================================================
     test('M-018: should keep modal open on save failure for retry', async ({ page }) => {
         // 에러 발생 시 모달이 유지되어 재시도 가능한지 확인
-        const setName = generateUniqueName('M018-Set')
+        const setName = generateUniqueName('Test-M018-Set')
         await createSet(page, setName)
         await selectSet(page, setName)
 
@@ -220,7 +222,8 @@ test.describe('MCP Error Handling - P1 @priority-p1', () => {
         await page.locator(SELECTORS.newMcpButton).click()
 
         // Add New MCP 모달 대기
-        const addMcpModal = page.getByRole('dialog', { name: 'Add New MCP' })
+        // Add New MCP 모달 대기
+        const addMcpModal = page.locator(SELECTORS.mcpModal)
         await expect(addMcpModal).toBeVisible()
 
         // 필수 필드 없이 저장 시도 (에러 유발)
@@ -241,7 +244,7 @@ test.describe('MCP Error Handling - P1 @priority-p1', () => {
     // ========================================================================
     test('M-019: should maintain data on delete failure', async ({ page }) => {
         // 삭제 실패 시 원본 데이터가 유지되는지 확인
-        const setName = generateUniqueName('M019-Set')
+        const setName = generateUniqueName('Test-M019-Set')
         await createSet(page, setName)
 
         // 삭제 취소 시 데이터 유지 확인
@@ -270,7 +273,7 @@ test.describe('MCP Accessibility - P2 @priority-p2', () => {
     // ========================================================================
     test('M-028: should support keyboard navigation', async ({ page }) => {
         // Tab 키로 요소 간 이동 가능한지 확인
-        const setName = generateUniqueName('M028-Set')
+        const setName = generateUniqueName('Test-M028-Set')
         await createSet(page, setName)
 
         // Tab 키로 Add Set 버튼에 포커스
@@ -287,7 +290,7 @@ test.describe('MCP Accessibility - P2 @priority-p2', () => {
         await page.keyboard.press('Escape')
 
         // 모달이 닫혔는지 확인
-        await expect(page.locator(SELECTORS.createSetModal)).not.toBeVisible()
+        await expect(page.locator(SELECTORS.createSetModal)).toBeHidden()
 
         // Cleanup
         await cleanupSet(page, setName)
@@ -298,7 +301,7 @@ test.describe('MCP Accessibility - P2 @priority-p2', () => {
     // ========================================================================
     test('M-029: should show tooltip for truncated names', async ({ page }) => {
         // 긴 이름의 Set 생성
-        const longSetName = 'Very Long Set Name That Should Be Truncated In UI'
+        const longSetName = 'Test-Very Long Set Name That Should Be Truncated In UI'
         await createSet(page, longSetName)
 
         // Set 항목에 호버

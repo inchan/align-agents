@@ -47,6 +47,9 @@ import {
 
 test.describe('Sync Core - P0 @priority-p0', () => {
     test.beforeEach(async ({ page, request }) => {
+        // 페이지 먼저 이동하여 Origin 확정 (LocalStorage 접근 위해)
+        await page.goto('/sync')
+
         // Reset DB and cleanup LocalStorage
         await resetDatabase(request)
         await cleanupLocalStorage(page)
@@ -154,7 +157,7 @@ test.describe('Sync Core - P0 @priority-p0', () => {
     // S-003: 커스텀 Tool Set 생성 및 저장
     // ========================================================================
     test('S-003: should create custom Tool Set and persist in LocalStorage', async ({ page }) => {
-        const customSetName = generateUniqueName('Custom Set')
+        const customSetName = generateUniqueName('Test-Custom-Set')
 
         // 다이얼로그 열기
         await openCreateSetDialog(page)
@@ -285,7 +288,7 @@ test.describe('Sync Core - P0 @priority-p0', () => {
             await defaultSetItem.hover()
             await page.waitForTimeout(200)
             const deleteButton = defaultSetItem.locator(SELECTORS.toolSetDeleteButton)
-            await expect(deleteButton).not.toBeVisible()
+            await expect(deleteButton).toBeHidden()
         }
 
         // 커스텀 Set 호버 시 삭제 버튼 표시
@@ -333,14 +336,14 @@ test.describe('Sync Core - P0 @priority-p0', () => {
         await expect(ruleItem.locator(SELECTORS.checkIcon)).toBeVisible({ timeout: TIMEOUTS.short })
 
         // "None" 선택 해제 확인
-        await expect(noneOption.locator(SELECTORS.checkIcon)).not.toBeVisible()
+        await expect(noneOption.locator(SELECTORS.checkIcon)).toBeHidden()
 
         // 다시 "None" 선택
         await noneOption.click()
         await expect(noneOption.locator(SELECTORS.checkIcon)).toBeVisible()
 
         // Rule 선택 해제 확인
-        await expect(ruleItem.locator(SELECTORS.checkIcon)).not.toBeVisible()
+        await expect(ruleItem.locator(SELECTORS.checkIcon)).toBeHidden()
     })
 
     // ========================================================================
@@ -366,7 +369,7 @@ test.describe('Sync Core - P0 @priority-p0', () => {
         await expect(mcpSetItem.locator(SELECTORS.checkIcon)).toBeVisible({ timeout: TIMEOUTS.short })
 
         // "None" 선택 해제 확인
-        await expect(noneOption.locator(SELECTORS.checkIcon)).not.toBeVisible()
+        await expect(noneOption.locator(SELECTORS.checkIcon)).toBeHidden()
 
         // Servers Badge 확인
         const serversBadge = mcpSetItem.locator('span:has-text("Servers")')
@@ -377,12 +380,13 @@ test.describe('Sync Core - P0 @priority-p0', () => {
         await expect(noneOption.locator(SELECTORS.checkIcon)).toBeVisible()
 
         // MCP Set 선택 해제 확인
-        await expect(mcpSetItem.locator(SELECTORS.checkIcon)).not.toBeVisible()
+        await expect(mcpSetItem.locator(SELECTORS.checkIcon)).toBeHidden()
     })
 })
 
 test.describe('Sync Core - P1 @priority-p1', () => {
     test.beforeEach(async ({ page, request }) => {
+        await page.goto('/sync') // Origin 확정
         await resetDatabase(request)
         await cleanupLocalStorage(page)
 
@@ -435,13 +439,14 @@ test.describe('Sync Core - P1 @priority-p1', () => {
             await addButton.click()
             await expect(page.locator(SELECTORS.createSetDialog)).toBeVisible()
             await page.locator(SELECTORS.cancelButton).click()
-            await expect(page.locator(SELECTORS.createSetDialog)).not.toBeVisible()
+            await expect(page.locator(SELECTORS.createSetDialog)).toBeHidden()
         }
     })
 })
 
 test.describe('Sync Core - P2 @priority-p2', () => {
     test.beforeEach(async ({ page, request }) => {
+        await page.goto('/sync') // Origin 확정
         await resetDatabase(request)
         await cleanupLocalStorage(page)
     })
@@ -458,7 +463,6 @@ test.describe('Sync Core - P2 @priority-p2', () => {
         // (seedToolsData를 호출하지 않음)
 
         await page.goto('/sync')
-        await page.waitForLoadState('networkidle')
 
         // 페이지가 로드될 때까지 대기
         await expect(page.locator(SELECTORS.targetToolsHeader)).toBeVisible({ timeout: TIMEOUTS.long })
@@ -477,6 +481,7 @@ test.describe('Sync Core - P2 @priority-p2', () => {
 
 test.describe('Sync Validation - S-003-A Extended @priority-p0', () => {
     test.beforeEach(async ({ page, request }) => {
+        await page.goto('/sync') // Origin 확정
         await resetDatabase(request)
         await cleanupLocalStorage(page)
 
@@ -549,6 +554,7 @@ test.describe('Sync Validation - S-003-A Extended @priority-p0', () => {
 // ============================================================================
 test.describe('Sync Tool Set Expansion - S-010 ~ S-012 @priority-p1', () => {
     test.beforeEach(async ({ page, request }) => {
+        await page.goto('/sync') // Origin 확정
         await resetDatabase(request)
         await cleanupLocalStorage(page)
 

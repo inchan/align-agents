@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test'
 test.describe('MCP Management E2E', () => {
     test.beforeEach(async ({ page }) => {
         // Navigate to MCP page
-        await page.goto('http://localhost:3000/mcp')
-        await page.waitForLoadState('networkidle')
+        await page.goto('/mcp')
+        await expect(page.getByRole('tab', { name: /Definitions/i })).toBeVisible()
     })
 
     test('should display MCP page with tabs', async ({ page }) => {
@@ -237,7 +237,7 @@ test.describe('MCP Management E2E', () => {
 
 test.describe('MCP Page Navigation', () => {
     test('should navigate to MCP page from sidebar', async ({ page }) => {
-        await page.goto('http://localhost:3000')
+        await page.goto('/')
 
         // Click MCP in sidebar (may be "MCP" or "MCP Servers")
         const mcpLink = page.getByRole('link', { name: /MCP/i })
@@ -248,7 +248,7 @@ test.describe('MCP Page Navigation', () => {
     })
 
     test('should switch between Definitions and Sets tabs', async ({ page }) => {
-        await page.goto('http://localhost:3000/mcp')
+        await page.goto('/mcp')
 
         // Click Definitions tab
         await page.getByRole('tab', { name: /Definitions/i }).click()

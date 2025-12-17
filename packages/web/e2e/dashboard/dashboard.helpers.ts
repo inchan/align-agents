@@ -48,5 +48,5 @@ export const MOCK_DATA_EMPTY = {
 
 export async function navigateToDashboardPage(page: Page) {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator(SELECTORS.statsCard).first()).toBeVisible({ timeout: TIMEOUTS.medium });
 }

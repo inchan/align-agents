@@ -7,7 +7,7 @@
  * - 그리드: 도구 카드 목록 (3열 레이아웃)
  * - 카드: 도구 이름, 설정 경로, 상태 인디케이터, 더보기 메뉴
  */
-import { Page, expect, APIRequestContext } from '@playwright/test'
+import { Page, expect } from '@playwright/test'
 
 // ============================================================================
 // 상수 정의
@@ -119,7 +119,6 @@ export function generateUniqueName(prefix: string = 'Test'): string {
  */
 export async function navigateToToolsPage(page: Page): Promise<void> {
     await page.goto('/tools')
-    await page.waitForLoadState('networkidle')
     // 페이지 타이틀이 로드될 때까지 대기
     await expect(page.locator(SELECTORS.pageTitle)).toBeVisible({ timeout: TIMEOUTS.medium })
 }
@@ -128,7 +127,8 @@ export async function navigateToToolsPage(page: Page): Promise<void> {
  * 도구 카드 개수 확인
  */
 export async function getToolCardCount(page: Page): Promise<number> {
-    await page.waitForTimeout(500) // DOM 안정화 대기
+    // 로딩이 끝날 때까지 대기
+    await expect(page.locator(SELECTORS.loadingSkeleton)).toHaveCount(0, { timeout: TIMEOUTS.medium })
     return await page.locator(SELECTORS.toolCard).count()
 }
 
@@ -347,75 +347,4 @@ export async function expectDropdownMenuItem(
     }
 }
 
-// ============================================================================
-// API Helpers (Data Isolation)
-// ============================================================================
-
-const API_BASE_URL = 'http://localhost:3001'
-
-/**
- * Reset Database via API
- */
-export async function resetDatabase(request: APIRequestContext): Promise<void> {
-    const response = await request.post(`${API_BASE_URL}/api/__test__/reset`)
-    expect(response.ok(), 'Failed to reset database').toBeTruthy()
-}
-
-/**
- * Seed Tools Data via API
- */
-export async function seedToolsData(request: APIRequestContext, data: {
-    tools?: Array<{
-        id: string
-        name: string
-        configPath?: string
-        rulesPath?: string
-        mcpPath?: string
-        description?: string
-        exists?: boolean
-    }>
-}): Promise<void> {
-    const response = await request.post(`${API_BASE_URL}/api/__test__/seed/tools`, {
-        data: data
-    })
-    expect(response.ok(), 'Failed to seed Tools data').toBeTruthy()
-}
-
-/**
- * Get Tools via API
- */
-export async function getToolsViaApi(request: APIRequestContext): Promise<Array<{
-    id: string
-    name: string
-    configPath: string
-    exists: boolean
-}>> {
-    const response = await request.get(`${API_BASE_URL}/api/tools`)
-    expect(response.ok(), 'Failed to get tools').toBeTruthy()
-    return response.json()
-}
-
-/**
- * Add Tool via API
- */
-export async function addToolViaApi(request: APIRequestContext, data: {
-    name: string
-    configPath?: string
-    rulesPath?: string
-    mcpPath?: string
-    description?: string
-}): Promise<{ id: string }> {
-    const response = await request.post(`${API_BASE_URL}/api/tools`, {
-        data: data
-    })
-    expect(response.ok(), 'Failed to add tool via API').toBeTruthy()
-    return response.json()
-}
-
-/**
- * Delete Tool via API
- */
-export async function deleteToolViaApi(request: APIRequestContext, id: string): Promise<void> {
-    const response = await request.delete(`${API_BASE_URL}/api/tools/${id}`)
-    expect(response.ok(), 'Failed to delete tool via API').toBeTruthy()
-}
+// API Helpers removed per user request for pure UI testing

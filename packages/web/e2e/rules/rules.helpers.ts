@@ -87,7 +87,7 @@ export function generateUniqueName(prefix: string = 'Test Rule'): string {
  */
 export async function navigateToRulesPage(page: Page): Promise<void> {
     await page.goto('/rules')
-    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('heading', { name: 'Rules', exact: true, level: 3 })).toBeVisible({ timeout: TIMEOUTS.medium })
 }
 
 /**
@@ -153,6 +153,7 @@ export async function createRule(
  */
 export async function selectRule(page: Page, name: string): Promise<void> {
     const ruleItem = page.locator(SELECTORS.ruleItem(name)).first()
+    await expect(ruleItem).not.toHaveAttribute('aria-disabled', 'true', { timeout: TIMEOUTS.medium })
     await ruleItem.click()
     // 선택 상태 확인 (border-primary 클래스)
     await expect(ruleItem).toHaveClass(/border-primary/, { timeout: TIMEOUTS.short })

@@ -175,7 +175,7 @@ test.describe('Rules Edge Cases - P1 @priority-p1', () => {
 
         // 페이지 새로고침
         await page.reload()
-        await page.waitForLoadState('networkidle')
+        await expect(page.locator(SELECTORS.addButton)).toBeVisible()
 
         // 자동으로 Rule이 선택되어 Edit 버튼이 보이는지 확인
         // (Active Rule 또는 첫 번째 Rule)
@@ -220,7 +220,7 @@ test.describe('Rules Edge Cases - P1 @priority-p1', () => {
 
         // 페이지 새로고침
         await page.reload()
-        await page.waitForLoadState('networkidle')
+        await expect(page.locator(SELECTORS.addButton)).toBeVisible()
 
         // 순서가 원래대로 복원되었는지 확인 (알려진 제한사항)
         // 현재 구현에서는 서버에 순서가 저장되지 않으므로 초기화됨

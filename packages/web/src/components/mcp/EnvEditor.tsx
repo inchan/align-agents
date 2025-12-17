@@ -21,17 +21,35 @@ export function EnvEditor({ value, onChange }: EnvEditorProps) {
   const [entries, setEntries] = useState<EnvEntry[]>([]);
 
   // Initialize entries from value prop
+  // Initialize entries from value prop
   useEffect(() => {
-    if (value && Object.keys(value).length > 0) {
-      setEntries(
-        Object.entries(value).map(([key, val]) => ({
-          key,
-          value: val,
-          visible: false
-        }))
-      );
+    // Convert entries to object to compare
+    const currentEntriesObj = entries.reduce((acc, entry) => {
+      if (entry.key) acc[entry.key] = entry.value;
+      return acc;
+    }, {} as Record<string, string>);
+
+    // Use JSON stringify for simple deep comparison (keys order might matter but usually consistent enough for this simple case if derived similarly)
+    // Actually, comparing key-value pairs is safer.
+
+    if (value) {
+      const hasChanges = Object.entries(value).some(([k, v]) => currentEntriesObj[k] !== v) ||
+        Object.keys(value).length !== Object.keys(currentEntriesObj).length;
+
+      if (!hasChanges && entries.length > 0) return;
+
+      if (Object.keys(value).length > 0) {
+        setEntries(
+          Object.entries(value).map(([key, val]) => ({
+            key,
+            value: val,
+            visible: false
+          }))
+        );
+      } else if (entries.length === 0) {
+        setEntries([{ key: '', value: '', visible: true }]);
+      }
     } else if (entries.length === 0) {
-      // Start with one empty entry if no existing values
       setEntries([{ key: '', value: '', visible: true }]);
     }
   }, [value]);
@@ -99,6 +117,7 @@ export function EnvEditor({ value, onChange }: EnvEditorProps) {
           size="sm"
           onClick={handleAdd}
           className="h-7"
+          data-testid="add-env-var-button"
         >
           <Plus className="w-3 h-3 mr-1" />
           Add Variable
@@ -129,6 +148,7 @@ export function EnvEditor({ value, onChange }: EnvEditorProps) {
                           "font-mono text-sm",
                           hasError && "border-destructive focus-visible:ring-destructive"
                         )}
+                        data-testid={`env-key-input-${index}`}
                       />
                     </div>
                     <div className="relative">
@@ -138,6 +158,7 @@ export function EnvEditor({ value, onChange }: EnvEditorProps) {
                         value={entry.value}
                         onChange={(e) => handleValueChange(index, e.target.value)}
                         className="font-mono text-sm pr-8"
+                        data-testid={`env-value-input-${index}`}
                       />
                       <TooltipProvider>
                         <Tooltip>

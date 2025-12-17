@@ -78,7 +78,7 @@ test.describe('Rules Accessibility - P2 @priority-p2', () => {
 
         // 페이지 새로고침하여 초기 상태로
         await page.reload()
-        await page.waitForLoadState('networkidle')
+        await expect(page.locator(SELECTORS.addButton)).toBeVisible()
 
         // Tab 키로 요소 탐색
         await page.keyboard.press('Tab')

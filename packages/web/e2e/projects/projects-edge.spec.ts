@@ -8,18 +8,14 @@
 import { test, expect } from '@playwright/test'
 import {
     SELECTORS,
-    TIMEOUTS,
     TEST_DATA,
     generateUniqueName,
     navigateToProjectsPage,
-    selectGlobalSettings,
     selectProject,
     createProject,
-    deleteProject,
-    expectToast,
+    cancelDeleteProject,
     expectProjectInList,
     cleanupProject,
-    closeCreateModal,
 } from './projects.helpers'
 
 test.describe('Projects Edge Cases - P2 @priority-p2', () => {
@@ -142,7 +138,7 @@ test.describe('Projects Accessibility - P2 @priority-p2', () => {
         await expect(page.locator(SELECTORS.createModal)).toBeVisible()
 
         await page.keyboard.press('Escape')
-        await expect(page.locator(SELECTORS.createModal)).not.toBeVisible()
+        await expect(page.locator(SELECTORS.createModal)).toBeHidden()
 
         // Cleanup
         await cleanupProject(page, projectName)

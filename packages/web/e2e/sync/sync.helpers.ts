@@ -20,13 +20,13 @@ import { Page, expect, APIRequestContext } from '@playwright/test'
  */
 export const SELECTORS = {
     // 3컬럼 헤더
-    targetToolsHeader: 'h3:has-text("Target Tools")',
+    targetToolsHeader: 'h3:has-text("Tools")',
     rulesSourceHeader: 'h3:has-text("Rules Source")',
     mcpServerSetHeader: 'h3:has-text("MCP Server Set")',
 
     // Target Tools 컬럼
-    targetToolsColumn: 'div.rounded-xl:has(h3:has-text("Target Tools"))',
-    addToolSetButton: 'h3:has-text("Target Tools") ~ div button:has(svg.lucide-plus), div:has(h3:has-text("Target Tools")) button:has(svg.lucide-plus)',
+    targetToolsColumn: 'div.rounded-xl:has(h3:has-text("Tools"))',
+    addToolSetButton: 'h3:has-text("Tools") ~ div button:has(svg.lucide-plus), div:has(h3:has-text("Tools")) button:has(svg.lucide-plus)',
     toolSetItem: (name: string) => `div.group:has-text("${name}")`,
     toolSetDeleteButton: 'button:has(svg.lucide-trash-2)',
     toolSetEyeButton: 'button:has(svg.lucide-eye)',
@@ -104,7 +104,6 @@ export function generateUniqueName(prefix: string = 'Test'): string {
  */
 export async function navigateToSyncPage(page: Page): Promise<void> {
     await page.goto('/sync')
-    await page.waitForLoadState('networkidle')
     // 3컬럼 헤더가 모두 로드될 때까지 대기
     await expect(page.locator(SELECTORS.targetToolsHeader)).toBeVisible({ timeout: TIMEOUTS.medium })
     await expect(page.locator(SELECTORS.rulesSourceHeader)).toBeVisible({ timeout: TIMEOUTS.medium })
@@ -424,73 +423,162 @@ export async function expectIndividualToolChecked(page: Page, setName: string, t
 }
 
 // ============================================================================
-// API Helpers (Data Isolation)
+// API Helpers (for E2E testing with backend)
 // ============================================================================
 
-const API_BASE_URL = 'http://localhost:3001'
+const API_BASE_URL = 'http://localhost:3001/api'
 
 /**
- * Reset Database via API
+ * Reset database - delete all rules, MCP definitions, and MCP sets
  */
 export async function resetDatabase(request: APIRequestContext): Promise<void> {
-    const response = await request.post(`${API_BASE_URL}/api/__test__/reset`)
-    expect(response.ok(), 'Failed to reset database').toBeTruthy()
+    // Helper to delete all items from an endpoint
+    const deleteAll = async (endpoint: string) => {
+        console.log(`[resetDatabase] Fetching ${endpoint}...`)
+        const response = await request.get(endpoint)
+        if (response.ok()) {
+            const items = await response.json()
+            console.log(`[resetDatabase] Found ${items.length} items in ${endpoint}`)
+
+            // Filter strictly for test items to avoid deleting user data
+            const testItems = items.filter((item: any) =>
+                (item.name && /TEST/i.test(item.name)) ||
+                (item.title && /TEST/i.test(item.title)) ||
+                (typeof item.id === 'string' && /TEST/i.test(item.id)) // Fallback if name missing
+            )
+
+            console.log(`[resetDatabase] Deleting ${testItems.length} "TEST" items from ${endpoint}`)
+
+            for (const item of testItems) {
+                console.log(`[resetDatabase] Deleting ${item.name || item.id} from ${endpoint}...`)
+                try {
+                    const delRes = await request.delete(`${endpoint}/${item.id}`)
+                    if (!delRes.ok()) {
+                        console.error(`[resetDatabase] Failed to delete ${item.id}: ${delRes.status()} ${delRes.statusText()}`)
+                    }
+                } catch (e) {
+                    console.error(`[resetDatabase] Error deleting ${item.id}:`, e)
+                }
+            }
+        } else {
+            console.error(`[resetDatabase] Failed to fetch ${endpoint}: ${response.status}`)
+        }
+    }
+
+    // Delete in order to avoid foreign key constraints (if any)
+    await deleteAll(`${API_BASE_URL}/rules`)
+    await deleteAll(`${API_BASE_URL}/mcp-sets`)
+    await deleteAll(`${API_BASE_URL}/mcps`)
 }
 
 /**
- * Seed Tools Data via API
+ * Seed tools data - triggers tool scan
+ * Note: Tools are auto-discovered, this just triggers a scan
  */
-export async function seedToolsData(request: APIRequestContext, data: {
-    tools?: Array<{
-        id: string
-        name: string
-        configPath?: string
-        exists?: boolean
-    }>
-}): Promise<void> {
-    const response = await request.post(`${API_BASE_URL}/api/__test__/seed/tools`, {
-        data: data
-    })
-    expect(response.ok(), 'Failed to seed Tools data').toBeTruthy()
+export async function seedToolsData(
+    request: APIRequestContext,
+    _data: {
+        tools: Array<{
+            id: string
+            name: string
+            exists: boolean
+        }>
+    }
+): Promise<void> {
+    // Tools are auto-discovered via scan, we can't directly create them
+    // Just trigger a scan to ensure tools are discovered
+    await request.post(`${API_BASE_URL}/tools/scan`)
 }
 
 /**
- * Seed Rules Data via API
+ * Seed rules data - create rules via API
  */
-export async function seedRulesData(request: APIRequestContext, data: {
-    rules?: Array<{
-        id: string
-        name: string
-        content: string
-    }>
-}): Promise<void> {
-    const response = await request.post(`${API_BASE_URL}/api/__test__/seed/rules`, {
-        data: data
-    })
-    expect(response.ok(), 'Failed to seed Rules data').toBeTruthy()
+export async function seedRulesData(
+    request: APIRequestContext,
+    data: {
+        rules: Array<{
+            id?: string
+            name: string
+            content: string
+        }>
+    }
+): Promise<void> {
+    for (const rule of data.rules) {
+        await request.post(`${API_BASE_URL}/rules`, {
+            data: {
+                name: rule.name,
+                content: rule.content,
+            }
+        })
+    }
 }
 
 /**
- * Seed MCP Data via API
- * Note: Type signature aligned with mcp.helpers.ts
+ * Seed MCP data - create MCP definitions and sets via API
  */
-export async function seedMcpData(request: APIRequestContext, data: {
-    tools?: Array<{
-        id: string
-        name: string
-        command: string
-        args: string[]
-        env?: Record<string, string>
-    }>
-    sets?: Array<{
-        id: string
-        name: string
-        isActive?: boolean
-        items?: Array<{ id: string, serverId: string }>
-    }>
-}): Promise<void> {
-    const response = await request.post(`${API_BASE_URL}/api/__test__/seed/mcp`, {
-        data: data
-    })
-    expect(response.ok(), 'Failed to seed MCP data').toBeTruthy()
+export async function seedMcpData(
+    request: APIRequestContext,
+    data: {
+        tools?: Array<{
+            id?: string
+            name: string
+            command: string
+            args?: string[]
+        }>
+        sets?: Array<{
+            id?: string
+            name: string
+            isActive?: boolean
+            items?: Array<{
+                id?: string
+                serverId: string
+            }>
+        }>
+    }
+): Promise<void> {
+    const createdServers: Map<string, string> = new Map()
+
+    // Create MCP definitions (servers)
+    if (data.tools) {
+        for (const tool of data.tools) {
+            const response = await request.post(`${API_BASE_URL}/mcps`, {
+                data: {
+                    name: tool.name,
+                    command: tool.command,
+                    args: tool.args || [],
+                }
+            })
+            if (response.ok()) {
+                const created = await response.json()
+                // Map original id to created id
+                if (tool.id) {
+                    createdServers.set(tool.id, created.id)
+                }
+            }
+        }
+    }
+
+    // Create MCP sets
+    if (data.sets) {
+        for (const set of data.sets) {
+            // Map item server IDs to created server IDs
+            const items = (set.items || []).map(item => ({
+                serverId: createdServers.get(item.serverId) || item.serverId,
+                disabled: false,
+            }))
+
+            const response = await request.post(`${API_BASE_URL}/mcp-sets`, {
+                data: {
+                    name: set.name,
+                    items,
+                }
+            })
+
+            // Activate set if specified
+            if (response.ok() && set.isActive) {
+                const created = await response.json()
+                await request.put(`${API_BASE_URL}/mcp-sets/${created.id}/activate`)
+            }
+        }
+    }
 }

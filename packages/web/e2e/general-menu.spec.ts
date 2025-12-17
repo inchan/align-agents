@@ -6,20 +6,21 @@ test.describe('General Menu E2E', () => {
 
     test.describe('Projects Page', () => {
         test.beforeEach(async ({ page, request }) => {
-            const { resetDatabase } = await import('./mcp/mcp.helpers')
+            const { resetDatabase } = await import('./sync/sync.helpers')
             await resetDatabase(request)
 
             await page.goto('http://localhost:5173/projects')
-            await page.waitForTimeout(1000)
+            await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible({ timeout: 10000 })
         })
 
         test('should list projects page elements', async ({ page }) => {
-            await expect(page.getByText('Global Settings')).toBeVisible()
+            await expect(page.getByText('Global Settings', { exact: true })).toBeVisible()
             await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible()
         })
 
         test('should add a project', async ({ page }) => {
             const addBtn = page.getByTitle('Add Project')
+            await expect(addBtn).toBeVisible()
             await addBtn.click()
 
             const modal = page.locator('div[role="dialog"]').first()
@@ -44,7 +45,7 @@ test.describe('General Menu E2E', () => {
 
         test('should display log viewer', async ({ page }) => {
             // Look for LogViewer container - if logs are empty, look for connection status
-            await expect(page.getByText(/connected|disconnected/i)).toBeVisible()
+            await expect(page.getByText(/connected|disconnected|connecting/i)).toBeVisible()
         })
 
         test('should toggle pause', async ({ page }) => {

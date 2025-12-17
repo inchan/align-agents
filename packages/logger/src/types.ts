@@ -56,14 +56,27 @@ export interface LogContext {
 }
 
 export interface LogEntry {
+    id: string; // 고유 ID
+    timestamp: string; // ISO 형식 타임스탬프
     level: LogLevel;
-    time: number;
     msg: string;
     name?: string;
     requestId?: string;
+    category?: string; // 카테고리 (예: "CLI")
     [key: string]: unknown;
 }
 
 // Pino Logger를 그대로 사용
 export type Logger = PinoLogger;
 export type AlignAgentsLogger = PinoLogger;
+
+export interface SyncLogEntry {
+    type: 'rules' | 'mcp';
+    toolId: string;
+    toolName: string;
+    status: 'success' | 'error' | 'skipped' | 'not-supported';
+    targetPath?: string;
+    message?: string;
+    strategy?: string;
+}
+

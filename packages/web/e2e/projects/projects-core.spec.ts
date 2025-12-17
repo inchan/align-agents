@@ -114,7 +114,7 @@ test.describe('Projects Core - P0 @priority-p0', () => {
         await page.locator(SELECTORS.cancelButton).click()
 
         // 모달 닫힘 확인
-        await expect(page.locator(SELECTORS.createModal)).not.toBeVisible()
+        await expect(page.locator(SELECTORS.createModal)).toBeHidden()
     })
 
     // ========================================================================
@@ -138,7 +138,7 @@ test.describe('Projects Core - P0 @priority-p0', () => {
         await expectToast(page, /created|success/i)
 
         // 모달 닫힘 확인
-        await expect(page.locator(SELECTORS.createModal)).not.toBeVisible()
+        await expect(page.locator(SELECTORS.createModal)).toBeHidden()
 
         // 목록에 추가 확인
         await expectProjectInList(page, projectName, true)

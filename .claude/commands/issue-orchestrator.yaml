@@ -34,16 +34,34 @@ workflow: |
 
   4. 이슈 정제/검증 (Issue Refiner 호출):
      - Mapper 출력 JSON을 Refiner에게 전달한다.
-     - Refiner가 정제된 이슈 목록을 반환한다.
+     - Refiner가 정제된 이슈 목록과 함께 구조(structure) 결정을 반환한다.
+     - Refiner 출력 형식:
+       {
+         "structure": "hierarchical" | "flat",
+         "structure_reason": "판단 근거",
+         "parent_issue": { ... },  // hierarchical일 때만
+         "issues": [ ... ]
+       }
 
   5. 사용자 확인:
-     - `open_questions`가 있으면 사용자에게 확인을 요청한다.
-     - 확인 후 필요시 이슈 내용을 수정한다.
+     - Refiner가 결정한 `structure`와 `structure_reason`을 사용자에게 보여준다.
+     - `open_questions`가 있으면 함께 확인을 요청한다.
+     - 사용자가 구조 변경을 요청하면 반영한다.
 
-  6. Linear 이슈 등록:
-     - 사용자가 승인하면 `mcp__linear__create_issue`를 호출하여 각 이슈를 Linear에 등록한다.
-     - 프로젝트 결정: `--project` 옵션이 있으면 사용, 없으면 `list_projects` 조회 후 사용자에게 선택 요청
-     - 생성된 이슈 ID 목록을 반환한다.
+  6. 프로젝트 자동 결정:
+     - 우선순위대로 Linear 프로젝트를 매칭한다:
+       1) 현재 폴더명 (`basename $PWD`)
+       2) package.json의 `name` 필드
+       3) README.md에서 프로젝트명 추출 (첫 번째 # 헤더)
+     - `list_projects`로 Linear 프로젝트 목록을 조회하여 위 이름과 매칭한다.
+     - 매칭되는 프로젝트가 없으면 사용자에게 선택을 요청한다.
+
+  7. Linear 이슈 등록:
+     - `mcp__linear__create_issue`를 호출하여 이슈를 Linear에 등록한다.
+     - 구조별 등록 방식 (Refiner의 structure 출력 기반):
+       a) hierarchical: parent_issue 먼저 생성 → 반환된 ID를 parentId로 사용하여 issues 배열의 항목들을 sub-issue로 생성
+       b) flat: issues 배열의 모든 이슈를 독립적으로 생성
+     - 생성된 이슈 ID 목록과 구조를 반환한다.
 
 loop_rules: |
   - 각 단계 후, 산출물을 한 줄로 요약하고,

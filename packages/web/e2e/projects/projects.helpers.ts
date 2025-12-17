@@ -7,7 +7,7 @@
  * - 우측: 선택된 항목의 상세 정보
  * - 모달: Project 생성/편집
  */
-import { Page, expect, APIRequestContext } from '@playwright/test'
+import { Page, expect } from '@playwright/test'
 
 // ============================================================================
 // 상수 정의
@@ -21,7 +21,7 @@ export const SELECTORS = {
     // 좌측 패널 - 목록
     listPanel: 'div.w-80.flex-shrink-0',
     listHeader: 'h3:has-text("Projects")',
-    scanButton: 'button[title="프로젝트 스캔"], button:has(svg.lucide-refresh-cw)',
+    scanButton: 'button:has(svg.lucide-refresh-cw):not(:has-text("Sync"))',
     addButton: 'button[title="프로젝트 추가"], button:has(svg.lucide-plus)',
     sortMenuButton: 'button:has(svg.lucide-list-filter)',
 
@@ -123,7 +123,6 @@ export function generateUniqueName(prefix: string = 'Test'): string {
  */
 export async function navigateToProjectsPage(page: Page): Promise<void> {
     await page.goto('/projects')
-    await page.waitForLoadState('networkidle')
     // Projects 헤더가 로드될 때까지 대기
     await expect(page.locator(SELECTORS.listHeader)).toBeVisible({ timeout: TIMEOUTS.medium })
 }
@@ -143,6 +142,7 @@ export async function selectGlobalSettings(page: Page): Promise<void> {
  */
 export async function selectProject(page: Page, name: string): Promise<void> {
     const projectItem = page.locator(SELECTORS.projectItem(name)).first()
+    await expect(projectItem).not.toHaveAttribute('aria-disabled', 'true', { timeout: TIMEOUTS.medium })
     await projectItem.click()
     // 선택 상태 확인 (border-primary 클래스)
     await expect(projectItem).toHaveClass(/border-primary/, { timeout: TIMEOUTS.short })
@@ -356,70 +356,4 @@ export async function closeEditModal(page: Page): Promise<void> {
     }
 }
 
-// ============================================================================
-// API Helpers (Data Isolation)
-// ============================================================================
-
-const API_BASE_URL = 'http://localhost:3001';
-
-/**
- * Reset Database via API
- */
-export async function resetDatabase(request: APIRequestContext): Promise<void> {
-    const response = await request.post(`${API_BASE_URL}/api/__test__/reset`);
-    expect(response.ok(), 'Failed to reset database').toBeTruthy();
-}
-
-/**
- * Seed Projects Data via API
- */
-export async function seedProjectsData(request: APIRequestContext, data: {
-    projects?: Array<{
-        id?: string,
-        name: string,
-        path: string,
-        source?: 'cursor' | 'vscode' | 'windsurf' | 'global'
-    }>
-}): Promise<void> {
-    const response = await request.post(`${API_BASE_URL}/api/__test__/seed/projects`, {
-        data: data
-    });
-    expect(response.ok(), 'Failed to seed Projects data').toBeTruthy();
-}
-
-/**
- * Get Projects via API
- */
-export async function getProjectsViaApi(request: APIRequestContext): Promise<Array<{
-    id: string,
-    name: string,
-    path: string,
-    source: string
-}>> {
-    const response = await request.get(`${API_BASE_URL}/api/projects`);
-    expect(response.ok(), 'Failed to get projects').toBeTruthy();
-    return response.json();
-}
-
-/**
- * Create Project via API
- */
-export async function createProjectViaApi(request: APIRequestContext, data: {
-    name: string,
-    path: string,
-    source?: string
-}): Promise<{ id: string }> {
-    const response = await request.post(`${API_BASE_URL}/api/projects`, {
-        data: data
-    });
-    expect(response.ok(), 'Failed to create project via API').toBeTruthy();
-    return response.json();
-}
-
-/**
- * Delete Project via API
- */
-export async function deleteProjectViaApi(request: APIRequestContext, id: string): Promise<void> {
-    const response = await request.delete(`${API_BASE_URL}/api/projects/${id}`);
-    expect(response.ok(), 'Failed to delete project via API').toBeTruthy();
-}
+// API Helpers removed per user request for pure UI testing

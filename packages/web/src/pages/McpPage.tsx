@@ -162,6 +162,7 @@ function SortableSetItem({ item, def, isDragEnabled, onToggle, onRemove, onEdit 
             style={style}
             {...attributes}
             {...listeners}
+            data-testid={`set-item-${def.name}`}
             className={cn(
                 "group flex flex-col gap-2 p-3 rounded-lg border transition-all touch-none",
                 item.disabled
@@ -190,7 +191,7 @@ function SortableSetItem({ item, def, isDragEnabled, onToggle, onRemove, onEdit 
                         </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2">
+                                <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2" data-testid="more-options-button">
                                     <MoreVertical className="w-4 h-4 text-muted-foreground" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -260,6 +261,7 @@ function SortableLibraryItem({ def, isDragEnabled, selectedSetId, searchQuery = 
             style={style}
             {...attributes}
             {...listeners}
+            data-testid={`library-item-${def.name}`}
             className={cn(
                 "group flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors touch-none",
                 def.isAssigned ? "opacity-50" : ""
@@ -297,7 +299,7 @@ function SortableLibraryItem({ def, isDragEnabled, selectedSetId, searchQuery = 
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" data-testid="more-options-button">
                             <MoreVertical className="w-3 h-3" />
                         </Button>
                     </DropdownMenuTrigger>
@@ -424,8 +426,9 @@ export function McpPage() {
     const [mcpToDelete, setMcpToDelete] = useState<McpDef | null>(null)
     const [editingDefId, setEditingDefId] = useState<string | null>(null)
     const [defForm, setDefForm] = useState<Partial<McpDef>>({
-        name: '', command: '', args: [], cwd: '', env: {}
+        name: '', command: '', args: [], cwd: ''
     })
+    const [envVars, setEnvVars] = useState<Record<string, string>>({})
     const [newSetName, setNewSetName] = useState('')
     const [newSetDescription, setNewSetDescription] = useState('')
     const [isEditingSetName, setIsEditingSetName] = useState(false)
@@ -434,6 +437,8 @@ export function McpPage() {
 
     // Toggle for Library assigned items
     const [showAssigned, setShowAssigned] = useState(false);
+
+
 
     // Search state for Library - Hidden for now (RB-43)
     // const [searchQuery, setSearchQuery] = useState(() => {
@@ -618,7 +623,8 @@ export function McpPage() {
     }, [])
 
     const resetDefForm = () => {
-        setDefForm({ name: '', command: '', args: [], cwd: '', env: {} })
+        setDefForm({ name: '', command: '', args: [], cwd: '' })
+        setEnvVars({})
     }
 
     // --- Mutation Wrappers ---
@@ -740,29 +746,36 @@ export function McpPage() {
     }
 
     const handleSaveDef = () => {
-        if (!defForm.name?.trim()) {
+        // Validate and save
+        const finalDef = {
+            ...defForm,
+            env: envVars
+        }
+
+        console.log('[McpPage] handleSaveDef payload', finalDef)
+
+        if (!finalDef.name?.trim()) {
             toast.error('Name is required')
             return
         }
 
-        // Validate based on type
-        const isHttp = defForm.type === 'http' || defForm.type === 'sse' || (defForm.url && !defForm.command)
-        if (isHttp) {
-            if (!defForm.url?.trim()) {
-                toast.error('URL is required for HTTP/SSE type')
+        if (finalDef.type === 'http' || finalDef.type === 'sse') {
+            if (!finalDef.url?.trim()) {
+                toast.error('URL is required for HTTP/SSE MCP servers')
                 return
             }
         } else {
-            if (!defForm.command?.trim()) {
-                toast.error('Command is required for stdio type')
+            // stdio validation
+            if (!finalDef.command?.trim()) {
+                toast.error('Command is required')
                 return
             }
         }
 
         if (editingDefId) {
-            updateDefMutation.mutate({ id: editingDefId, def: defForm })
+            updateDefMutation.mutate({ id: editingDefId, def: finalDef })
         } else {
-            createDefMutation.mutate(defForm as Omit<McpDef, 'id'>)
+            createDefMutation.mutate(finalDef as Omit<McpDef, 'id'>)
         }
     }
 
@@ -772,12 +785,12 @@ export function McpPage() {
             setDefForm({
                 name: def.name,
                 command: def.command,
-                args: def.args,
+                args: def.args || [],
                 cwd: def.cwd || '',
                 type: def.type,
-                url: def.url || '',
-                env: def.env
+                url: def.url || ''
             })
+            setEnvVars(def.env || {})
         } else {
             setEditingDefId(null)
             resetDefForm()
@@ -1100,7 +1113,7 @@ export function McpPage() {
         <div className="h-full flex flex-col overflow-hidden bg-background">
             {/* ... Dialogs same as before ... */}
             <Dialog open={isCreateSetOpen} onOpenChange={setIsCreateSetOpen}>
-                <DialogContent>
+                <DialogContent data-testid="create-set-modal">
                     <DialogHeader>
                         <DialogTitle>Create MCP Set</DialogTitle>
                         <DialogDescription>Create a new collection of MCP servers.</DialogDescription>
@@ -1108,11 +1121,21 @@ export function McpPage() {
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label>Set Name</Label>
-                            <Input value={newSetName} onChange={e => setNewSetName(e.target.value)} placeholder="My MCP Set" />
+                            <Input
+                                value={newSetName}
+                                onChange={e => setNewSetName(e.target.value)}
+                                placeholder="My MCP Set"
+                                data-testid="set-name-input"
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label>Description</Label>
-                            <Textarea value={newSetDescription} onChange={e => setNewSetDescription(e.target.value)} placeholder="Description (optional)" />
+                            <Textarea
+                                value={newSetDescription}
+                                onChange={e => setNewSetDescription(e.target.value)}
+                                placeholder="Description (optional)"
+                                data-testid="set-desc-input"
+                            />
                         </div>
                     </div>
                     <DialogFooter>
@@ -1129,7 +1152,7 @@ export function McpPage() {
                     resetDefForm()
                 }
             }}>
-                <DialogContent className="max-w-xl">
+                <DialogContent className="max-w-xl" data-testid="mcp-modal">
                     <DialogHeader>
                         <DialogTitle>{editingDefId ? 'Edit MCP Definition' : 'Add MCP Definition'}</DialogTitle>
                         <DialogDescription>Configure an MCP server definition.</DialogDescription>
@@ -1138,7 +1161,15 @@ export function McpPage() {
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
                                 <Label>Name</Label>
-                                <Input value={defForm.name} onChange={e => setDefForm({ ...defForm, name: e.target.value })} placeholder="e.g. Postgres" />
+                                <Input
+                                    value={defForm.name}
+                                    onChange={e => {
+                                        const val = e.target.value
+                                        setDefForm(prev => ({ ...prev, name: val }))
+                                    }}
+                                    placeholder="e.g. Postgres"
+                                    data-testid="mcp-name-input"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Type</Label>
@@ -1147,7 +1178,7 @@ export function McpPage() {
                                         type="button"
                                         variant={!defForm.type || defForm.type === 'stdio' ? 'default' : 'outline'}
                                         size="sm"
-                                        onClick={() => setDefForm({ ...defForm, type: undefined, url: '' })}
+                                        onClick={() => setDefForm(prev => ({ ...prev, type: undefined, url: '' }))}
                                     >
                                         stdio
                                     </Button>
@@ -1155,7 +1186,7 @@ export function McpPage() {
                                         type="button"
                                         variant={defForm.type === 'http' ? 'default' : 'outline'}
                                         size="sm"
-                                        onClick={() => setDefForm({ ...defForm, type: 'http', command: '', args: [] })}
+                                        onClick={() => setDefForm(prev => ({ ...prev, type: 'http', command: '', args: [] }))}
                                     >
                                         http
                                     </Button>
@@ -1163,7 +1194,7 @@ export function McpPage() {
                                         type="button"
                                         variant={defForm.type === 'sse' ? 'default' : 'outline'}
                                         size="sm"
-                                        onClick={() => setDefForm({ ...defForm, type: 'sse', command: '', args: [] })}
+                                        onClick={() => setDefForm(prev => ({ ...prev, type: 'sse', command: '', args: [] }))}
                                     >
                                         sse
                                     </Button>
@@ -1173,28 +1204,48 @@ export function McpPage() {
                                 <>
                                     <div className="space-y-2">
                                         <Label>Command</Label>
-                                        <Input value={defForm.command} onChange={e => setDefForm({ ...defForm, command: e.target.value })} placeholder="e.g. npx, docker, python" />
+                                        <Input
+                                            value={defForm.command}
+                                            onChange={e => {
+                                                const val = e.target.value
+                                                setDefForm(prev => ({ ...prev, command: val }))
+                                            }}
+                                            placeholder="e.g. npx, docker, python"
+                                            data-testid="mcp-command-input"
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Arguments (one per line)</Label>
                                         <Textarea
                                             value={defForm.args?.join('\n')}
-                                            onChange={e => setDefForm({ ...defForm, args: e.target.value.split('\n').filter(Boolean) })}
+                                            onChange={e => {
+                                                const val = e.target.value.split('\n').filter(Boolean)
+                                                setDefForm(prev => ({ ...prev, args: val }))
+                                            }}
                                             placeholder="-y\n@modelcontextprotocol/server-postgres\npostgresql://user:pass@localhost/db"
                                             className="font-mono text-sm"
                                             rows={5}
+                                            data-testid="mcp-args-input"
                                         />
                                     </div>
                                 </>
                             ) : (
                                 <div className="space-y-2">
                                     <Label>URL</Label>
-                                    <Input value={defForm.url} onChange={e => setDefForm({ ...defForm, url: e.target.value })} placeholder="e.g. http://127.0.0.1:3845/mcp" />
+                                    <Input
+                                        value={defForm.url}
+                                        onChange={e => {
+                                            const val = e.target.value
+                                            setDefForm(prev => ({ ...prev, url: val }))
+                                        }}
+                                        placeholder="e.g. http://127.0.0.1:3845/mcp"
+                                        data-testid="mcp-url-input"
+                                    />
                                 </div>
                             )}
                             <EnvEditor
-                                value={defForm.env || {}}
-                                onChange={(env) => setDefForm({ ...defForm, env })}
+                                value={envVars}
+                                onChange={setEnvVars}
                             />
                         </div>
                     </ScrollArea>
@@ -1383,21 +1434,21 @@ export function McpPage() {
                                         />
                                         <div className="flex items-center shrink-0">
                                             <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-500" onClick={handleSaveSetName}><Check className="w-4 h-4" /></Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>저장</TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-500" onClick={handleSaveSetName}><Check className="w-4 h-4" /></Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>저장</TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
                                             <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => setIsEditingSetName(false)}><X className="w-4 h-4" /></Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>취소</TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => setIsEditingSetName(false)}><X className="w-4 h-4" /></Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>취소</TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
                                         </div>
                                     </div>
                                 ) : (
@@ -1494,7 +1545,7 @@ export function McpPage() {
                 </div>
 
                 {/* 3. Library List */}
-                <div className="flex flex-col min-h-0 border rounded-xl overflow-hidden bg-card/50">
+                <div className="flex flex-col min-h-0 border rounded-xl overflow-hidden bg-card/50" data-testid="library-panel">
                     <div className="p-4 border-b bg-muted/40 shrink-0 space-y-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">

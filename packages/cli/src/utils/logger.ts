@@ -1,19 +1,10 @@
 import chalk from 'chalk';
 import path from 'path';
-import { LoggerService } from '../services/LoggerService.js';
-
-export interface SyncLogEntry {
-    type: 'rules' | 'mcp';
-    toolId: string;
-    toolName: string;
-    status: 'success' | 'error' | 'skipped' | 'not-supported';
-    targetPath?: string;
-    message?: string;
-    strategy?: string;
-}
+import { logger } from '@align-agents/logger';
+import type { SyncLogEntry, AlignAgentsLogger } from '@align-agents/logger';
 
 export class SyncLogger {
-    private static logger = LoggerService.getInstance();
+    private static logger = logger;
 
     // 단일 동기화 시작
     static logSyncStart(toolName: string, type: 'rules' | 'mcp', strategy?: string) {
@@ -27,7 +18,7 @@ export class SyncLogger {
         }
 
         // UI 로그 (LoggerService)
-        this.logger.log('info', `[Sync] ${toolName} ${typeText} 동기화 시작`, { strategy });
+        this.logger.info(`[Sync] ${toolName} ${typeText} 동기화 시작`, { strategy });
     }
 
     // 전체 동기화 시작
@@ -39,7 +30,7 @@ export class SyncLogger {
         console.log(chalk.bold(`\n${message}\n`));
 
         // UI 로그
-        this.logger.log('info', `[Sync] ${count}개 도구 ${typeText} 일괄 동기화 시작`);
+        this.logger.info(`[Sync] ${count}개 도구 ${typeText} 일괄 동기화 시작`);
     }
 
     // 개별 결과 로그
@@ -78,7 +69,7 @@ export class SyncLogger {
         const statusText = this.getStatusTextPlain(entry.status);
         const uiMessage = `${entry.toolName} (${entry.toolId}) - ${statusText}`;
 
-        this.logger.log(level, `[Sync] ${uiMessage}`, {
+        this.logger[level as keyof AlignAgentsLogger](`[Sync] ${uiMessage}`, {
             type: entry.type,
             toolId: entry.toolId,
             status: entry.status,
@@ -101,7 +92,7 @@ export class SyncLogger {
 
         // UI 로그
         const level = failed > 0 ? 'warn' : 'info';
-        this.logger.log(level, `[Sync] 완료: ${success} 성공, ${failed} 실패, ${skipped} 스킵`);
+        this.logger[level as keyof AlignAgentsLogger](`[Sync] 완료: ${success} 성공, ${failed} 실패, ${skipped} 스킵`);
     }
 
     private static getStatusIcon(status: string): string {

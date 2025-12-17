@@ -1,19 +1,6 @@
 import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
-import { getLogger, type AlignAgentsLogger } from '@align-agents/logger';
-
-/** 로그 레벨 타입 */
-export type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'trace' | 'fatal';
-
-/** 로그 항목 인터페이스 */
-export interface LogEntry {
-    id: string;
-    timestamp: string;
-    level: LogLevel;
-    message: string;
-    category?: string;
-    args?: any[];
-}
+import { getLogger, type AlignAgentsLogger, type LogLevel, type LogEntry } from '@align-agents/logger';
 
 /**
  * LoggerService - 메모리 기반 로그 버퍼 + Pino 구조화된 로깅

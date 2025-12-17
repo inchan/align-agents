@@ -188,22 +188,22 @@ test.describe('MCP Import/Export & HTTP/SSE Types - P1 @priority-p1', () => {
         // 1. stdio 타입 - Command 필드가 보이고, URL 필드는 숨겨져야 함
         // (기본 선택 상태)
         await expect(modal.locator('input[placeholder*="npx"]')).toBeVisible()
-        await expect(modal.locator('input[placeholder*="http"]')).not.toBeVisible()
+        await expect(modal.locator('input[placeholder*="http"]')).toBeHidden()
 
         // 2. http 타입으로 변경 - URL 필드가 보이고, Command 필드는 숨겨져야 함
         await modal.locator('button:has-text("http")').click()
         await expect(modal.locator('input[placeholder*="http"]')).toBeVisible()
-        await expect(modal.locator('input[placeholder*="npx"]')).not.toBeVisible()
+        await expect(modal.locator('input[placeholder*="npx"]')).toBeHidden()
 
         // 3. sse 타입으로 변경 - URL 필드가 보여야 함
         await modal.locator('button:has-text("sse")').click()
         await expect(modal.locator('input[placeholder*="http"]')).toBeVisible()
-        await expect(modal.locator('input[placeholder*="npx"]')).not.toBeVisible()
+        await expect(modal.locator('input[placeholder*="npx"]')).toBeHidden()
 
         // 4. 다시 stdio로 변경 - Command 필드가 보여야 함
         await modal.locator('button:has-text("stdio")').click()
         await expect(modal.locator('input[placeholder*="npx"]')).toBeVisible()
-        await expect(modal.locator('input[placeholder*="http"]')).not.toBeVisible()
+        await expect(modal.locator('input[placeholder*="http"]')).toBeHidden()
 
         // Cancel 클릭
         await modal.locator('button:has-text("Cancel")').click()

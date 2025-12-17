@@ -87,7 +87,7 @@ test.describe('CRUD & UI Refresh Verification', () => {
         expect(deleteResponse.status()).toBe(200);
 
         // 다이얼로그가 닫히는지 확인 (클릭이 제대로 되었는지 검증)
-        await expect(deleteDialog).not.toBeVisible();
+        await expect(deleteDialog).toBeHidden();
 
         // 삭제 확인
         console.log('삭제 확인 대기');
@@ -96,7 +96,7 @@ test.describe('CRUD & UI Refresh Verification', () => {
         // 7. 새로고침 (Refresh)
         console.log('7. 새로고침 (3차)');
         await page.reload();
-        await expect(page.locator(`div.group:has-text("${newRuleName}")`)).not.toBeVisible();
+        await expect(page.locator(`div.group:has-text("${newRuleName}")`)).toBeHidden();
         console.log('테스트 완료');
     });
 });

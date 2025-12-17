@@ -321,7 +321,7 @@ export function SyncPage() {
 
         store.setSelectedRuleId(activeRuleId);
 
-    }, [store.activeToolSetId, syncStatus, rules, mcpSets, isMcpSetsLoading, activeSet, store]);
+    }, [store.activeToolSetId, syncStatus, rules, mcpSets, isMcpSetsLoading, activeSet, store.setSelectedMcpSetId, store.setSelectedRuleId]);
 
     const isLoading = isToolsLoading || isRulesLoading || isMcpSetsLoading
 
@@ -657,7 +657,7 @@ export function SyncPage() {
                                     "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                                     store.selectedRuleId === null ? "border-emerald-500 bg-emerald-500 text-white" : "border-muted-foreground/30"
                                 )}>
-                                    {store.selectedRuleId === null && <Check className="w-2.5 h-2.5" />}
+                                    {store.selectedRuleId === null && <Check className="w-2.5 h-2.5" data-testid="check-icon" />}
                                 </div>
                                 <div>
                                     <div className="font-medium text-sm">None</div>
@@ -679,7 +679,7 @@ export function SyncPage() {
                                         "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                                         store.selectedRuleId === rule.id ? "border-emerald-500 bg-emerald-500 text-white" : "border-muted-foreground/30"
                                     )}>
-                                        {store.selectedRuleId === rule.id && <Check className="w-2.5 h-2.5" />}
+                                        {store.selectedRuleId === rule.id && <Check className="w-2.5 h-2.5" data-testid="check-icon" />}
                                     </div>
                                     <div>
                                         <div className="font-medium text-sm">{rule.name}</div>
@@ -758,7 +758,7 @@ export function SyncPage() {
                                     "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                                     store.selectedMcpSetId === null ? "border-emerald-500 bg-emerald-500 text-white" : "border-muted-foreground/30"
                                 )}>
-                                    {store.selectedMcpSetId === null && <Check className="w-2.5 h-2.5" />}
+                                    {store.selectedMcpSetId === null && <Check className="w-2.5 h-2.5" data-testid="check-icon" />}
                                 </div>
                                 <div>
                                     <div className="font-medium text-sm">None</div>
@@ -781,7 +781,7 @@ export function SyncPage() {
                                             "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                                             store.selectedMcpSetId === set.id ? "border-emerald-500 bg-emerald-500 text-white" : "border-muted-foreground/30"
                                         )}>
-                                            {store.selectedMcpSetId === set.id && <Check className="w-2.5 h-2.5" />}
+                                            {store.selectedMcpSetId === set.id && <Check className="w-2.5 h-2.5" data-testid="check-icon" />}
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <div className="font-medium text-sm flex items-center gap-2 min-w-0">

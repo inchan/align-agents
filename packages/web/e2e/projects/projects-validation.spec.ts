@@ -10,7 +10,6 @@ import {
     SELECTORS,
     TIMEOUTS,
     TEST_DATA,
-    generateUniqueName,
     navigateToProjectsPage,
     expectToast,
     closeCreateModal,
@@ -139,7 +138,7 @@ test.describe('Projects Error Handling - P1 @priority-p1', () => {
     // ========================================================================
     // P-015: Project 생성 실패
     // ========================================================================
-    test('P-015: should show error toast on create failure', async ({ page, context }) => {
+    test('P-015: should show error toast on create failure', async ({ page }) => {
         // API 요청을 가로채서 에러 응답 반환
         await page.route('**/api/projects', async (route) => {
             if (route.request().method() === 'POST') {
