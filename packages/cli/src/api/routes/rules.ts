@@ -99,18 +99,6 @@ export async function rulesRoutes(server: FastifyInstance, rulesService: RulesSe
         }
     });
 
-    server.put<{ Params: { id: string } }>('/api/rules/:id/activate', async (request, reply) => {
-        const { id } = request.params;
-
-        try {
-            await rulesService.setActiveRule(id);
-            return { success: true };
-        } catch (error: any) {
-            const status = error.message.includes('not found') ? 404 : 500;
-            return reply.code(status).send({ error: error.message });
-        }
-    });
-
     server.put<{ Body: { ids: string[] } }>('/api/rules/reorder', async (request, reply) => {
         try {
             return await rulesService.reorderRules(request.body.ids);

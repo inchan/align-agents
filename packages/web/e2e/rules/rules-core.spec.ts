@@ -301,49 +301,4 @@ This is a test rule for validation.
         }
     })
 
-    // ========================================================================
-    // R-024: Rule Active/Inactive 토글
-    // ========================================================================
-    test.skip('R-024: should toggle rule active/inactive state', async ({ page }) => {
-        // 테스트용 Rule 생성
-        const ruleName = generateUniqueName('R024')
-        await createRule(page, ruleName)
-
-        // Rule 선택
-        await selectRule(page, ruleName)
-
-        // Rule이 목록에서 활성 상태인지 확인 (Disabled 배지가 없어야 함)
-        const ruleItem = page.locator(SELECTORS.ruleItem(ruleName)).first()
-        await expect(ruleItem.locator('text=Disabled')).toBeHidden()
-
-        // 3점 메뉴 열기
-        await ruleItem.hover()
-        const moreButton = ruleItem.locator('button[title="More options"]')
-        await moreButton.click()
-
-        // Deactivate 클릭
-        await page.getByRole('menuitem', { name: 'Deactivate' }).click()
-
-        // 성공 토스트 확인 (Flaky하므로 UI 상태 확인으로 대체)
-        // await expectToast(page, /deactivated/i)
-
-        // Disabled 배지가 나타나야 함
-        await expect(ruleItem.locator('text=Disabled')).toBeVisible({ timeout: 15000 })
-
-        // 다시 3점 메뉴 열기
-        await ruleItem.hover()
-        await moreButton.click()
-
-        // Activate 클릭
-        await page.getByRole('menuitem', { name: 'Activate' }).click()
-
-        // 성공 토스트 확인
-        // await expectToast(page, /activated/i)
-
-        // Disabled 배지가 사라져야 함
-        await expect(ruleItem.locator('text=Disabled')).toBeHidden()
-
-        // Cleanup
-        await cleanupRule(page, ruleName)
-    })
 })

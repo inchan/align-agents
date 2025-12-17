@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => ({
         createRule: vi.fn(),
         updateRule: vi.fn(),
         deleteRule: vi.fn(),
-        setActiveRule: vi.fn(),
     },
     mockSyncRulesToToolUseCase: {
         execute: vi.fn(),
@@ -325,42 +324,4 @@ describe('RulesController', () => {
         });
     });
 
-    describe('setActiveRule', () => {
-        it('sets active rule successfully', async () => {
-            mocks.mockRulesService.setActiveRule.mockResolvedValue(undefined);
-
-            const req = { params: { id: 'r1' } } as any;
-            const res = createRes();
-
-            await controller.setActiveRule(req, res);
-
-            expect(res.statusCode).toBe(200);
-            expect(res.body.success).toBe(true);
-            expect(mocks.mockRulesService.setActiveRule).toHaveBeenCalledWith('r1');
-        });
-
-        it('returns 404 when rule not found', async () => {
-            mocks.mockRulesService.setActiveRule.mockRejectedValue(new Error('Rule not found'));
-
-            const req = { params: { id: 'nonexistent' } } as any;
-            const res = createRes();
-
-            await controller.setActiveRule(req, res);
-
-            expect(res.statusCode).toBe(404);
-            expect(res.body.error).toBe('Rule not found');
-        });
-
-        it('returns 500 on other errors', async () => {
-            mocks.mockRulesService.setActiveRule.mockRejectedValue(new Error('Database error'));
-
-            const req = { params: { id: 'r1' } } as any;
-            const res = createRes();
-
-            await controller.setActiveRule(req, res);
-
-            expect(res.statusCode).toBe(500);
-            expect(res.body.error).toBe('Failed to set active rule');
-        });
-    });
 });

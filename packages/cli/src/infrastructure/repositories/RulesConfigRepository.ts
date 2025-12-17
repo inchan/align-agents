@@ -285,34 +285,6 @@ export class RulesConfigRepository implements IRulesConfigRepository {
         });
     }
 
-    async setActiveRule(id: string): Promise<void> {
-        return this.query(() => {
-            this.db.transaction(() => {
-                // Deactivate all rules
-                this.db.prepare('UPDATE rules SET is_active = 0').run();
-
-                // Activate the specified rule
-                this.db.prepare(`
-                    UPDATE rules SET is_active = 1, updated_at = datetime('now')
-                    WHERE id = ?
-                `).run(id);
-            });
-        });
-    }
-
-    async deactivateRule(id: string): Promise<void> {
-        return this.query(() => {
-            const result = this.db.prepare(`
-                UPDATE rules SET is_active = 0, updated_at = datetime('now')
-                WHERE id = ?
-            `).run(id);
-
-            if (result.changes === 0) {
-                throw new Error('Rule not found');
-            }
-        });
-    }
-
     async getActiveRule(): Promise<Rule | null> {
         return this.query(() => {
             try {
