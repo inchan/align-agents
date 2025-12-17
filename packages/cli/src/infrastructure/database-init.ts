@@ -86,15 +86,9 @@ function checkAndMigrateColumns(db: IDatabase): void {
             db.exec('ALTER TABLE rules ADD COLUMN order_index INTEGER NOT NULL DEFAULT 0');
         }
 
-        // Migrate rules: set is_active=1 for all inactive, non-archived rules
-        // (기존 Rule들의 기본값이 0이었으나, 새 정책에서는 1이 기본값)
-        const inactiveRulesCount = db.prepare<{ count: number }>(`
-            SELECT COUNT(*) as count FROM rules WHERE is_active = 0 AND is_archived = 0
-        `).get();
-        if (inactiveRulesCount && inactiveRulesCount.count > 0) {
-            console.log(`[DB] Migrating rules: activating ${inactiveRulesCount.count} inactive rules...`);
-            db.exec('UPDATE rules SET is_active = 1 WHERE is_active = 0 AND is_archived = 0');
-        }
+        // Note: is_active column is deprecated and ignored by the application.
+        // The column will be removed by the user manually if needed.
+        // No automatic migration to drop the column.
 
         // Check mcp_definitions for HTTP/SSE support (type, url columns)
         // Also need to make command/args nullable for HTTP/SSE type

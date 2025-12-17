@@ -192,13 +192,13 @@ export function RulesPage() {
 
     // Derived state for the currently viewed rule
     // If user has selected one (and it still exists), use that.
-    // Otherwise, default to the first active rule or simply the first rule.
+    // Otherwise, default to the first rule.
     const viewedRuleId = useMemo(() => {
         if (userSelectedRuleId && sortedRules.some(r => r.id === userSelectedRuleId)) {
             return userSelectedRuleId
         }
         if (sortedRules.length > 0) {
-            return (sortedRules.find(r => r.isActive) || sortedRules[0]).id
+            return sortedRules[0].id
         }
         return null
     }, [userSelectedRuleId, sortedRules])

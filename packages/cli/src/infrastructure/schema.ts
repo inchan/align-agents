@@ -69,14 +69,12 @@ CREATE TABLE IF NOT EXISTS rules (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     content TEXT NOT NULL,
-    is_active INTEGER NOT NULL DEFAULT 1,
     is_archived INTEGER NOT NULL DEFAULT 0,
     order_index INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_rules_is_active ON rules(is_active);
 CREATE INDEX IF NOT EXISTS idx_rules_is_archived ON rules(is_archived);
 CREATE INDEX IF NOT EXISTS idx_rules_name ON rules(name);
 

@@ -195,23 +195,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /rules/{id}/activate:
-    put:
-      tags: [Rules]
-      summary: Activate a rule (set as default for sync)
-      operationId: activateRule
-      parameters:
-        - $ref: '#/components/parameters/RuleId'
-      responses:
-        '200':
-          description: Rule activated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Rule'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
   /mcp/sync:
     post:
       tags: [MCP]
@@ -557,15 +540,13 @@ components:
           type: string
         content:
           type: string
-        isActive:
-          type: boolean
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
-      required: [id, name, content, isActive, createdAt, updatedAt]
+      required: [id, name, content, createdAt, updatedAt]
 
     CreateRuleRequest:
       type: object
