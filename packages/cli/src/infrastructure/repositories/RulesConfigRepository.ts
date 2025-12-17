@@ -1,5 +1,5 @@
 import { IRulesConfigRepository } from '../../interfaces/repositories/IRulesConfigRepository.js';
-import { RulesConfig, Rule } from '../../interfaces/IRulesService.js';
+import { RulesConfig, Rule, GetRulesListOptions } from '../../interfaces/IRulesService.js';
 import { IDatabase } from '../../interfaces/IDatabase.js';
 import { validateData } from '../../utils/validation.js';
 import { RulesConfigSchema } from '../../schemas/rules.schema.js';
@@ -128,21 +128,21 @@ export class RulesConfigRepository implements IRulesConfigRepository {
         });
     }
 
-    async getRulesList(): Promise<Rule[]> {
+    async getRulesList(options?: GetRulesListOptions): Promise<Rule[]> {
         return this.query(() => {
             try {
+                const isArchived = options?.isArchived ?? false;
                 const rows = this.db.prepare<any>(`
-                    SELECT id, name, content, is_active, order_index, created_at, updated_at
+                    SELECT id, name, content, order_index, created_at, updated_at
                     FROM rules
-                    WHERE is_archived = 0
+                    WHERE is_archived = ?
                     ORDER BY order_index ASC, created_at DESC
-                `).all();
+                `).all(isArchived ? 1 : 0);
 
                 return rows.map(row => ({
                     id: row.id,
                     name: row.name,
                     content: row.content,
-                    isActive: Boolean(row.is_active),
                     orderIndex: row.order_index,
                     createdAt: row.created_at,
                     updatedAt: row.updated_at
@@ -162,8 +162,8 @@ export class RulesConfigRepository implements IRulesConfigRepository {
 
                 // Insert new rules
                 const stmt = this.db.prepare(`
-                    INSERT INTO rules (id, name, content, is_active, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO rules (id, name, content, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
                 `);
 
                 for (const rule of rules) {
@@ -171,7 +171,6 @@ export class RulesConfigRepository implements IRulesConfigRepository {
                         rule.id,
                         rule.name,
                         rule.content,
-                        rule.isActive ? 1 : 0,
                         rule.createdAt,
                         rule.updatedAt
                     );
@@ -184,7 +183,7 @@ export class RulesConfigRepository implements IRulesConfigRepository {
         return this.query(() => {
             try {
                 const row = this.db.prepare<any>(`
-                    SELECT id, name, content, is_active, order_index, created_at, updated_at
+                    SELECT id, name, content, order_index, created_at, updated_at
                     FROM rules
                     WHERE id = ? AND is_archived = 0
                 `).get(id);
@@ -197,7 +196,6 @@ export class RulesConfigRepository implements IRulesConfigRepository {
                     id: row.id,
                     name: row.name,
                     content: row.content,
-                    isActive: Boolean(row.is_active),
                     orderIndex: row.order_index,
                     createdAt: row.created_at,
                     updatedAt: row.updated_at
@@ -221,20 +219,18 @@ export class RulesConfigRepository implements IRulesConfigRepository {
                 id: randomUUID(),
                 name,
                 content,
-                isActive: true,
                 orderIndex: nextOrder,
                 createdAt: now,
                 updatedAt: now
             };
 
             this.db.prepare(`
-                INSERT INTO rules (id, name, content, is_active, order_index, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO rules (id, name, content, order_index, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
             `).run(
                 rule.id,
                 rule.name,
                 rule.content,
-                rule.isActive ? 1 : 0,
                 rule.orderIndex,
                 rule.createdAt,
                 rule.updatedAt
@@ -278,39 +274,10 @@ export class RulesConfigRepository implements IRulesConfigRepository {
             // Soft delete
             const now = new Date().toISOString();
             this.db.prepare(`
-                UPDATE rules 
-                SET is_archived = 1, is_active = 0, updated_at = ? 
+                UPDATE rules
+                SET is_archived = 1, updated_at = ?
                 WHERE id = ?
             `).run(now, id);
-        });
-    }
-
-    async getActiveRule(): Promise<Rule | null> {
-        return this.query(() => {
-            try {
-                const row = this.db.prepare<any>(`
-                    SELECT id, name, content, is_active, created_at, updated_at
-                    FROM rules
-                    WHERE is_active = 1 AND is_archived = 0
-                    LIMIT 1
-                `).get();
-
-                if (!row) {
-                    return null;
-                }
-
-                return {
-                    id: row.id,
-                    name: row.name,
-                    content: row.content,
-                    isActive: Boolean(row.is_active),
-                    createdAt: row.created_at,
-                    updatedAt: row.updated_at
-                };
-            } catch (error) {
-                console.warn('[CLI] Active rule을 읽을 수 없습니다.', error);
-                return null;
-            }
         });
     }
 

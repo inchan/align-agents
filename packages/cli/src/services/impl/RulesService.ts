@@ -1,6 +1,6 @@
 import os from 'os';
 import { getConfigDir } from '../../constants/paths.js';
-import { IRulesService, RulesConfig, RulesSyncResult, Rule } from '../../interfaces/IRulesService.js';
+import { IRulesService, RulesConfig, RulesSyncResult, Rule, GetRulesListOptions } from '../../interfaces/IRulesService.js';
 import { IFileSystem } from '../../interfaces/IFileSystem.js';
 import { applySyncStrategy, type SyncStrategy } from '../strategies.js';
 import { validateData } from '../../utils/validation.js';
@@ -57,8 +57,8 @@ export class RulesService implements IRulesService {
     // ─────────────────────────────────────────────────────────────────────────
 
     /** 모든 Rule 목록을 조회한다. */
-    async getRulesList(): Promise<Rule[]> {
-        return this.repository.getRulesList();
+    async getRulesList(options?: GetRulesListOptions): Promise<Rule[]> {
+        return this.repository.getRulesList(options);
     }
 
     /** 특정 Rule을 조회한다. */

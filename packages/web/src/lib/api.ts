@@ -315,7 +315,6 @@ export interface Rule {
     id: string;
     name: string;
     content: string;
-    isActive: boolean;
     orderIndex?: number;
     createdAt: string;
     updatedAt: string;

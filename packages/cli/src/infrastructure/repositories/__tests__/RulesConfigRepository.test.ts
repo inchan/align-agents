@@ -172,7 +172,7 @@ describe('RulesConfigRepository', () => {
     describe('getRulesList', () => {
         it('should load existing rules list from DB', async () => {
             const mockRows = [
-                { id: '1', name: 'Rule 1', content: 'content', is_active: 1, created_at: 'now', updated_at: 'now' }
+                { id: '1', name: 'Rule 1', content: 'content', created_at: 'now', updated_at: 'now' }
             ];
             mockDb.prepare.mockReturnValueOnce({
                 all: vi.fn().mockReturnValueOnce(mockRows)
@@ -182,7 +182,6 @@ describe('RulesConfigRepository', () => {
 
             expect(result).toHaveLength(1);
             expect(result[0].name).toBe('Rule 1');
-            expect(result[0].isActive).toBe(true);
             expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('ORDER BY order_index ASC, created_at DESC'));
         });
 
@@ -195,11 +194,42 @@ describe('RulesConfigRepository', () => {
 
             expect(result).toEqual([]);
         });
+
+        it('should filter out archived rules by default (isArchived=false)', async () => {
+            const mockRows = [
+                { id: '1', name: 'Active Rule', content: 'content', created_at: 'now', updated_at: 'now' }
+            ];
+            const mockAll = vi.fn().mockReturnValueOnce(mockRows);
+            mockDb.prepare.mockReturnValueOnce({
+                all: mockAll
+            });
+
+            await repository.getRulesList();
+
+            expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('WHERE is_archived = ?'));
+            expect(mockAll).toHaveBeenCalledWith(0);
+        });
+
+        it('should return only archived rules when isArchived is true', async () => {
+            const mockRows = [
+                { id: '2', name: 'Archived Rule', content: 'content', created_at: 'now', updated_at: 'now' }
+            ];
+            const mockAll = vi.fn().mockReturnValueOnce(mockRows);
+            mockDb.prepare.mockReturnValueOnce({
+                all: mockAll
+            });
+
+            const result = await repository.getRulesList({ isArchived: true });
+
+            expect(result).toHaveLength(1);
+            expect(result[0].name).toBe('Archived Rule');
+            expect(mockAll).toHaveBeenCalledWith(1);
+        });
     });
 
     describe('getRule', () => {
         it('should return rule by id', async () => {
-            const mockRow = { id: '2', name: 'Rule 2', content: 'content 2', is_active: 0, created_at: 'now', updated_at: 'now' };
+            const mockRow = { id: '2', name: 'Rule 2', content: 'content 2', created_at: 'now', updated_at: 'now' };
             mockDb.prepare.mockReturnValueOnce({
                 get: vi.fn().mockReturnValueOnce(mockRow)
             });
@@ -240,19 +270,18 @@ describe('RulesConfigRepository', () => {
             expect(result.id).toBe('mock-uuid-1234');
             expect(result.name).toBe('New Rule');
             expect(result.content).toBe('new content');
-            expect(result.isActive).toBe(true);
             expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO rules'));
         });
     });
 
     describe('updateRule', () => {
         it('should update existing rule', async () => {
-            const existingRule = { id: '1', name: 'Rule 1', content: 'old content', isActive: false, createdAt: 'now', updatedAt: 'now' };
+            const existingRule = { id: '1', name: 'Rule 1', content: 'old content', createdAt: 'now', updatedAt: 'now' };
 
             mockDb.prepare.mockImplementation((sql: string) => {
                 if (sql.includes('SELECT') && sql.includes('WHERE id = ?')) {
                     return {
-                        get: vi.fn().mockReturnValueOnce({ ...existingRule, is_active: existingRule.isActive ? 1 : 0 })
+                        get: vi.fn().mockReturnValueOnce(existingRule)
                     };
                 }
                 return { run: vi.fn() };
@@ -291,41 +320,12 @@ describe('RulesConfigRepository', () => {
 
             await repository.deleteRule('2');
 
-            // Verify update to is_archived = 1 and is_active = 0
+            // Verify update to is_archived = 1
             expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('UPDATE rules'));
             expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('is_archived = 1'));
-            expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('is_active = 0'));
 
             // Verify arguments (timestamp, id)
             expect(mockRun).toHaveBeenCalledWith(expect.any(String), '2');
-        });
-    });
-
-    describe('getActiveRule', () => {
-        it('should return active rule', async () => {
-            const mockRow = { id: '1', name: 'Active Rule', content: 'content', is_active: 1, created_at: '', updated_at: '' };
-            mockDb.prepare.mockReturnValueOnce({
-                get: vi.fn().mockReturnValueOnce(mockRow),
-                run: vi.fn(),
-                all: vi.fn(),
-            });
-
-            const result = await repository.getActiveRule();
-
-            expect(result?.name).toBe('Active Rule');
-            expect(result?.isActive).toBe(true);
-        });
-
-        it('should return null if no active rule', async () => {
-            mockDb.prepare.mockReturnValueOnce({
-                get: vi.fn().mockReturnValueOnce(undefined),
-                run: vi.fn(),
-                all: vi.fn(),
-            });
-
-            const result = await repository.getActiveRule();
-
-            expect(result).toBeNull();
         });
     });
 });

@@ -78,7 +78,6 @@ describe.skip('RulesPage Integration', () => {
                 id: '1',
                 name: 'Test Rule 1',
                 content: '# Content 1',
-                isActive: true,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             },
@@ -86,7 +85,6 @@ describe.skip('RulesPage Integration', () => {
                 id: '2',
                 name: 'Test Rule 2',
                 content: '# Content 2',
-                isActive: false,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             }

@@ -22,10 +22,13 @@ export interface Rule {
     id: string;
     name: string;
     content: string;
-    isActive: boolean;
     orderIndex?: number;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface GetRulesListOptions {
+    isArchived?: boolean;
 }
 
 export interface IRulesService {
@@ -39,7 +42,7 @@ export interface IRulesService {
     listSupportedTools(): string[];
 
     // Multi-rules management
-    getRulesList(): Promise<Rule[]>;
+    getRulesList(options?: GetRulesListOptions): Promise<Rule[]>;
     getRule(id: string): Promise<Rule | null>;
     createRule(name: string, content: string): Promise<Rule>;
     updateRule(id: string, content: string, name?: string): Promise<Rule>;

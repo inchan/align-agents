@@ -74,7 +74,6 @@ export const factories = {
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 content TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 1,
                 is_archived INTEGER NOT NULL DEFAULT 0,
                 order_index INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
@@ -83,9 +82,9 @@ export const factories = {
         `);
 
         db.prepare(`
-            INSERT INTO rules (id, name, content, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-        `).run(ruleId, 'E2E Test Rule', content, 1);
+            INSERT INTO rules (id, name, content, created_at, updated_at)
+            VALUES (?, ?, ?, datetime('now'), datetime('now'))
+        `).run(ruleId, 'E2E Test Rule', content);
     },
 
     seedSyncConfig: (db: TestDb, config: Record<string, { enabled: boolean; servers: any | null }>) => {

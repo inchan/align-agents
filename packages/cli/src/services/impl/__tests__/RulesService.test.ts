@@ -86,7 +86,7 @@ describe('RulesService', () => {
     describe('Multi-rules management', () => {
         it('should delegate getRulesList to repository', async () => {
             const mockRules: Rule[] = [
-                { id: '1', name: 'Rule 1', content: 'content', isActive: true, createdAt: '', updatedAt: '' }
+                { id: '1', name: 'Rule 1', content: 'content', createdAt: '', updatedAt: '' }
             ];
             mockRepo.getRulesList.mockResolvedValue(mockRules);
 
@@ -97,7 +97,7 @@ describe('RulesService', () => {
         });
 
         it('should delegate getRule to repository', async () => {
-            const mockRule: Rule = { id: '1', name: 'Rule 1', content: 'content', isActive: true, createdAt: '', updatedAt: '' };
+            const mockRule: Rule = { id: '1', name: 'Rule 1', content: 'content', createdAt: '', updatedAt: '' };
             mockRepo.getRule.mockResolvedValue(mockRule);
 
             const result = await service.getRule('1');
@@ -107,7 +107,7 @@ describe('RulesService', () => {
         });
 
         it('should delegate createRule to repository', async () => {
-            const newRule: Rule = { id: '2', name: 'New Rule', content: 'new content', isActive: true, createdAt: '', updatedAt: '' };
+            const newRule: Rule = { id: '2', name: 'New Rule', content: 'new content', createdAt: '', updatedAt: '' };
             mockRepo.createRule.mockResolvedValue(newRule);
 
             const result = await service.createRule('New Rule', 'new content');
@@ -117,7 +117,7 @@ describe('RulesService', () => {
         });
 
         it('should delegate updateRule to repository', async () => {
-            const updatedRule: Rule = { id: '1', name: 'Updated Rule', content: 'updated content', isActive: true, createdAt: '', updatedAt: '' };
+            const updatedRule: Rule = { id: '1', name: 'Updated Rule', content: 'updated content', createdAt: '', updatedAt: '' };
             mockRepo.updateRule.mockResolvedValue(updatedRule);
 
             const result = await service.updateRule('1', 'updated content', 'Updated Rule');
@@ -223,7 +223,7 @@ describe('RulesService', () => {
         });
 
         it('should sync specific rule by sourceId', async () => {
-            const mockRule: Rule = { id: 'rule-1', name: 'Custom Rule', content: '# Custom Content', isActive: false, createdAt: '', updatedAt: '' };
+            const mockRule: Rule = { id: 'rule-1', name: 'Custom Rule', content: '# Custom Content', createdAt: '', updatedAt: '' };
             mockRepo.getRule.mockResolvedValue(mockRule);
 
             await service.syncToolRules('claude', '', true, 'overwrite', undefined, 'rule-1');
